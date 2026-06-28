@@ -447,7 +447,7 @@ Crear el servidor HTTP Gateway usando solo `node:http`. Implementar `router.js` 
 
 ### TASK-014
 **Nombre:** Gateway — middleware CORS  
-**Estado:** `Pending`  
+**Estado:** `Done`  
 **Prioridad:** Alta  
 **Estimación:** 1h  
 **Dependencias:** TASK-013
@@ -455,15 +455,27 @@ Crear el servidor HTTP Gateway usando solo `node:http`. Implementar `router.js` 
 **Descripción:**  
 Implementar CORS manualmente (sin librería). Headers configurables por `CORS_ORIGINS` env var. Manejo correcto de preflight OPTIONS.
 
-**Archivos afectados:**
-- `gateway/middleware/cors.js`
-- `gateway/server.js` (integrar middleware)
+**Archivos creados/modificados:**
+- `gateway/middleware/cors.js` — CORS middleware completo (sin librería)
+- `gateway/server.js` — middleware integrado en el pipeline
+- `gateway/tests/cors.test.js` — 10 tests de integración CORS
+- `gateway/.env` — archivo local de desarrollo (en .gitignore) con `CORS_ORIGINS`
 
 **Criterios de aceptación:**
-- [ ] Orígenes permitidos leídos de `CORS_ORIGINS` (comma-separated)
-- [ ] Headers correctos: `Access-Control-Allow-Origin`, `Access-Control-Allow-Methods`, `Access-Control-Allow-Headers`
-- [ ] Preflight `OPTIONS` responde `204 No Content`
-- [ ] Orígenes no autorizados reciben `403`
+- [x] Orígenes permitidos leídos de `CORS_ORIGINS` (comma-separated)
+- [x] Headers correctos: `Access-Control-Allow-Origin`, `Access-Control-Allow-Methods`, `Access-Control-Allow-Headers`
+- [x] Preflight `OPTIONS` responde `204 No Content`
+- [x] Orígenes no autorizados reciben `403`
+
+**Notas:**
+- Implementación sin librerías: solo `node:http` + módulo propio `config.js`.
+- `Access-Control-Allow-Credentials: true` incluido (necesario para cookies httpOnly en TASK-015).
+- `Vary: Origin` incluido para compatibilidad con caches de CDN/proxy.
+- `Access-Control-Max-Age: 86400` en preflight: el browser cachea el resultado 24h.
+- Sin header Origin → petición directa/same-origin → pasa sin CORS headers (correcto por spec).
+- Origen no autorizado → 403 sin ningún CORS header (sin leak de información).
+- `gateway/.env` necesario para tests locales (en Docker las vars vienen de `docker-compose.yml`).
+- 19 tests — todos pasan (10 CORS + 5 router + 4 server). Tiempo: 388ms.
 
 ---
 
