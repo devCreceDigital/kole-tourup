@@ -623,16 +623,17 @@ Inicializar Next.js 16.2.6 con App Router. Configurar TailwindCSS 4 con `@theme 
 **Descripción:**  
 `middleware.ts` en la raíz de `frontend/app/`. Lee cookie JWT, verifica rol y redirige: `padre/mecenas` → `/app/`, `agente` → `/backoffice/`, `alumno` → `/app/alumno/`. Rutas públicas no requieren auth.
 
-**Archivos afectados:**
-- `frontend/middleware.ts`
+**Archivos creados/modificados:**
+- `frontend/proxy.ts` (Renombrado desde middleware.ts según deprecación de Next 16.2.6)
 - `frontend/lib/auth.ts`
 
 **Criterios de aceptación:**
-- [ ] Rutas `(padre)` sin JWT válido → redirect a `/login`
-- [ ] Rutas `(agente)` sin JWT válido o rol incorrecto → redirect a `/login`
-- [ ] Rutas `(public)` accesibles sin auth
-- [ ] Redirect post-login al portal correcto según rol
-- [ ] JWT leído de cookie (nunca de localStorage)
+- [x] Rutas `(padre)` sin JWT válido → redirect a `/login`
+- [x] Rutas `(agente)` sin JWT válido o rol incorrecto → redirect a `/login`
+- [x] Rutas `(public)` accesibles sin auth
+- [x] Redirect post-login al portal correcto según rol (loops de login prevenidos)
+- [x] JWT leído de cookie (nunca de localStorage)
+
 
 ---
 
