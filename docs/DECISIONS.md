@@ -298,3 +298,27 @@ Al implementar el proxy inverso hacia Django, si configuramos el gateway como un
 **Alternativa B.** Se añadió validación en `server.js` (`req.url.startsWith('/api/')`) antes de llamar al proxy.
 
 ---
+
+## DEC-007 — Opciones definidas para TipoActividad
+
+**ID:** DEC-007  
+**Estado:** Aprobado (implementado en TASK-022)  
+**Fecha:** 2026-06-28  
+**Afecta:** `backend/apps/viajes/models.py`, `DATABASE.md`
+
+### Problema
+
+En `DATABASE.md`, la tabla `Actividad` menciona el uso de `TipoActividad.choices` en el campo `tipo`, pero no especifica las opciones textuales de la enumeración, lo que genera una inconsistencia y ambigüedad.
+
+### Decisión adoptada
+
+Se definieron las siguientes opciones estándar para estructurar un itinerario turístico/estudiantil:
+- `vuelo`: Vuelo / Traslado aéreo
+- `bus`: Transporte terrestre
+- `hotel`: Alojamiento / Check-in
+- `comida`: Comidas (Desayuno, Almuerzo, Cena)
+- `excursion`: Excursión / Tour
+- `libre`: Tiempo libre
+- `otro`: Otra actividad
+
+Se actualizará el campo `tipo` en `DATABASE.md` para reflejar estas opciones.

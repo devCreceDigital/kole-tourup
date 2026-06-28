@@ -384,7 +384,7 @@ VIAJE ──1:*──> COMUNICADO
 | hora | TimeField | NULLABLE | Hora aproximada |
 | titulo | CharField(200) | NOT NULL | Nombre de la actividad |
 | descripcion | TextField | blank=True | |
-| tipo | CharField(20) | NULLABLE | TipoActividad.choices |
+| tipo | CharField(20) | NULLABLE | TipoActividad.choices (ver DEC-007) |
 | orden | PositiveIntegerField | DEFAULT 0 | Posición dentro de la etapa |
 
 **Meta:** `ordering = ['orden', 'hora']`

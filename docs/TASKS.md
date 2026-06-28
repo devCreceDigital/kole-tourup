@@ -708,10 +708,10 @@ Crear los modelos `Itinerario`, `EtapaItinerario` y `Actividad`. `Itinerario` es
 - `backend/apps/viajes/migrations/`
 
 **Criterios de aceptación:**
-- [ ] `Itinerario` OneToOne con `Viaje`
-- [ ] `EtapaItinerario` unique_together `(itinerario, dia_numero)`
-- [ ] `Actividad` ordering `['orden', 'hora']`
-- [ ] `TipoActividad` TextChoices
+- [x] `Itinerario` OneToOne con `Viaje`
+- [x] `EtapaItinerario` unique_together `(itinerario, dia_numero)`
+- [x] `Actividad` ordering `['orden', 'hora']`
+- [x] `TipoActividad` TextChoices
 
 ---
 

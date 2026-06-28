@@ -11,6 +11,16 @@ class EstadoViaje(models.TextChoices):
     ARCHIVADO = "archivado", _("Archivado")
 
 
+class TipoActividad(models.TextChoices):
+    VUELO = "vuelo", _("Vuelo / Traslado aéreo")
+    BUS = "bus", _("Transporte terrestre")
+    HOTEL = "hotel", _("Alojamiento / Check-in")
+    COMIDA = "comida", _("Comidas (Desayuno, Almuerzo, Cena)")
+    EXCURSION = "excursion", _("Excursión / Tour")
+    LIBRE = "libre", _("Tiempo libre")
+    OTRO = "otro", _("Otra actividad")
+
+
 class Viaje(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     agencia = models.ForeignKey(
@@ -46,7 +56,7 @@ class Viaje(models.Model):
                 check=Q(fecha_regreso__gt=F("fecha_salida")),
                 name="viaje_fecha_regreso_mayor_salida",
                 violation_error_message=_(
-                    "La fecha de regreso debe ser posterior a la de salida."
+                    "La fecha de regreso debe ser posterior a la fecha de salida."
                 )
             )
         ]
@@ -107,3 +117,69 @@ class Cuota(models.Model):
 
     def __str__(self):
         return f"Cuota {self.numero_cuota} - {self.plan_pago.viaje.nombre}"
+
+
+class Itinerario(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    viaje = models.OneToOneField(
+        Viaje,
+        on_delete=models.CASCADE,
+        related_name="itinerario"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Itinerario - {self.viaje.nombre}"
+
+
+class EtapaItinerario(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    itinerario = models.ForeignKey(
+        Itinerario,
+        on_delete=models.CASCADE,
+        related_name="etapas"
+    )
+    dia_numero = models.PositiveIntegerField()
+    titulo = models.CharField(max_length=200)
+    descripcion = models.TextField(blank=True, default="")
+    imagen = models.ImageField(
+        upload_to="itinerarios/etapas/", null=True, blank=True
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["itinerario", "dia_numero"],
+                name="unique_etapa_por_itinerario"
+            )
+        ]
+        ordering = ["dia_numero"]
+
+    def __str__(self):
+        return f"Día {self.dia_numero} - {self.titulo}"
+
+
+class Actividad(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    etapa = models.ForeignKey(
+        EtapaItinerario,
+        on_delete=models.CASCADE,
+        related_name="actividades"
+    )
+    hora = models.TimeField(null=True, blank=True)
+    titulo = models.CharField(max_length=200)
+    descripcion = models.TextField(blank=True, default="")
+    tipo = models.CharField(
+        max_length=20,
+        choices=TipoActividad.choices,
+        null=True,
+        blank=True
+    )
+    orden = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["orden", "hora"]
+
+    def __str__(self):
+        return f"{self.hora or ''} - {self.titulo}".strip()
