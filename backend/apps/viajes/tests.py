@@ -188,3 +188,117 @@ class ViajeEndpointTests(APITestCase):
         response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('fecha_regreso', response.data)
+
+
+class ViajeDetailEndpointTests(APITestCase):
+    def setUp(self):
+        self.agencia = Agencia.objects.create(
+            nombre="Ag1", slug="ag1", email_contacto="a@a.com"
+        )
+        self.agencia2 = Agencia.objects.create(
+            nombre="Ag2", slug="ag2", email_contacto="b@b.com"
+        )
+        self.agente = Usuario.objects.create_user(
+            email="agente@a.com", password="pwd", rol=RolUsuario.AGENTE,
+            agencia=self.agencia, email_verificado=True
+        )
+        self.padre = Usuario.objects.create_user(
+            email="padre@a.com", password="pwd", rol=RolUsuario.PADRE,
+            email_verificado=True
+        )
+        self.today = timezone.now().date()
+        self.tomorrow = self.today + timedelta(days=1)
+
+        self.viaje_propio = Viaje.objects.create(
+            agencia=self.agencia, nombre="V1", destino="D1",
+            fecha_salida=self.today, fecha_regreso=self.tomorrow,
+            cupo_maximo=10, precio_total=100
+        )
+        self.viaje_ajeno = Viaje.objects.create(
+            agencia=self.agencia2, nombre="V2", destino="D2",
+            fecha_salida=self.today, fecha_regreso=self.tomorrow,
+            cupo_maximo=10, precio_total=100
+        )
+        self.url_propio = reverse(
+            'viaje-detail', kwargs={'pk': self.viaje_propio.id}
+        )
+        self.url_ajeno = reverse(
+            'viaje-detail', kwargs={'pk': self.viaje_ajeno.id}
+        )
+        self.url_404 = reverse('viaje-detail', kwargs={'pk': '00000000-0000-0000-0000-000000000000'})  # noqa: E501
+
+    def test_get_detalle_propio(self):
+        self.client.force_authenticate(user=self.agente)
+        response = self.client.get(self.url_propio)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['nombre'], "V1")
+
+    def test_get_detalle_otra_agencia_da_404(self):
+        self.client.force_authenticate(user=self.agente)
+        response = self.client.get(self.url_ajeno)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_get_inexistente_da_404(self):
+        self.client.force_authenticate(user=self.agente)
+        response = self.client.get(self.url_404)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_get_padre_y_anonimo_sin_permisos(self):
+        self.client.force_authenticate(user=self.padre)
+        response = self.client.get(self.url_propio)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        self.client.logout()
+        response = self.client.get(self.url_propio)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_patch_nombre(self):
+        self.client.force_authenticate(user=self.agente)
+        response = self.client.patch(self.url_propio, {"nombre": "V1 Update"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.viaje_propio.refresh_from_db()
+        self.assertEqual(self.viaje_propio.nombre, "V1 Update")
+
+    def test_patch_multiples_campos(self):
+        self.client.force_authenticate(user=self.agente)
+        data = {"nombre": "New", "destino": "New Dest", "cupo_maximo": 99}
+        response = self.client.patch(self.url_propio, data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.viaje_propio.refresh_from_db()
+        self.assertEqual(self.viaje_propio.cupo_maximo, 99)
+
+    def test_patch_fechas_invalidas(self):
+        self.client.force_authenticate(user=self.agente)
+        salida = (self.tomorrow + timedelta(days=2)).isoformat()
+        data = {"fecha_salida": salida}
+        response = self.client.patch(self.url_propio, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_patch_ignora_agencia_e_id(self):
+        self.client.force_authenticate(user=self.agente)
+        fake_id = "00000000-0000-0000-0000-000000000000"
+        data = {"id": fake_id, "agencia": self.agencia2.id}
+        response = self.client.patch(self.url_propio, data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertNotEqual(str(response.data['id']), fake_id)
+        self.assertEqual(response.data['agencia'], self.agencia.id)
+
+    def test_patch_otra_agencia_da_404(self):
+        self.client.force_authenticate(user=self.agente)
+        response = self.client.patch(self.url_ajeno, {"nombre": "Hack"})
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_patch_permisos(self):
+        self.client.force_authenticate(user=self.padre)
+        response = self.client.patch(self.url_propio, {"nombre": "Hack"})
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        self.client.logout()
+        response = self.client.patch(self.url_propio, {"nombre": "Hack"})
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_patch_no_crea_nuevo_itinerario(self):
+        self.client.force_authenticate(user=self.agente)
+        itinerarios_antes = Itinerario.objects.count()
+        self.client.patch(self.url_propio, {"nombre": "Trigger"})
+        self.assertEqual(Itinerario.objects.count(), itinerarios_antes)

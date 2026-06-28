@@ -784,8 +784,8 @@ Implementar endpoints CRUD de viajes con permisos por rol. Transiciones de estad
 ---
 
 ### TASK-026
-**Nombre:** API viajes — métricas del viaje  
-**Estado:** `Pending`  
+**Nombre:** Endpoints CRUD Base (Viaje) - Retrieve y Update  
+**Estado:** `Done`  
 **Prioridad:** Alta  
 **Estimación:** 2h  
 **Dependencias:** TASK-025
