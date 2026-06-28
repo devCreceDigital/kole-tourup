@@ -1,7 +1,7 @@
-"""
-config/settings/base.py — Configuración base compartida entre entornos.
+﻿"""
+config/settings/base.py â€” ConfiguraciÃ³n base compartida entre entornos.
 
-Este módulo lee variables de entorno con python-decouple.
+Este mÃ³dulo lee variables de entorno con python-decouple.
 No contiene valores sensibles; todos vienen del entorno o del .env.
 """
 
@@ -11,16 +11,16 @@ from pathlib import Path
 
 from decouple import config
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # PATHS
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 # BASE_DIR apunta a backend/ (donde vive manage.py)
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # SEGURIDAD
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 SECRET_KEY = config("SECRET_KEY")
 
@@ -29,11 +29,11 @@ DEBUG = False
 
 ALLOWED_HOSTS: list[str] = []
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # APLICACIONES
 # INSTALLED_APPS preparado para las 12 apps del proyecto (TASK-004 criterio).
-# Las apps propias se añadirán en sus respectivas TASK (TASK-005 en adelante).
-# ─────────────────────────────────────────────────────────────────────────────
+# Las apps propias se aÃ±adirÃ¡n en sus respectivas TASK (TASK-005 en adelante).
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 DJANGO_APPS = [
     "django.contrib.admin",
@@ -52,9 +52,9 @@ THIRD_PARTY_APPS = [
     "django_celery_beat",
 ]
 
-# Apps propias del proyecto — se activan a medida que se implementan:
-# TASK-005: apps.agencias         ← ACTIVA
-# TASK-006: apps.autenticacion    ← ACTIVA
+# Apps propias del proyecto â€” se activan a medida que se implementan:
+# TASK-005: apps.agencias         â† ACTIVA
+# TASK-006: apps.autenticacion    â† ACTIVA
 # TASK-021: apps.viajes
 # TASK-032: apps.inscripciones
 # TASK-036: apps.pagos
@@ -65,20 +65,21 @@ THIRD_PARTY_APPS = [
 # TASK-031: apps.auditoria
 # TASK-065: apps.exportaciones
 LOCAL_APPS: list[str] = [
-    "apps.agencias",        # TASK-005 — Tenant raíz
-    "apps.autenticacion",   # TASK-006 — Modelo Usuario custom
-    "apps.viajes",          # TASK-021 — Modelos de viajes
+    "apps.agencias",        # TASK-005 â€” Tenant raÃ­z
+    "apps.autenticacion",   # TASK-006 â€” Modelo Usuario custom
+    "apps.viajes",          # TASK-021 â€” Modelos de viajes
+    "apps.auditoria",       # TASK-031 - Log inmutable
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # MIDDLEWARE
 # CorsMiddleware va ANTES de CommonMiddleware (requerido por django-cors-headers)
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",          # CORS — debe ir primero
+    "corsheaders.middleware.CorsMiddleware",          # CORS â€” debe ir primero
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -88,15 +89,15 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # URLs
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 ROOT_URLCONF = "config.urls"
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # TEMPLATES
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 TEMPLATES = [
     {
@@ -114,40 +115,40 @@ TEMPLATES = [
     },
 ]
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # WSGI / ASGI
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
-# ─────────────────────────────────────────────────────────────────────────────
-# BASE DE DATOS — PostgreSQL 16
-# Leída desde DATABASE_URL usando dj-database-url.
-# UUID como PK en todos los modelos (definido en cada modelo, no aquí).
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# BASE DE DATOS â€” PostgreSQL 16
+# LeÃ­da desde DATABASE_URL usando dj-database-url.
+# UUID como PK en todos los modelos (definido en cada modelo, no aquÃ­).
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 DATABASES = {
     "default": dj_database_url.config(
         default=config("DATABASE_URL"),
         conn_max_age=600,         # Connection pooling: mantener conexiones 10 min
-        conn_health_checks=True,  # Verificar salud de conexión antes de reutilizar
+        conn_health_checks=True,  # Verificar salud de conexiÃ³n antes de reutilizar
     )
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # MODELO DE USUARIO PERSONALIZADO
-# Será activado en TASK-006 cuando se cree la app autenticacion.
-# Descomentado aquí anticipadamente para evitar conflicto con migraciones.
-# ─────────────────────────────────────────────────────────────────────────────
+# SerÃ¡ activado en TASK-006 cuando se cree la app autenticacion.
+# Descomentado aquÃ­ anticipadamente para evitar conflicto con migraciones.
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-# AUTH_USER_MODEL — Activado en TASK-006
+# AUTH_USER_MODEL â€” Activado en TASK-006
 # Debe declararse ANTES de las migraciones iniciales de Django auth.
 AUTH_USER_MODEL = "autenticacion.Usuario"
 
-# ─────────────────────────────────────────────────────────────────────────────
-# VALIDACIÓN DE CONTRASEÑAS
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# VALIDACIÃ“N DE CONTRASEÃ‘AS
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -156,18 +157,18 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-# ─────────────────────────────────────────────────────────────────────────────
-# INTERNACIONALIZACIÓN
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# INTERNACIONALIZACIÃ“N
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 LANGUAGE_CODE = "es-pe"
 TIME_ZONE = "America/Lima"
 USE_I18N = True
-USE_TZ = True  # Siempre True — almacenar timestamps en UTC
+USE_TZ = True  # Siempre True â€” almacenar timestamps en UTC
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ARCHIVOS ESTÁTICOS Y MEDIA
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ARCHIVOS ESTÃTICOS Y MEDIA
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
@@ -175,28 +176,28 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "mediafiles"
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # PK POR DEFECTO
-# UUID como PK — se especifica en cada modelo con UUIDField(primary_key=True).
-# Esto define el tipo para modelos que no especifiquen PK explícitamente.
-# ─────────────────────────────────────────────────────────────────────────────
+# UUID como PK â€” se especifica en cada modelo con UUIDField(primary_key=True).
+# Esto define el tipo para modelos que no especifiquen PK explÃ­citamente.
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Nota: los modelos propios del proyecto usan UUIDField(primary_key=True)
-# explícitamente, por lo que este setting solo aplica a modelos de terceros.
+# explÃ­citamente, por lo que este setting solo aplica a modelos de terceros.
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # DJANGO REST FRAMEWORK
-# Autenticación JWT por defecto para todos los endpoints.
-# ─────────────────────────────────────────────────────────────────────────────
+# AutenticaciÃ³n JWT por defecto para todos los endpoints.
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
-        # Por defecto todo requiere autenticación; endpoints públicos
-        # sobreescriben con AllowAny explícitamente.
+        # Por defecto todo requiere autenticaciÃ³n; endpoints pÃºblicos
+        # sobreescriben con AllowAny explÃ­citamente.
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
@@ -209,16 +210,16 @@ REST_FRAMEWORK = {
         "rest_framework.parsers.MultiPartParser",  # Para uploads de archivos
         "rest_framework.parsers.FormParser",
     ],
-    # Manejo de excepciones centralizado — se personalizará en TASK-008+
+    # Manejo de excepciones centralizado â€” se personalizarÃ¡ en TASK-008+
     "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# JWT — djangorestframework-simplejwt
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# JWT â€” djangorestframework-simplejwt
 # access: 15 min (invariante arquitectura)
-# refresh: 7 días en Redis allowlist (invariante arquitectura)
-# NUNCA en localStorage — siempre en cookies httpOnly (gestionado por el Gateway)
-# ─────────────────────────────────────────────────────────────────────────────
+# refresh: 7 dÃ­as en Redis allowlist (invariante arquitectura)
+# NUNCA en localStorage â€” siempre en cookies httpOnly (gestionado por el Gateway)
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(
@@ -227,7 +228,7 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(
         days=config("JWT_REFRESH_TOKEN_LIFETIME_DAYS", default=7, cast=int)
     ),
-    "ROTATE_REFRESH_TOKENS": False,   # Rotación manual en el endpoint /refresh/
+    "ROTATE_REFRESH_TOKENS": False,   # RotaciÃ³n manual en el endpoint /refresh/
     "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": False,       # El login actualiza ultimo_login en el modelo
     "ALGORITHM": "HS256",
@@ -240,10 +241,10 @@ SIMPLE_JWT = {
     "TOKEN_TYPE_CLAIM": "token_type",
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# CORS — django-cors-headers
-# Los orígenes permitidos se configuran por entorno (local.py / production.py).
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# CORS â€” django-cors-headers
+# Los orÃ­genes permitidos se configuran por entorno (local.py / production.py).
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 # CORS_ALLOWED_ORIGINS se define en local.py y production.py.
 CORS_ALLOW_CREDENTIALS = True   # Necesario para enviar cookies httpOnly
@@ -269,12 +270,12 @@ CORS_ALLOW_METHODS = [
     "PUT",
 ]
 
-# ─────────────────────────────────────────────────────────────────────────────
-# REDIS — Cache y Broker
-# Usamos django-redis como backend de caché.
-# Base 0: caché general + JWT allowlist
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# REDIS â€” Cache y Broker
+# Usamos django-redis como backend de cachÃ©.
+# Base 0: cachÃ© general + JWT allowlist
 # Base 1: reservada para Celery (CELERY_BROKER_URL)
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 REDIS_URL = config("REDIS_URL", default="redis://redis:6379")
 
@@ -284,7 +285,7 @@ CACHES = {
         "LOCATION": REDIS_URL,
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            # Reconexión automática si Redis se reinicia
+            # ReconexiÃ³n automÃ¡tica si Redis se reinicia
             "CONNECTION_POOL_KWARGS": {"max_connections": 50},
             "IGNORE_EXCEPTIONS": False,  # En prod no silenciar errores de Redis
         },
@@ -293,13 +294,13 @@ CACHES = {
     }
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# CELERY — Configuración base
-# Broker: Redis base 0 (mismo que caché)
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# CELERY â€” ConfiguraciÃ³n base
+# Broker: Redis base 0 (mismo que cachÃ©)
 # Backend de resultados: Redis base 0
 # Workers y Beat se definen en sus respectivos docker-compose commands.
-# Tareas concretas se añadirán en TASK-048+ (signals las disparan)
-# ─────────────────────────────────────────────────────────────────────────────
+# Tareas concretas se aÃ±adirÃ¡n en TASK-048+ (signals las disparan)
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 CELERY_BROKER_URL = config("CELERY_BROKER_URL", default="redis://redis:6379/0")
 CELERY_RESULT_BACKEND = config("CELERY_BROKER_URL", default="redis://redis:6379/0")
@@ -312,14 +313,14 @@ CELERY_ENABLE_UTC = True
 # Beat usa la base de datos para almacenar las tareas programadas
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
-# Autodescubrimiento de tareas en los módulos `tasks` de cada app
+# Autodescubrimiento de tareas en los mÃ³dulos `tasks` de cada app
 CELERY_IMPORTS: list[str] = []  # Se pobla en TASK-048+
 
-# ─────────────────────────────────────────────────────────────────────────────
-# STORAGE — S3 / GCS (intercambiable vía env var)
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# STORAGE â€” S3 / GCS (intercambiable vÃ­a env var)
 # En desarrollo local se usa FileSystemStorage (DEFAULT_FILE_STORAGE no configurado).
-# En producción se activa S3 o GCS según DEFAULT_FILE_STORAGE.
-# ─────────────────────────────────────────────────────────────────────────────
+# En producciÃ³n se activa S3 o GCS segÃºn DEFAULT_FILE_STORAGE.
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 _default_storage = config("DEFAULT_FILE_STORAGE", default="")
 
@@ -338,9 +339,9 @@ AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY", default="")
 AWS_S3_FILE_OVERWRITE = False   # No sobreescribir archivos con el mismo nombre
 AWS_DEFAULT_ACL = None          # Heredar ACL del bucket
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # EMAIL
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 EMAIL_BACKEND = config(
     "EMAIL_BACKEND",
@@ -354,28 +355,28 @@ EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@minkagroup.digital")
 FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:3000")
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # REGLAS DE NEGOCIO CONFIGURABLES
 # Estas constantes se usan en tareas Celery (TASK-048+).
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-# Días tras fecha_regreso del viaje para archivar documentos automáticamente
+# DÃ­as tras fecha_regreso del viaje para archivar documentos automÃ¡ticamente
 DOCS_ARCHIVE_DAYS_AFTER_RETURN = config(
     "DOCS_ARCHIVE_DAYS_AFTER_RETURN", default=30, cast=int
 )
 
-# Porcentaje de docs completados por debajo del cual se envía alerta al agente
+# Porcentaje de docs completados por debajo del cual se envÃ­a alerta al agente
 DOC_INCOMPLETE_ALERT_THRESHOLD = config(
     "DOC_INCOMPLETE_ALERT_THRESHOLD", default=30, cast=int
 )
 
-# Tamaño máximo de archivo en bytes (10 MB) — segunda línea de defensa
-# La primera línea está en el Gateway (MAX_FILE_SIZE_BYTES env var)
+# TamaÃ±o mÃ¡ximo de archivo en bytes (10 MB) â€” segunda lÃ­nea de defensa
+# La primera lÃ­nea estÃ¡ en el Gateway (MAX_FILE_SIZE_BYTES env var)
 MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
 
-# ─────────────────────────────────────────────────────────────────────────────
-# LOGGING — Configuración base
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# LOGGING â€” ConfiguraciÃ³n base
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 LOGGING = {
     "version": 1,
@@ -407,13 +408,13 @@ LOGGING = {
             "propagate": False,
         },
         "django.db.backends": {
-            # Nivel DEBUG muestra todas las queries SQL — útil en local,
+            # Nivel DEBUG muestra todas las queries SQL â€” Ãºtil en local,
             # se sobreescribe a WARNING en production.py
             "handlers": ["console"],
             "level": "WARNING",
             "propagate": False,
         },
-        # Logger específico para el proyecto
+        # Logger especÃ­fico para el proyecto
         "tottemhub": {
             "handlers": ["console"],
             "level": "DEBUG",
@@ -427,3 +428,5 @@ LOGGING = {
         },
     },
 }
+
+
