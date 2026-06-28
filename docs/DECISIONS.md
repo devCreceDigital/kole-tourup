@@ -270,3 +270,31 @@ if (!redisReady) {
 También se aplica en el `catch()` del bloque try: si Redis falla en mid-flight, se llama `next()`.
 
 ---
+
+## DEC-006 — Restricción de proxy inverso solo a rutas `/api/`
+
+**ID:** DEC-006  
+**Estado:** Aprobado (implementado en TASK-017)  
+**Fecha:** 2026-06-28  
+**Afecta:** `gateway/server.js`
+
+### Problema
+
+Al implementar el proxy inverso hacia Django, si configuramos el gateway como un "catch-all" (enviar cualquier ruta no reconocida al backend), perdemos el control sobre qué tráfico llega al servidor de aplicaciones y modificamos el comportamiento esperado de `404 Not Found` en el Gateway para rutas inexistentes, generando respuestas `502 Bad Gateway` cuando el backend no está disponible.
+
+### Alternativas evaluadas
+
+**Alternativa A — Catch-all proxy:**
+- Todo lo que no sea `/health` o rutas locales va al backend.
+- Simple, pero inseguro. Atacantes escaneando vulnerabilidades de WordPress/PHP (ej. `/wp-admin`) generarían carga innecesaria en Django.
+
+**Alternativa B — Restricción explícita por prefijo (implementada):**
+- Solo las rutas que comiencen con `/api/` se reenvían al backend.
+- Rutas no reconocidas que no sean `/api/` reciben un `404 Not Found` inmediato desde el Gateway, sin siquiera intentar contactar a Redis o al backend.
+- Menor superficie de ataque.
+
+### Decisión adoptada
+
+**Alternativa B.** Se añadió validación en `server.js` (`req.url.startsWith('/api/')`) antes de llamar al proxy.
+
+---

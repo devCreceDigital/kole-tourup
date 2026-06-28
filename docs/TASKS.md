@@ -552,7 +552,7 @@ Headers de seguridad HTTP y rate limiting por IP usando Redis.
 
 ### TASK-017
 **Nombre:** Gateway — proxy Django + multipart + validación 10 MB  
-**Estado:** `Pending`  
+**Estado:** `Done`  
 **Prioridad:** Alta  
 **Estimación:** 4h  
 **Dependencias:** TASK-013, TASK-014, TASK-015, TASK-016
@@ -560,17 +560,27 @@ Headers de seguridad HTTP y rate limiting por IP usando Redis.
 **Descripción:**  
 Proxy que reenvía requests al backend Django. Parseo de multipart/form-data para uploads. Validación de tamaño de archivo (10 MB) como primera línea de defensa.
 
-**Archivos afectados:**
-- `gateway/proxy/django.js`
-- `gateway/proxy/multipart.js`
+**Archivos creados/modificados:**
+- `gateway/proxy/django.js` — proxy reenvía requests y response streams, filtra headers (`host`, `connection`).
+- `gateway/proxy/multipart.js` — detecta multipart, acumula cuerpo en memoria (max 10MB), rechaza con 413 si excede.
+- `gateway/tests/django.test.js` — tests unitarios y de integración de `proxyToDjango`.
+- `gateway/tests/multipart.test.js` — tests de middleware de validación multipart y 10MB limit.
+- `gateway/server.js` — Integración al final del pipeline solo para rutas `/api/*` (DEC-006).
+- `gateway/package.json` — actualizados los tests.
 
 **Criterios de aceptación:**
-- [ ] Requests GET/POST/PATCH/DELETE se reenvían al backend correctamente
-- [ ] Response del backend se hace pipe al cliente
-- [ ] Multipart/form-data se parsea antes de reenviar
-- [ ] Archivo > 10 MB → `413 Payload Too Large` (sin llegar al backend)
-- [ ] Timeout configurado para requests al backend
-- [ ] Backend caído → `502 Bad Gateway`
+- [x] Requests GET/POST/PATCH/DELETE se reenvían al backend correctamente
+- [x] Response del backend se hace pipe al cliente
+- [x] Multipart/form-data se parsea antes de reenviar (se acumula el buffer)
+- [x] Archivo > 10 MB → `413 Payload Too Large` (sin llegar al backend, fail-fast por Content-Length y buffer validation)
+- [x] Timeout configurado para requests al backend (`PROXY_TIMEOUT_MS`)
+- [x] Backend caído → `502 Bad Gateway` (o timeout → `504 Gateway Timeout`)
+
+**Notas:**
+- `multipart.js` utiliza fail-fast verificando `Content-Length`. Si está ausente o es falso, también cuenta bytes durante la subida y aborta el stream apenas supera 10MB.
+- `django.js` inyecta header `x-forwarded-by: tottem-hub-gateway` para observabilidad.
+- DEC-006 implementada: El gateway NO es un proxy catch-all total; solo enruta peticiones cuyo path empiece por `/api/`. Las demás reciben un limpio `404 Not Found` desde Node.js sin cargar a Redis ni al Backend.
+- Test suite: 76 tests (pasan 76/76).
 
 ---
 
