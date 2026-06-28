@@ -6,8 +6,9 @@
  * Pipeline de middlewares aplicado en orden por cada request:
  *   1. cors (TASK-014)      — verifica Origin, preflight OPTIONS
  *   2. auth (TASK-015)      — cookie access_token → Authorization: Bearer
- *   3. [security — TASK-016] — headers de seguridad + rate limiting
- *   4. [proxy — TASK-017]   — reenvío a Django
+ *   3. security (TASK-016)  — headers de seguridad HTTP (HSTS, X-Frame-Options, etc.)
+ *   4. rateLimit (TASK-016) — contador por IP en Redis, ventana fija
+ *   5. [proxy — TASK-017]   — reenvío a Django
  *
  * El servidor no se inicia automáticamente al ser requerido (require.main guard).
  * Esto permite importarlo en tests sin abrir el puerto.
@@ -18,6 +19,8 @@ const config = require('./config');
 const Router = require('./router');
 const cors = require('./middleware/cors');
 const { auth } = require('./middleware/auth');
+const { security } = require('./middleware/security');
+const { rateLimit } = require('./middleware/rateLimit');
 
 const router = new Router();
 
@@ -33,13 +36,22 @@ router.get('/health', (_req, res) => {
 const server = http.createServer((req, res) => {
   cors(req, res, () => {
     auth(req, res, () => {
-      const handler = router.resolve(req.method, req.url);
-      if (handler) {
-        handler(req, res);
-        return;
-      }
-      res.writeHead(404, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Not Found' }));
+      security(req, res, () => {
+        // rateLimit es async: usar .catch captura errores no manejados (fail-safe).
+        rateLimit(req, res, () => {
+          const handler = router.resolve(req.method, req.url);
+          if (handler) {
+            handler(req, res);
+            return;
+          }
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Not Found' }));
+        }).catch((err) => {
+          console.error('[server] rateLimit error:', err.message);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Internal Server Error' }));
+        });
+      });
     });
   });
 });

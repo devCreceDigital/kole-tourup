@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node --test tests/router.test.js tests/server.test.js tests/cors.test.js"
+    "test": "node --test tests/router.test.js tests/server.test.js tests/cors.test.js tests/auth.test.js tests/security.test.js tests/rateLimit.test.js"
   },
   "engines": {
     "node": ">=20.0.0"

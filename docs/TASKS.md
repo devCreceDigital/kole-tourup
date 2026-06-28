@@ -515,7 +515,7 @@ Leer el `access_token` de la cookie `httpOnly` y añadir `Authorization: Bearer 
 
 ### TASK-016
 **Nombre:** Gateway — middleware de seguridad + rate limiting  
-**Estado:** `Pending`  
+**Estado:** `Done`  
 **Prioridad:** Alta  
 **Estimación:** 2h  
 **Dependencias:** TASK-013
@@ -523,15 +523,30 @@ Leer el `access_token` de la cookie `httpOnly` y añadir `Authorization: Bearer 
 **Descripción:**  
 Headers de seguridad HTTP y rate limiting por IP usando Redis.
 
-**Archivos afectados:**
-- `gateway/middleware/security.js`
-- `gateway/middleware/rateLimit.js`
+**Archivos creados/modificados:**
+- `gateway/middleware/security.js` — 6 headers de seguridad HTTP (HSTS, X-Frame-Options, X-Content-Type-Options, X-XSS-Protection, Referrer-Policy, X-DNS-Prefetch-Control)
+- `gateway/middleware/rateLimit.js` — rate limiting por IP con Redis (fixed window, fail-open, Retry-After)
+- `gateway/server.js` — middlewares integrados en el pipeline (posición 3 y 4)
+- `gateway/tests/security.test.js` — 11 tests (6 unitarios + 5 integración)
+- `gateway/tests/rateLimit.test.js` — 14 tests (5 unitarios + 6 comportamiento + 3 integración)
+- `gateway/package.json` — script `test` actualizado con todos los archivos
 
 **Criterios de aceptación:**
-- [ ] `security.js`: `Strict-Transport-Security`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `X-XSS-Protection: 1; mode=block`
-- [ ] `rateLimit.js`: contador en Redis por IP, ventana configurable por `RATE_LIMIT_WINDOW_MS` y `RATE_LIMIT_MAX`
-- [ ] Al exceder el límite → `429 Too Many Requests`
-- [ ] Contador se resetea tras la ventana de tiempo
+- [x] `security.js`: `Strict-Transport-Security`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `X-XSS-Protection: 1; mode=block`
+- [x] `rateLimit.js`: contador en Redis por IP, ventana configurable por `RATE_LIMIT_WINDOW_MS` y `RATE_LIMIT_MAX`
+- [x] Al exceder el límite → `429 Too Many Requests`
+- [x] Contador se resetea tras la ventana de tiempo (EXPIRE de Redis al primer request)
+
+**Notas:**
+- Algoritmo: Fixed Window Counter (INCR + EXPIRE en el primer request de la ventana).
+- `EXPIRE` solo se llama en el primer request (count === 1) — requests subsiguientes no resetean la ventana.
+- Fail-open (DEC-005): si Redis no está disponible, el rate limit se desactiva silenciosamente. El tráfico pasa.
+- Headers informativos en cada respuesta: `X-RateLimit-Limit`, `X-RateLimit-Remaining`.
+- Header `Retry-After` en respuestas 429 con el TTL restante de Redis.
+- IP extraída de `X-Forwarded-For` (primer valor) o `socket.remoteAddress`.
+- Cliente Redis singleton lazy: se conecta al primer uso, no al arrancar el servidor.
+- Tests de rateLimit usan mock de Redis (inyección vía `_setRedisClientForTest`) — sin conexión real.
+- 57 tests — todos pasan (14 auth + 10 CORS + 5 router + 4 server + 11 security + 14 rateLimit). Tiempo: 617ms.
 
 ---
 

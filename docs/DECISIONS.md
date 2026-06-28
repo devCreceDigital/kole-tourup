@@ -225,3 +225,48 @@ Los tests E2E futuros que simulen requests autenticados al Gateway deben enviar 
 `access_token`, no el header `Authorization` directamente.
 
 ---
+
+## DEC-005 — Rate limiting fail-open cuando Redis no está disponible
+
+**ID:** DEC-005  
+**Estado:** Aprobado (implementado en TASK-016)  
+**Fecha:** 2026-06-28  
+**Afecta:** `gateway/middleware/rateLimit.js`
+
+### Problema
+
+¿Qué debe hacer el Gateway cuando Redis no responde o está caído, y se aplica rate limiting?
+
+### Alternativas evaluadas
+
+**Alternativa A — Fail-closed (denegar todo el tráfico):**
+- Sin Redis, todo request recibe 429 o 503.
+- Previene abuso durante la caída de Redis.
+- Riesgo crítico: **una caída de Redis hace caer todo el sistema**, incluyendo usuarios legítimos.
+- Inaceptable para una plataforma donde padres/agentes necesitan acceso continuo.
+
+**Alternativa B — Fail-open (permitir todo el tráfico, implementada):**
+- Sin Redis, los requests pasan sin limitación.
+- El sistema permanece disponible para usuarios legítimos durante la caída de Redis.
+- Riesgo aceptable: durante la caída, un atacante podría enviar más requests de los permitidos.
+  La duración típica de una caída de Redis es corta, y el daño está acotado.
+- Django sigue siendo la última línea de defensa (autenticación JWT, lógica de negocio).
+
+### Decisión adoptada
+
+**Alternativa B — Fail-open.** El middleware verifica `redisReady` antes de ejecutar.
+Si Redis no está disponible, llama `next()` directamente sin consultar Redis.
+
+### Referencia en código
+
+```javascript
+// gateway/middleware/rateLimit.js
+if (!redisReady) {
+  next();  // fail-open: sin Redis, pasar sin limitar
+  return;
+}
+```
+
+También se aplica en el `catch()` del bloque try: si Redis falla en mid-flight, se llama `next()`.
+
+---
