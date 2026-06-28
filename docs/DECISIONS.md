@@ -171,3 +171,57 @@ La rotación SÍ tiene sentido en operaciones de alta sensibilidad:
 Estos casos pertenecen a TASK-012+ (recuperación de contraseña, seguridad avanzada).
 
 ---
+
+## DEC-004 — Gateway auth middleware elimina Authorization del cliente si no hay cookie
+
+**ID:** DEC-004  
+**Estado:** Aprobado (implementado en TASK-015)  
+**Fecha:** 2026-06-28  
+**Afecta:** `gateway/middleware/auth.js`
+
+### Problema
+
+El middleware auth del Gateway puede recibir requests donde el cliente ya envía un header
+`Authorization: Bearer <token>` directamente (sin pasar por la cookie httpOnly).
+
+La especificación de TASK-015 solo define el caso "con cookie → añadir header" y "sin cookie → pasar sin header". No especifica qué hacer cuando el cliente envía Authorization directamente.
+
+Existen dos comportamientos posibles:
+
+### Alternativas evaluadas
+
+**Alternativa A — Ignorar el Authorization del cliente si hay cookie; pasarlo si no hay:**
+- Si hay cookie: sobreescribir Authorization con el token de la cookie.
+- Si no hay cookie: dejar pasar el Authorization del cliente hacia Django.
+- Riesgo: permite al cliente bypassear la cookie httpOnly enviando un token arbitrario.
+  Un atacante podría obtener un token por otro medio e inyectarlo directamente en el header.
+
+**Alternativa B — El Gateway es el único origen válido de Authorization (implementada):**
+- Si hay cookie: establecer `Authorization: Bearer <token-de-cookie>`.
+- Si no hay cookie: **eliminar** el header Authorization (incluso si el cliente lo envió).
+- La cookie httpOnly es la única fuente de verdad. Si no hay cookie, no hay autenticación.
+- Django decide el 401 si el endpoint lo requiere.
+
+### Decisión adoptada
+
+**Alternativa B.** El Gateway elimina cualquier `Authorization` del cliente cuando no hay
+cookie `access_token`. Esto impone que la cookie httpOnly sea el único mecanismo de
+autenticación aceptado en el sistema (invariante #12: JWT en cookies httpOnly, nunca en localStorage).
+
+### Referencia en código
+
+```javascript
+// gateway/middleware/auth.js
+if (token) {
+  req.headers['authorization'] = `Bearer ${token}`;  // cookie tiene prioridad
+} else {
+  delete req.headers['authorization'];  // eliminar injection del cliente
+}
+```
+
+### Consecuencia
+
+Los tests E2E futuros que simulen requests autenticados al Gateway deben enviar la cookie
+`access_token`, no el header `Authorization` directamente.
+
+---

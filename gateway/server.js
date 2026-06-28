@@ -5,7 +5,7 @@
  *
  * Pipeline de middlewares aplicado en orden por cada request:
  *   1. cors (TASK-014)      — verifica Origin, preflight OPTIONS
- *   2. [auth — TASK-015]    — cookie → Authorization header
+ *   2. auth (TASK-015)      — cookie access_token → Authorization: Bearer
  *   3. [security — TASK-016] — headers de seguridad + rate limiting
  *   4. [proxy — TASK-017]   — reenvío a Django
  *
@@ -17,6 +17,7 @@ const http = require('node:http');
 const config = require('./config');
 const Router = require('./router');
 const cors = require('./middleware/cors');
+const { auth } = require('./middleware/auth');
 
 const router = new Router();
 
@@ -31,13 +32,15 @@ router.get('/health', (_req, res) => {
 
 const server = http.createServer((req, res) => {
   cors(req, res, () => {
-    const handler = router.resolve(req.method, req.url);
-    if (handler) {
-      handler(req, res);
-      return;
-    }
-    res.writeHead(404, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Not Found' }));
+    auth(req, res, () => {
+      const handler = router.resolve(req.method, req.url);
+      if (handler) {
+        handler(req, res);
+        return;
+      }
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Not Found' }));
+    });
   });
 });
 

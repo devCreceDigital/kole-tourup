@@ -1,6 +1,6 @@
 # TECH_DEBT.md — Registro de Deuda Técnica
 
-> Última actualización: 2026-06-28 (TASK-013)
+> Última actualización: 2026-06-28 (TASK-015)
 
 > Solo registra deuda. No resuelve. Cada entrada requiere aprobación antes de ser trabajada.
 >
@@ -41,23 +41,25 @@ Crear `backend/apps/autenticacion/tests/` con:
 ## TD-002 — JWTAuthentication no lee cookies (requiere Gateway para funcionar en producción)
 
 **ID:** TD-002  
-**Estado:** Activa  
+**Estado:** Parcialmente resuelta (TASK-015 implementó Gateway cookie→header)  
 **Prioridad:** Media  
-**Detectado en:** TASK-012 (2026-06-28)
+**Detectado en:** TASK-012 (2026-06-28)  
+**Actualizado en:** TASK-015 (2026-06-28)
 
 **Descripción:**  
 El `DEFAULT_AUTHENTICATION_CLASSES` usa `JWTAuthentication` de simplejwt, que lee el token
 del header `Authorization: Bearer <token>`. Sin embargo, los tokens se almacenan en cookies
-`httpOnly` (DEC-002). En producción el Gateway convierte la cookie en header (TASK-015),
-por lo que funciona end-to-end. Pero los tests de endpoints autenticados deben usar
-`force_authenticate()` porque no pueden emular el Gateway.
+`httpOnly` (DEC-002). Con TASK-015 el Gateway ya convierte la cookie en header antes de
+enviar al backend.
+
+La deuda restante es en **desarrollo local sin Gateway activo**: los tests de endpoints
+autenticados deben usar `force_authenticate()` porque no pueden emular el Gateway.
 
 **Impacto:**  
 - Los tests no ejercen el camino real de autenticación (cookie → Gateway → header → Django).
-- Si el Gateway falla en convertir la cookie, Django devuelve 401 y es difícil diagnosticar.
 - En desarrollo sin Gateway, los endpoints autenticados son inaccesibles via navegador/curl.
 
-**Prioridad:** Media — aceptable en Fase 1 con Gateway planificado en TASK-015.
+**Prioridad:** Media — con TASK-015 el flujo de producción funciona end-to-end.
 
 **Tarea sugerida:**  
 Implementar `CookieJWTAuthentication(JWTAuthentication)` que lea `access_token` de cookies
@@ -141,3 +143,30 @@ Añadir ESLint con configuración mínima (`eslint:recommended`) y script `"lint
 `gateway/package.json`. Alternativa: Biome (más rápido, sin dependencias de plugins). Configurar
 en CI junto con `npm test`.
 
+---
+
+## TD-006 — Tests de auth no verifican el ciclo completo cookie→Django→respuesta
+
+**ID:** TD-006  
+**Estado:** Activa  
+**Prioridad:** Baja  
+**Detectado en:** TASK-015 (2026-06-28)
+
+**Descripción:**  
+Los tests de `auth.test.js` verifican que el middleware inyecta el header `Authorization`
+correctamente en `req.headers`, pero no hay un test de integración end-to-end que confirme
+que ese header llega al backend Django y Django lo acepta como JWT válido.
+
+Esto requeriría un test E2E con Docker (Gateway + Django + Redis en red), que está fuera
+del alcance de los tests unitarios/integración actuales.
+
+**Impacto:**  
+- Bajo: el middleware auth es correcto y simple. El riesgo de regresión es mínimo.
+- La validación del JWT sigue siendo responsabilidad exclusiva de Django (arquitectura correcta).
+
+**Prioridad:** Baja — acceptable en Fase 1. Los tests actuales dan cobertura suficiente.
+
+**Tarea sugerida:**  
+Añadir suite de tests E2E (ej: con `docker compose run` y un script de smoke tests) que
+verifique el flujo completo: login → cookie → Gateway → Django → respuesta autenticada.
+Sugerido para TASK-017+ (cuando el proxy Django esté implementado).

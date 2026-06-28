@@ -481,7 +481,7 @@ Implementar CORS manualmente (sin librería). Headers configurables por `CORS_OR
 
 ### TASK-015
 **Nombre:** Gateway — middleware auth (cookie → Bearer)  
-**Estado:** `Pending`  
+**Estado:** `Done`  
 **Prioridad:** Alta  
 **Estimación:** 1h  
 **Dependencias:** TASK-013
@@ -489,14 +489,27 @@ Implementar CORS manualmente (sin librería). Headers configurables por `CORS_OR
 **Descripción:**  
 Leer el `access_token` de la cookie `httpOnly` y añadir `Authorization: Bearer <token>` al forward hacia Django.
 
-**Archivos afectados:**
-- `gateway/middleware/auth.js`
+**Archivos creados/modificados:**
+- `gateway/middleware/auth.js` — middleware auth + función `parseCookie` exportada
+- `gateway/server.js` — middleware auth integrado en el pipeline (posición 2, después de CORS)
+- `gateway/tests/auth.test.js` — 14 tests (6 unitarios parseCookie + 6 middleware + 2 integración)
 
 **Criterios de aceptación:**
-- [ ] Cookie `access_token` extraída del header `Cookie`
-- [ ] Header `Authorization: Bearer <token>` añadido al request hacia backend
-- [ ] Si no hay cookie, el request pasa sin header (Django maneja el 401)
-- [ ] No hay lógica de validación JWT en el gateway (solo forwarding)
+- [x] Cookie `access_token` extraída del header `Cookie`
+- [x] Header `Authorization: Bearer <token>` añadido al request hacia backend
+- [x] Si no hay cookie, el request pasa sin header (Django maneja el 401)
+- [x] No hay lógica de validación JWT en el gateway (solo forwarding)
+
+**Notas:**
+- `parseCookie()` exportada por separado para permitir tests unitarios directos.
+- Maneja JWTs con `=` en el valor (base64url padding) correctamente.
+- Seguridad extra: si NO hay cookie, se **elimina** cualquier header `Authorization`
+  que el cliente pudiera haber inyectado. Previene bypass de la cookie httpOnly.
+- Si HAY cookie, sobreescribe cualquier `Authorization` preexistente del cliente.
+- El middleware nunca termina el request — siempre llama `next()`.
+- Sin dependencias externas. Solo Node.js built-ins.
+- Resuelve parcialmente TD-002 (la ruta cookie→header ahora es funcional en el Gateway).
+- 33 tests totales — todos pasan (14 auth + 10 CORS + 5 router + 4 server). Tiempo: 458ms.
 
 ---
 
