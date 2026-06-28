@@ -56,7 +56,7 @@ class Viaje(models.Model):
                 check=Q(fecha_regreso__gt=F("fecha_salida")),
                 name="viaje_fecha_regreso_mayor_salida",
                 violation_error_message=_(
-                    "La fecha de regreso debe ser posterior a la fecha de salida."
+                    "La fecha de regreso debe ser posterior a la fecha de salida."  # noqa: E501
                 )
             )
         ]
@@ -183,3 +183,76 @@ class Actividad(models.Model):
 
     def __str__(self):
         return f"{self.hora or ''} - {self.titulo}".strip()
+
+
+class Grupo(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    viaje = models.ForeignKey(
+        Viaje,
+        on_delete=models.CASCADE,
+        related_name="grupos"
+    )
+    nombre = models.CharField(max_length=100)
+    descripcion = models.CharField(max_length=300, blank=True, default="")
+    capacidad = models.PositiveIntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["viaje", "nombre"],
+                name="unique_grupo_por_viaje"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.nombre} - {self.viaje.nombre}"
+
+
+class Hotel(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    viaje = models.ForeignKey(
+        Viaje,
+        on_delete=models.CASCADE,
+        related_name="hoteles"
+    )
+    nombre = models.CharField(max_length=200)
+    descripcion = models.TextField(blank=True, default="")
+    tasa_turistica = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True
+    )
+    fianza = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True
+    )
+    web_url = models.URLField(max_length=500, blank=True, default="")
+    maps_url = models.URLField(max_length=500, blank=True, default="")
+    imagen = models.ImageField(upload_to="hoteles/", null=True, blank=True)
+
+    def __str__(self):
+        return self.nombre
+
+
+class DocumentoRequerido(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    viaje = models.ForeignKey(
+        Viaje,
+        on_delete=models.CASCADE,
+        related_name="documentos_requeridos"
+    )
+    nombre = models.CharField(max_length=200)
+    descripcion = models.TextField(blank=True, default="")
+    obligatorio = models.BooleanField(default=True)
+    formatos_permitidos = models.CharField(
+        max_length=100, default="pdf,jpg,png"
+    )
+
+    @property
+    def formatos_lista(self):
+        return [
+            fmt.strip().lower()
+            for fmt in self.formatos_permitidos.split(",")
+            if fmt.strip()
+        ]
+
+    def __str__(self):
+        return f"{self.nombre} ({self.viaje.nombre})"

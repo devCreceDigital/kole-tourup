@@ -730,9 +730,9 @@ Crear los modelos `Grupo`, `Hotel` y `DocumentoRequerido` vinculados a `Viaje`.
 - `backend/apps/viajes/migrations/`
 
 **Criterios de aceptación:**
-- [ ] `Grupo` unique_together `(viaje, nombre)`
-- [ ] `DocumentoRequerido` con `formatos_permitidos` y propiedad `formatos_lista`
-- [ ] Todos con UUID como PK
+- [x] `Grupo` unique_together `(viaje, nombre)`
+- [x] `DocumentoRequerido` con `formatos_permitidos` y propiedad `formatos_lista`
+- [x] Todos con UUID como PK
 
 ---
 
