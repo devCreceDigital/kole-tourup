@@ -1,8 +1,17 @@
-﻿import { InscripcionCard } from '@/components/padre/InscripcionCard'
+import { InscripcionCard } from '@/components/padre/InscripcionCard'
 import { AlertasPendientes } from '@/components/padre/AlertasPendientes'
 
+import { cookies } from 'next/headers'
+
 async function getInscripciones() {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_GATEWAY_URL}/api/v1/inscripciones/`, { cache: 'no-store' })
+  const cookieStore = await cookies()
+  const token = cookieStore.get('access_token')?.value
+  
+  // Use http://gateway:3001 for server-side fetch inside Docker
+  const res = await fetch(`http://gateway:3001/api/v1/inscripciones/`, { 
+    cache: 'no-store',
+    headers: token ? { Cookie: `access_token=${token}` } : {}
+  })
   if (!res.ok) return []
   return res.json()
 }
