@@ -36,7 +36,8 @@ ALLOWED_HOSTS: list[str] = []
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 DJANGO_APPS = [
-    "django.contrib.admin",
+    "jazzmin",
+            "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -90,6 +91,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",          # CORS â€” debe ir primero
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -437,6 +439,108 @@ LOGGING = {
         },
     },
 }
+
+
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JAZZMIN CONFIG
+# ─────────────────────────────────────────────────────────────────────────────
+JAZZMIN_SETTINGS = {
+    "site_title": "Tottem Hub Admin",
+    "site_header": "Tottem Hub",
+    "site_brand": "Tottem Hub",
+    "site_logo": None,
+    "welcome_sign": "Bienvenido al panel de Tottem Hub",
+    "copyright": "Tottem Hub 2026",
+    "search_model": ["autenticacion.Usuario"],
+    "topmenu_links": [
+        {"name": "Inicio", "url": "admin:index", "permissions": ["auth.view_user"]},
+        {"name": "Ver sitio", "url": "/", "new_window": True},
+    ],
+    "show_sidebar": True,
+    "navigation_expanded": True,
+    "hide_apps": [],
+    "hide_models": [],
+    "icons": {
+        "autenticacion": "fas fa-users",
+        "autenticacion.Usuario": "fas fa-user",
+        "autenticacion.PadreTutor": "fas fa-user-friends",
+        "agencias.Agencia": "fas fa-building",
+        "viajes.Viaje": "fas fa-plane",
+        "inscripciones.Inscripcion": "fas fa-clipboard-list",
+        "inscripciones.Alumno": "fas fa-graduation-cap",
+        "pagos.Pago": "fas fa-credit-card",
+        "documentos.DocumentoEntregado": "fas fa-file-alt",
+        "notificaciones.Notificacion": "fas fa-bell",
+        "chat.Conversacion": "fas fa-comments",
+        "chat.Mensaje": "fas fa-comment",
+        "colegios.Colegio": "fas fa-school",
+    },
+    "default_icon_parents": "fas fa-folder",
+    "default_icon_children": "fas fa-circle",
+    "related_modal_active": True,
+    "custom_css": None,
+    "custom_js": None,
+    "use_google_fonts_cdn": False,
+    "show_ui_builder": False,
+    "changeform_format": "horizontal_tabs",
+}
+
+JAZZMIN_UI_TWEAKS = {
+    "navbar_small_text": False,
+    "footer_small_text": False,
+    "body_small_text": False,
+    "brand_small_text": False,
+    "brand_colour": "navbar-primary",
+    "accent": "accent-primary",
+    "navbar": "navbar-white navbar-light",
+    "no_navbar_border": True,
+    "navbar_fixed": True,
+    "layout_boxed": False,
+    "footer_fixed": False,
+    "sidebar_fixed": True,
+    "sidebar_mini": True,
+    "sidebar": "sidebar-light-primary",
+    "sidebar_nav_small_text": False,
+    "sidebar_disable_expand": False,
+    "sidebar_nav_compact_style": True,
+    "sidebar_nav_child_indent": True,
+    "sidebar_nav_compact_style": False,
+    "sidebar_nav_legacy_style": False,
+    "sidebar_nav_flat_style": False,
+    "theme": "flatly",
+    "dark_mode_theme": "flatly",
+    "button_classes": {
+        "primary": "btn-primary",
+        "secondary": "btn-outline-secondary",
+        "info": "btn-info",
+        "warning": "btn-warning",
+        "danger": "btn-danger",
+        "success": "btn-success",
+    },
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

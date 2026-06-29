@@ -1,0 +1,22 @@
+﻿/* Fondo blanco Tottem Hub */
+body, .wrapper, .content-wrapper, .main-sidebar, 
+.main-header, html { background-color: #ffffff !important; color: #333 !important; }
+.main-sidebar { background-color: #1a56db !important; }
+.main-sidebar .nav-link { color: rgba(255,255,255,0.8) !important; }
+.main-sidebar .nav-link:hover, .main-sidebar .nav-link.active { 
+  background: rgba(255,255,255,0.2) !important; color: #fff !important; 
+}
+.main-sidebar .nav-header { color: rgba(255,255,255,0.6) !important; }
+.brand-link { background: #1a56db !important; color: #fff !important; border-bottom: 1px solid rgba(255,255,255,0.2) !important; }
+.brand-link .brand-text { color: #fff !important; }
+.main-header.navbar { background: #fff !important; border-bottom: 1px solid #e5e7eb !important; }
+.main-header .nav-link { color: #374151 !important; }
+.card { background: #fff !important; border: 1px solid #e5e7eb !important; border-radius: 8px !important; }
+.card-header { background: #f9fafb !important; color: #111827 !important; border-bottom: 1px solid #e5e7eb !important; }
+h1, h2, h3, h4, h5, .content-header h1 { color: #111827 !important; }
+a { color: #1a56db !important; }
+.btn-primary { background: #1a56db !important; border-color: #1a56db !important; color: #fff !important; }
+.btn-success { background: #10b981 !important; border-color: #10b981 !important; }
+table { background: #fff !important; }
+.table thead th { background: #f3f4f6 !important; color: #374151 !important; }
+.table td { color: #374151 !important; border-color: #e5e7eb !important; }

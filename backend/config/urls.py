@@ -1,4 +1,5 @@
 ﻿from django.contrib import admin
+from django.urls import include
 from django.http import JsonResponse
 from django.urls import include, path
 
@@ -22,4 +23,6 @@ urlpatterns = [
     path("api/v1/colegios/", include("apps.colegios.urls")),
     path("api/v1/chat/", include("apps.chat.urls")),
 ]
+
+
 

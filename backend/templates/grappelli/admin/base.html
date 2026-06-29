@@ -1,0 +1,21 @@
+﻿{% extends "grappelli/admin/base.html" %}
+{% block extrastyle %}
+{{ block.super }}
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  * { font-family: 'Inter', sans-serif !important; }
+  #header { background: #1a56db !important; color: white !important; padding: 12px 20px !important; }
+  #header a:link, #header a:visited { color: white !important; }
+  #branding h1 { color: white !important; font-size: 20px !important; font-weight: 700 !important; }
+  #user-tools { color: rgba(255,255,255,0.9) !important; }
+  #user-tools a { color: white !important; }
+  #nav-global { background: #f8fafc !important; border-bottom: 1px solid #e2e8f0 !important; }
+  #nav-global ul li a { color: #1a56db !important; font-weight: 500 !important; }
+  body { background: #f1f5f9 !important; }
+  .module { background: white !important; border-radius: 8px !important; box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important; margin-bottom: 16px !important; border: none !important; }
+  .module h2, .module caption { background: #1a56db !important; color: white !important; border-radius: 8px 8px 0 0 !important; padding: 10px 16px !important; font-size: 13px !important; font-weight: 600 !important; letter-spacing: 0.5px !important; }
+  a:link, a:visited { color: #1a56db !important; }
+  .addlink { background: #1a56db !important; color: white !important; border-radius: 6px !important; padding: 4px 10px !important; font-size: 12px !important; }
+  .submit-row input { background: #1a56db !important; border-color: #1a56db !important; border-radius: 6px !important; }
+</style>
+{% endblock %}
