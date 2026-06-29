@@ -1,4 +1,4 @@
-import uuid
+﻿import uuid
 from django.db import models
 from django.db.models import F, Q
 from django.utils.translation import gettext_lazy as _
@@ -12,11 +12,11 @@ class EstadoViaje(models.TextChoices):
 
 
 class TipoActividad(models.TextChoices):
-    VUELO = "vuelo", _("Vuelo / Traslado aéreo")
+    VUELO = "vuelo", _("Vuelo / Traslado aÃ©reo")
     BUS = "bus", _("Transporte terrestre")
     HOTEL = "hotel", _("Alojamiento / Check-in")
     COMIDA = "comida", _("Comidas (Desayuno, Almuerzo, Cena)")
-    EXCURSION = "excursion", _("Excursión / Tour")
+    EXCURSION = "excursion", _("ExcursiÃ³n / Tour")
     LIBRE = "libre", _("Tiempo libre")
     OTRO = "otro", _("Otra actividad")
 
@@ -40,6 +40,8 @@ class Viaje(models.Model):
         choices=EstadoViaje.choices,
         default=EstadoViaje.BORRADOR
     )
+    slug = models.SlugField(max_length=100, unique=True, blank=True)
+    codigo = models.CharField(max_length=20, unique=True, blank=True)
     imagen = models.ImageField(
         upload_to="viajes/portadas/", null=True, blank=True
     )
@@ -92,7 +94,7 @@ class PlanPago(models.Model):
         Verifica si el plan de pagos posee pagos con estado 'verificado'.
         Actualmente retorna False hasta que se implemente la app Pagos.
         """
-        # TODO: Implementar validación real cuando exista la app Pagos (TASK-036)  # noqa: E501
+        # TODO: Implementar validaciÃ³n real cuando exista la app Pagos (TASK-036)  # noqa: E501
         # return self.cuotas.filter(pagos__estado='verificado').exists()
         return False
 
@@ -153,6 +155,8 @@ class EtapaItinerario(models.Model):
     dia_numero = models.PositiveIntegerField()
     titulo = models.CharField(max_length=200)
     descripcion = models.TextField(blank=True, default="")
+    slug = models.SlugField(max_length=100, unique=True, blank=True)
+    codigo = models.CharField(max_length=20, unique=True, blank=True)
     imagen = models.ImageField(
         upload_to="itinerarios/etapas/", null=True, blank=True
     )
@@ -167,7 +171,7 @@ class EtapaItinerario(models.Model):
         ordering = ["dia_numero"]
 
     def __str__(self):
-        return f"Día {self.dia_numero} - {self.titulo}"
+        return f"DÃ­a {self.dia_numero} - {self.titulo}"
 
 
 class Actividad(models.Model):
@@ -236,6 +240,8 @@ class Hotel(models.Model):
     )
     web_url = models.URLField(max_length=500, blank=True, default="")
     maps_url = models.URLField(max_length=500, blank=True, default="")
+    slug = models.SlugField(max_length=100, unique=True, blank=True)
+    codigo = models.CharField(max_length=20, unique=True, blank=True)
     imagen = models.ImageField(upload_to="hoteles/", null=True, blank=True)
 
     def __str__(self):
@@ -270,8 +276,8 @@ class Alumno(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    # Preparado para futura relación con Grupo si el diseño lo requiere,
-    # aunque normalmente la relación Alumno-Grupo pasa por Inscripcion.
+    # Preparado para futura relaciÃ³n con Grupo si el diseÃ±o lo requiere,
+    # aunque normalmente la relaciÃ³n Alumno-Grupo pasa por Inscripcion.
     grupos = models.ManyToManyField(
         Grupo,
         blank=True,
@@ -319,3 +325,23 @@ class DocumentoRequerido(models.Model):
 
     def __str__(self):
         return f"{self.nombre} ({self.viaje.nombre})"
+
+
+
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+from django.utils.text import slugify
+
+
+@receiver(pre_save, sender=Viaje)
+def generar_slug_viaje(sender, instance, **kwargs):
+    if not instance.slug:
+        base = slugify(instance.nombre)[:80]
+        slug = base
+        n = 1
+        while Viaje.objects.filter(slug=slug).exclude(pk=instance.pk).exists():
+            slug = f"{base}-{n}"
+            n += 1
+        instance.slug = slug
+    if not instance.codigo:
+        instance.codigo = str(instance.id)[:8].upper()
