@@ -319,7 +319,7 @@ CELERY_ENABLE_UTC = True
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
 # Autodescubrimiento de tareas en los mÃ³dulos `tasks` de cada app
-CELERY_IMPORTS = ["tasks.recordatorios"]  # TASK-041
+CELERY_IMPORTS = ["tasks.recordatorios", "tasks.mantenimiento"]  # TASK-041, TASK-042
 
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # STORAGE â€” S3 / GCS (intercambiable vÃ­a env var)
@@ -433,6 +433,7 @@ LOGGING = {
         },
     },
 }
+
 
 
 
