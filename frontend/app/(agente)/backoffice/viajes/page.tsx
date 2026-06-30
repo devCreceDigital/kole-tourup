@@ -1,8 +1,15 @@
 ﻿import Link from 'next/link'
 import { Badge } from '@/components/ui/Badge'
+import { cookies } from 'next/headers'
 
 async function getViajes() {
-  const res = await fetch(`${(process.env.NEXT_PUBLIC_GATEWAY_INTERNAL_URL || process.env.NEXT_PUBLIC_GATEWAY_URL)}/api/v1/viajes/`, { cache: 'no-store' })
+  const cookieStore = await cookies()
+  const token = cookieStore.get('access_token')?.value
+  const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_INTERNAL_URL || process.env.NEXT_PUBLIC_GATEWAY_URL
+  const res = await fetch(`${gatewayUrl}/api/v1/viajes/`, {
+    cache: 'no-store',
+    headers: token ? { Cookie: `access_token=${token}` } : {}
+  })
   if (!res.ok) return []
   const data = await res.json()
   return data.results ?? data
