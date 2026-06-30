@@ -63,8 +63,8 @@ class Inscripcion(models.Model):
     fecha_inscripcion = models.DateTimeField(auto_now_add=True)
     estado = models.CharField(
         max_length=20,
-        choices=[('pendiente','Pendiente'),('confirmado','Confirmado'),('cancelado','Cancelado'),('baja','Baja')],
-        default='pendiente'
+        choices=[('pre_inscrito','Pre-inscrito'),('pendiente','Pendiente'),('confirmado','Confirmado'),('cancelado','Cancelado'),('baja','Baja')],
+        default='pre_inscrito'
     )
     acceso_alumno_habilitado = models.BooleanField(default=False)
     hotel_asignado = models.ForeignKey('viajes.Hotel', on_delete=models.SET_NULL, null=True, blank=True, related_name='inscripciones')
@@ -117,6 +117,7 @@ class Inscripcion(models.Model):
 
     def __str__(self):
         return str(self.alumno) + ' - ' + str(self.viaje)
+
 
 
 
