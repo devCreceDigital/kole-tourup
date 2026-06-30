@@ -4,14 +4,15 @@ import Link from 'next/link'
 
 async function getViaje(slug: string) {
   const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_INTERNAL_URL || (process.env.NEXT_PUBLIC_GATEWAY_INTERNAL_URL || process.env.NEXT_PUBLIC_GATEWAY_URL)
-  const res = await fetch(`${gatewayUrl}/api/v1/viajes/publico/?slug=${slug}`, { cache: 'no-store' })
+  const res = await fetch(`${gatewayUrl}/api/v1/viajes/publico/${slug}/`, { cache: 'no-store' })
   if (!res.ok) return null
   const data = await res.json()
-  return data.results?.[0] ?? null
+  return data ?? null
 }
 
-export default async function ViajePublicoPage({ params }: { params: { slug: string } }) {
-  const viaje = await getViaje(params.slug)
+export default async function ViajePublicoPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  const viaje = await getViaje(slug)
   if (!viaje) return <div className="p-12 text-center text-gray-500">Viaje no encontrado.</div>
 
   const etapas = viaje.itinerario?.etapas ?? []

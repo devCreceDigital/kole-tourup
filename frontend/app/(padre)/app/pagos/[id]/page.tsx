@@ -14,8 +14,9 @@ async function getCuotas(viajeId: string) {
   return data.cuotas ?? []
 }
 
-export default async function PagosPage({ params }: { params: { id: string } }) {
-  const inscripcion = await getInscripcion(params.id)
+export default async function PagosPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const inscripcion = await getInscripcion(id)
   if (!inscripcion) return <div className="p-12 text-center text-gray-500">Inscripcion no encontrada.</div>
 
   const cuotas = await getCuotas(inscripcion.viaje.id)
@@ -30,7 +31,7 @@ export default async function PagosPage({ params }: { params: { id: string } }) 
         <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm mb-6">
           <PlanCuotas cuotas={cuotas} totalPagado={inscripcion.total_pagado} saldoPendiente={inscripcion.saldo_pendiente} />
         </div>
-        <FormularioPago inscripcionId={params.id} cuotas={cuotas} onExito={() => {}} />
+        <FormularioPago inscripcionId={id} cuotas={cuotas} onExito={() => {}} />
       </div>
     </div>
   )

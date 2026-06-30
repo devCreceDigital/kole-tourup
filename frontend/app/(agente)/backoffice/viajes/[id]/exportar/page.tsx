@@ -1,6 +1,6 @@
 ﻿import Link from 'next/link'
 
-export default function ExportarPage({ params }: { params: { id: string } }) {
+export default function ExportarPage({ params }: { params: Promise<{ id: string }> }) {
   const base = `/api/v1/viajes/${params.id}`
 
   return (

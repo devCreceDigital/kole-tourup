@@ -13,10 +13,11 @@ async function getViaje(id: string) {
   return res.json()
 }
 
-export default async function InscritosPage({ params }: { params: { id: string } }) {
+export default async function InscritosPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const [viaje, inscripciones] = await Promise.all([
-    getViaje(params.id),
-    getInscripciones(params.id)
+    getViaje(id),
+    getInscripciones(id)
   ])
 
   return (
@@ -24,7 +25,7 @@ export default async function InscritosPage({ params }: { params: { id: string }
       <div className="flex items-center justify-between mb-6">
         <div>
           <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-            <Link href={`/backoffice/viajes/${params.id}`} className="hover:underline">
+            <Link href={`/backoffice/viajes/${id}`} className="hover:underline">
               {viaje?.nombre ?? 'Viaje'}
             </Link>
             <span>›</span>
@@ -37,7 +38,7 @@ export default async function InscritosPage({ params }: { params: { id: string }
           <p className="text-xs text-gray-500">total inscritos</p>
         </div>
       </div>
-      <TablaInscritos inscripciones={inscripciones} viajeId={params.id} />
+      <TablaInscritos inscripciones={inscripciones} viajeId={id} />
     </div>
   )
 }

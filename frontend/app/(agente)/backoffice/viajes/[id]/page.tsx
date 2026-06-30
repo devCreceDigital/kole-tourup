@@ -21,10 +21,11 @@ const ESTADO_BADGE: Record<string, { variant: 'success' | 'warning' | 'info' | '
   archivado: { variant: 'info',    icon: '▣' },
 }
 
-export default async function ViajeDetallePage({ params }: { params: { id: string } }) {
+export default async function ViajeDetallePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const [viaje, inscripciones] = await Promise.all([
-    getViaje(params.id),
-    getInscripciones(params.id)
+    getViaje(id),
+    getInscripciones(id)
   ])
   if (!viaje) return <div className="p-8 text-gray-500">Viaje no encontrado.</div>
 
@@ -45,7 +46,7 @@ export default async function ViajeDetallePage({ params }: { params: { id: strin
           <Link href={`/viajes/${viaje.slug}`} target="_blank" className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-50">
             Ver landing
           </Link>
-          <Link href={`/backoffice/viajes/${params.id}/comunicados`} className="bg-blue-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
+          <Link href={`/backoffice/viajes/${id}/comunicados`} className="bg-blue-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
             Enviar comunicado
           </Link>
         </div>

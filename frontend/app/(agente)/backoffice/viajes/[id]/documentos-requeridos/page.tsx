@@ -4,7 +4,7 @@ import Link from 'next/link'
 
 interface DocRequerido { id: string; nombre: string; obligatorio: boolean; formatos_permitidos: string }
 
-export default function DocumentosRequeridosPage({ params }: { params: { id: string } }) {
+export default function DocumentosRequeridosPage({ params }: { params: Promise<{ id: string }> }) {
   const [docs, setDocs] = useState<DocRequerido[]>([])
   const [form, setForm] = useState({ nombre: '', obligatorio: true, formatos_permitidos: 'pdf,jpg,png' })
   const [mostrarForm, setMostrarForm] = useState(false)

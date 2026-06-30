@@ -4,7 +4,7 @@ import Link from 'next/link'
 
 interface Grupo { id: string; nombre: string; alumnos: any[] }
 
-export default function GruposPage({ params }: { params: { id: string } }) {
+export default function GruposPage({ params }: { params: Promise<{ id: string }> }) {
   const [grupos, setGrupos] = useState<Grupo[]>([])
   const [nuevoGrupo, setNuevoGrupo] = useState('')
   const [creando, setCreando] = useState(false)

@@ -1,6 +1,6 @@
 ﻿import { ChatInscripcion } from '@/components/chat/ChatInscripcion'
 
-export default function ChatPage({ params }: { params: { inscripcion_id: string } }) {
+export default function ChatPage({ params }: { params: Promise<{ inscripcion_id: string }> }) {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <div className="bg-white border-b px-4 py-3">

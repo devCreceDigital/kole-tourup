@@ -11,7 +11,7 @@ interface Comunicado {
   fecha_publicacion: string
 }
 
-export default function ComunicadosPage({ params }: { params: { id: string } }) {
+export default function ComunicadosPage({ params }: { params: Promise<{ id: string }> }) {
   const [comunicados, setComunicados] = useState<Comunicado[]>([])
 
   useEffect(() => {

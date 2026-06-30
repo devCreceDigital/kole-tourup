@@ -13,13 +13,14 @@ async function getViaje(id: string) {
   return res.json()
 }
 
-export default async function VerificacionPagosPage({ params }: { params: { id: string } }) {
-  const [viaje, pagos] = await Promise.all([getViaje(params.id), getPagos(params.id)])
+export default async function VerificacionPagosPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const [viaje, pagos] = await Promise.all([getViaje(id), getPagos(id)])
   return (
     <div className="p-8">
       <div className="mb-6">
         <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-          <Link href={`/backoffice/viajes/${params.id}`} className="hover:underline">{viaje?.nombre ?? 'Viaje'}</Link>
+          <Link href={`/backoffice/viajes/${id}`} className="hover:underline">{viaje?.nombre ?? 'Viaje'}</Link>
           <span>›</span>
           <span>Verificacion de pagos</span>
         </div>

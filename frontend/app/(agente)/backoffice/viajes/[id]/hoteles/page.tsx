@@ -4,7 +4,7 @@ import Link from 'next/link'
 
 interface Hotel { id: string; nombre: string; estrellas: number; web_url?: string; maps_url?: string }
 
-export default function HotelesPage({ params }: { params: { id: string } }) {
+export default function HotelesPage({ params }: { params: Promise<{ id: string }> }) {
   const [hoteles, setHoteles] = useState<Hotel[]>([])
   const [form, setForm] = useState({ nombre: '', estrellas: '3', web_url: '', maps_url: '' })
   const [creando, setCreando] = useState(false)

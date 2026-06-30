@@ -10,8 +10,9 @@ async function getData(id: string) {
   return { inscripcion, documentos }
 }
 
-export default async function DocumentosPage({ params }: { params: { id: string } }) {
-  const { inscripcion, documentos } = await getData(params.id)
+export default async function DocumentosPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const { inscripcion, documentos } = await getData(id)
   if (!inscripcion) return <div className="p-12 text-center text-gray-500">Inscripcion no encontrada.</div>
 
   const docsRequeridos = inscripcion.viaje?.documentos_requeridos ?? []
@@ -26,7 +27,7 @@ export default async function DocumentosPage({ params }: { params: { id: string 
         <h1 className="text-2xl font-bold text-gray-900 mb-1">{inscripcion.viaje?.nombre}</h1>
         <p className="text-sm text-gray-500 mb-6">Documentacion requerida</p>
         <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-          <ChecklistDocumentos inscripcionId={params.id} documentos={docsConEntrega} onSubido={() => {}} />
+          <ChecklistDocumentos inscripcionId={id} documentos={docsConEntrega} onSubido={() => {}} />
         </div>
       </div>
     </div>
