@@ -1,5 +1,5 @@
 export interface TokenPayload {
-  user_id: number;
+  user_id: string;
   role: 'padre' | 'mecenas' | 'agente' | 'alumno';
   exp: number;
 }

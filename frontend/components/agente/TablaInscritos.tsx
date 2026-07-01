@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import Link from 'next/link'
 import { useState } from 'react'
 import { Badge } from '@/components/ui/Badge'
@@ -88,8 +88,9 @@ export function TablaInscritos({ inscripciones, viajeId }: TablaInscritosProps) 
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-500">{ins.grupo ?? '-'}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 flex gap-3">
                     <Link href={`/backoffice/inscripciones/${ins.id}`} className="text-blue-600 hover:underline text-xs">Ver ficha</Link>
+                    <Link href={`/backoffice/chat/${ins.id}`} className="text-blue-600 hover:underline text-xs">Ver chat</Link>
                   </td>
                 </tr>
               )

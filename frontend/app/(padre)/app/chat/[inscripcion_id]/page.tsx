@@ -1,6 +1,15 @@
-﻿import { ChatInscripcion } from '@/components/chat/ChatInscripcion'
+import { cookies } from 'next/headers'
+import { decodeJwtPayload } from '@/lib/auth'
+import { ChatInscripcion } from '@/components/chat/ChatInscripcion'
 
-export default function ChatPage({ params }: { params: Promise<{ inscripcion_id: string }> }) {
+export default async function ChatPage({ params }: { params: Promise<{ inscripcion_id: string }> }) {
+  const cookieStore = await cookies()
+  const token = cookieStore.get('access_token')?.value
+  const payload = token ? decodeJwtPayload(token) : null
+  const userId = payload?.user_id || ''
+  
+  const { inscripcion_id } = await params
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <div className="bg-white border-b px-4 py-3">
@@ -8,7 +17,7 @@ export default function ChatPage({ params }: { params: Promise<{ inscripcion_id:
         <p className="text-xs text-gray-500">Mensajes en tiempo real</p>
       </div>
       <div className="flex-1 flex flex-col" style={{ height: 'calc(100vh - 64px)' }}>
-        <ChatInscripcion inscripcionId={params.inscripcion_id} usuarioActualId="" />
+        <ChatInscripcion inscripcionId={inscripcion_id} usuarioActualId={userId} />
       </div>
     </div>
   )
