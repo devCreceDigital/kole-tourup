@@ -7,7 +7,7 @@ import { Step2 } from './steps/Step2'
 import { Step3 } from './steps/Step3'
 import { fetchApi, ApiError } from '@/lib/api'
 
-const LABELS = ['Datos basicos', 'Centro educativo', 'Salud y T&C']
+const LABELS = ['Datos básicos', 'Centro educativo', 'Salud y T&C']
 
 const ALLERGEN_MAP: Record<string, string> = {
   'gluten': 'alergeno_gluten',
@@ -208,8 +208,8 @@ function InscribirForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-sm p-8 relative overflow-hidden">
+    <div className="min-h-screen py-8 px-4">
+      <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-sm border border-gray-100 p-8 relative overflow-hidden">
         
         {/* Smart Validation Modal/Overlay */}
         {showValidation && (
@@ -289,29 +289,47 @@ function InscribirForm() {
           <>
             <h1 className="text-2xl font-bold text-gray-900 mb-6">Registrando tu hijo/a</h1>
             <WizardProgress pasoActual={paso} totalPasos={3} labels={LABELS} />
-            
+
             <div className="mt-6">
               {paso === 1 && <Step1 data={data as Record<string, string>} onChange={handleChange} />}
               {paso === 2 && <Step2 data={data as Record<string, string>} onChange={handleChange} />}
               {paso === 3 && <Step3 data={data} onChange={handleChange} />}
             </div>
-            
-            {error && <p className="text-red-600 text-sm mt-4 font-medium">{error}</p>}
-            
-            <div className="flex justify-between mt-8">
+
+            {error && (
+              <p className="text-red-600 text-sm mt-4 font-medium bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+                {error}
+              </p>
+            )}
+
+            {/* Botones de navegación — fiel al mockup */}
+            <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-100">
               {paso > 1 ? (
-                <button onClick={anterior} className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                  Anterior
+                <button
+                  onClick={anterior}
+                  className="px-6 py-2.5 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Atrás
                 </button>
               ) : <div />}
-              
+
               {paso < 3 ? (
-                <button onClick={siguiente} className="px-6 py-2 bg-blue-800 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
-                  Siguiente
+                <button
+                  onClick={siguiente}
+                  className="px-6 py-2.5 bg-[#0077B6] text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2"
+                >
+                  Continuar
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
                 </button>
               ) : (
-                <button onClick={handleSubmit} disabled={enviando} className="px-6 py-2 bg-yellow-400 text-gray-900 rounded-lg text-sm font-bold hover:bg-yellow-300 disabled:opacity-50 transition-colors">
-                  {enviando ? 'Enviando...' : 'Confirmar inscripción'}
+                <button
+                  onClick={handleSubmit}
+                  disabled={enviando}
+                  className="px-6 py-2.5 bg-[#0077B6] text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  {enviando ? 'Enviando...' : 'Finalizar Inscripción'}
                 </button>
               )}
             </div>

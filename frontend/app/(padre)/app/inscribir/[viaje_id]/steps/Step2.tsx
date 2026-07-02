@@ -1,45 +1,119 @@
-﻿interface Step2Props {
+interface Step2Props {
   data: Record<string, string>
   onChange: (field: string, value: string) => void
 }
 
-const DEPARTAMENTOS = ['Lima', 'Arequipa', 'Cusco', 'Trujillo', 'Piura', 'Chiclayo', 'Iquitos', 'Huancayo', 'Otro']
+// "Provincia" es el renombre visual de "departamento" — la clave de estado sigue siendo 'departamento'
+const PROVINCIAS = [
+  'Madrid', 'Barcelona', 'Valencia', 'Sevilla', 'Zaragoza',
+  'Málaga', 'Murcia', 'Palma', 'Las Palmas', 'Bilbao',
+  'Alicante', 'Córdoba', 'Valladolid', 'Vigo', 'Gijón',
+  'Lima', 'Arequipa', 'Cusco', 'Trujillo', 'Piura',
+  'Chiclayo', 'Iquitos', 'Huancayo', 'Otro'
+]
+
+const NIVELES = [
+  { value: 'primaria',     label: 'Primaria' },
+  { value: 'secundaria',  label: 'Secundaria' },
+  { value: 'bachillerato', label: 'Bachillerato' },
+]
 
 export function Step2({ data, onChange }: Step2Props) {
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-bold text-gray-900">Centro educativo</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Departamento *</label>
-          <select value={data.departamento ?? ''} onChange={e => onChange('departamento', e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">Seleccionar</option>
-            {DEPARTAMENTOS.map(d => <option key={d} value={d}>{d}</option>)}
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-xl font-bold text-gray-900">Paso 2 de 3: Centro y curso</h2>
+        <p className="text-sm text-gray-500 mt-1">¿Dónde estudia tu hijo/a?</p>
+      </div>
+
+      {/* Provincia */}
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+          Provincia <span className="text-red-500">*</span>
+        </label>
+        <div className="relative">
+          <select
+            value={data.departamento ?? ''}
+            onChange={e => onChange('departamento', e.target.value)}
+            className="w-full appearance-none border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-[#0077B6] focus:border-[#0077B6] transition-colors"
+          >
+            <option value="">Provincia</option>
+            {PROVINCIAS.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del colegio *</label>
-          <input type="text" value={data.colegio ?? ''} onChange={e => onChange('colegio', e.target.value)} placeholder="Escribe el nombre..." className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Nivel educativo *</label>
-          <select value={data.nivel ?? ''} onChange={e => onChange('nivel', e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">Seleccionar</option>
-            <option value="primaria">Primaria</option>
-            <option value="secundaria">Secundaria</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Grado *</label>
-          <select value={data.grado ?? ''} onChange={e => onChange('grado', e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">Seleccionar</option>
-            {['1ro', '2do', '3ro', '4to', '5to', '6to'].map(g => <option key={g} value={g}>{g}</option>)}
-          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
         </div>
       </div>
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-        <p className="font-semibold mb-1">Antes de continuar</p>
-        <p>Verificaremos que el colegio y grado correspondan al viaje seleccionado.</p>
+
+      {/* Colegio / Centro educativo */}
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+          Colegio / Centro educativo <span className="text-red-500">*</span>
+        </label>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-gray-400">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            value={data.colegio ?? ''}
+            onChange={e => onChange('colegio', e.target.value)}
+            placeholder="Escribe para buscar..."
+            className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0077B6] focus:border-[#0077B6] transition-colors"
+          />
+        </div>
+      </div>
+
+      {/* Nivel educativo — radio buttons horizontales */}
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 mb-2">
+          Nivel educativo <span className="text-red-500">*</span>
+        </label>
+        <div className="flex items-center gap-4 flex-wrap">
+          {NIVELES.map(({ value, label }) => (
+            <label key={value} className="flex items-center gap-2 cursor-pointer">
+              <div
+                onClick={() => onChange('nivel', value)}
+                className={`w-4 h-4 rounded-full border-2 flex items-center justify-center cursor-pointer transition-colors ${
+                  data.nivel === value
+                    ? 'border-[#0077B6]'
+                    : 'border-gray-300'
+                }`}
+              >
+                {data.nivel === value && (
+                  <div className="w-2 h-2 rounded-full bg-[#0077B6]" />
+                )}
+              </div>
+              <span
+                onClick={() => onChange('nivel', value)}
+                className={`text-sm cursor-pointer select-none ${
+                  data.nivel === value ? 'text-gray-900 font-medium' : 'text-gray-600'
+                }`}
+              >
+                {label}
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Curso / Clase */}
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+          Curso / Clase <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="text"
+          value={data.grado ?? ''}
+          onChange={e => onChange('grado', e.target.value)}
+          placeholder="4º ESO B"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0077B6] focus:border-[#0077B6] transition-colors"
+        />
       </div>
     </div>
   )
