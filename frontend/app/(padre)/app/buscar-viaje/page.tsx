@@ -19,7 +19,7 @@ export default function BuscarViajePage() {
     async function loadViajes() {
       try {
         const data = await fetchApi('/api/v1/viajes/publico/')
-        setViajes(data || [])
+        setViajes(data?.results ?? (Array.isArray(data) ? data : []))
       } catch (err) {
         console.error('Error fetching viajes:', err)
       } finally {
