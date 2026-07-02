@@ -16,7 +16,7 @@ export default function ComunicadosPage({ params }: { params: Promise<{ id: stri
   const [comunicados, setComunicados] = useState<Comunicado[]>([])
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_GATEWAY_URL}/api/v1/viajes/${id}/comunicados/`), { credentials: 'include' }).then(r => r.json()).then(data => setComunicados(Array.isArray(data) ? data : data.results ?? []))
+    fetch(`${process.env.NEXT_PUBLIC_GATEWAY_URL}/api/v1/viajes/${id}/comunicados/`, { credentials: 'include' }).then(r => r.json()).then(data => setComunicados(Array.isArray(data) ? data : data.results ?? []))
   }, [id])
 
   function handleEnviado(comunicado: Comunicado) {

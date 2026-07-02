@@ -11,7 +11,7 @@ export default function GruposPage({ params }: { params: Promise<{ id: string }>
   const [creando, setCreando] = useState(false)
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_GATEWAY_URL}/api/v1/viajes/${viajeId}/grupos/`), { credentials: 'include' }).then(r => r.json()).then(setGrupos)
+    fetch(`${process.env.NEXT_PUBLIC_GATEWAY_URL}/api/v1/viajes/${viajeId}/grupos/`, { credentials: 'include' }).then(r => r.json()).then(setGrupos)
   }, [viajeId])
 
   async function crearGrupo() {

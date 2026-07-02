@@ -12,7 +12,7 @@ export default function HotelesPage({ params }: { params: Promise<{ id: string }
   const [mostrarForm, setMostrarForm] = useState(false)
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_GATEWAY_URL}/api/v1/viajes/${viajeId}/hoteles/`), { credentials: 'include' }).then(r => r.json()).then(setHoteles)
+    fetch(`${process.env.NEXT_PUBLIC_GATEWAY_URL}/api/v1/viajes/${viajeId}/hoteles/`, { credentials: 'include' }).then(r => r.json()).then(setHoteles)
   }, [viajeId])
 
   async function crearHotel() {

@@ -11,7 +11,7 @@ export default function DocumentosRequeridosPage({ params }: { params: Promise<{
   const [mostrarForm, setMostrarForm] = useState(false)
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_GATEWAY_URL}/api/v1/viajes/${viajeId}/documentos-requeridos/`), { credentials: 'include' }).then(r => r.json()).then(setDocs)
+    fetch(`${process.env.NEXT_PUBLIC_GATEWAY_URL}/api/v1/viajes/${viajeId}/documentos-requeridos/`, { credentials: 'include' }).then(r => r.json()).then(setDocs)
   }, [viajeId])
 
   async function crearDoc() {
