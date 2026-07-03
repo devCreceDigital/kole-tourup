@@ -1,7 +1,6 @@
 import { InscripcionCard } from '@/components/padre/InscripcionCard'
 import { AlertasPendientes } from '@/components/padre/AlertasPendientes'
 import { HijosRegistrados } from '@/components/padre/HijosRegistrados'
-
 import { cookies } from 'next/headers'
 
 async function getInscripciones() {
@@ -30,65 +29,84 @@ export default async function DashboardPadrePage() {
   const alertas = inscripciones.flatMap((ins: any) => {
     const a = []
     if (ins.pagos_resumen?.tiene_cuota_vencida) {
-      a.push({ tipo: 'error' as const, titulo: 'Cuota vencida', mensaje: 'Tienes una cuota vencida en ' + ins.viaje.nombre, href: `/app/inscripciones/${ins.id}/pagos` })
+      a.push({
+        tipo: 'error' as const,
+        titulo: 'Cuota vencida',
+        mensaje: 'Tienes una cuota vencida en ' + ins.viaje.nombre,
+        href: `/app/inscripciones/${ins.id}/pagos`
+      })
     }
     if (ins.documentos_resumen?.tiene_rechazado) {
-      a.push({ tipo: 'warning' as const, titulo: 'Documento rechazado', mensaje: 'Un documento fue rechazado en ' + ins.viaje.nombre, href: `/app/inscripciones/${ins.id}/documentos` })
+      a.push({
+        tipo: 'warning' as const,
+        titulo: 'Documento rechazado',
+        mensaje: 'Un documento fue rechazado en ' + ins.viaje.nombre,
+        href: `/app/inscripciones/${ins.id}/documentos`
+      })
     }
     return a
   })
 
-  // Extract unique students
   const hijosMap = new Map()
   inscripciones.forEach((ins: any) => {
     if (!hijosMap.has(ins.alumno.id)) {
       hijosMap.set(ins.alumno.id, {
         id: ins.alumno.id,
         nombreCompleto: `${ins.alumno.nombre} ${ins.alumno.apellidos}`,
-        colegio: ins.colegio || 'Sin colegio',
-        gradoNivel: `${ins.grado || ''} ${ins.nivel_educativo || ''}`.trim() || 'Sin grado',
-        alergias: ins.alergias || []
+        colegio: ins.colegio || '',
+        gradoNivel: `${ins.grado || ''} ${ins.nivel_educativo || ''}`.trim(),
+        alergias: ins.alergias || [],
+        fechaNacimiento: ins.alumno.fecha_nacimiento || null,
       })
     }
   })
   const hijosUnicos = Array.from(hijosMap.values())
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-16">
-      <div className="max-w-3xl mx-auto pt-8 px-4">
-        {/* Header Section */}
-        <div className="flex items-center justify-between mb-8">
+    <div className="min-h-screen bg-gray-50 pb-8">
+      <div className="max-w-3xl mx-auto pt-6 px-4 space-y-6">
+
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Bienvenido</h1>
-            <p className="text-sm text-gray-500 mt-1">Aquí puedes gestionar las inscripciones y viajes de tus hijos.</p>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+              Bienvenid@
+            </h1>
           </div>
-          <button className="flex items-center gap-1 text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm">
-            <span className="material-symbols-outlined text-[18px]">help</span>
+          <button className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 bg-white border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 shadow-sm transition-colors">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
             Ayuda
           </button>
         </div>
 
-        {/* Alertas */}
         <AlertasPendientes alertas={alertas} />
 
-        {/* Inscripciones / Viajes Activos */}
-        <div className="mb-8">
-          <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Viajes Activos</h2>
+        <div>
+          <h2 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">
+            {inscripciones.length === 1 ? 'Viaje Activo' : 'Viajes Activos'}
+          </h2>
+
           {inscripciones.length === 0 ? (
             <div className="bg-white border border-gray-200 rounded-xl p-10 text-center shadow-sm">
-              <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
-                ✈️
+              <div className="w-14 h-14 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                </svg>
               </div>
-              <h3 className="text-lg font-bold text-gray-900 mb-2">No tienes viajes activos</h3>
-              <p className="text-gray-500 text-sm mb-6 max-w-sm mx-auto">
-                No tienes inscripciones activas en este momento. Si tu colegio organizó un viaje, búscalo para inscribir a tu hijo.
+              <h3 className="text-base font-bold text-gray-900 mb-1">No tienes viajes activos</h3>
+              <p className="text-gray-400 text-sm mb-6 max-w-xs mx-auto">
+                Si tu colegio organizó un viaje, búscalo para inscribir a tu hijo.
               </p>
-              <a href="/app/buscar-viaje" className="inline-block px-6 py-2.5 bg-blue-700 text-white rounded-lg text-sm font-bold hover:bg-blue-800 transition-colors shadow-md">
+              <a
+                href="/app/buscar-viaje"
+                className="inline-block px-6 py-2.5 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm"
+              >
                 Buscar viaje escolar
               </a>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-5">
               {inscripciones.map((ins: any) => (
                 <InscripcionCard key={ins.id} inscripcion={ins} />
               ))}
@@ -96,7 +114,6 @@ export default async function DashboardPadrePage() {
           )}
         </div>
 
-        {/* Hijos Registrados */}
         <HijosRegistrados hijos={hijosUnicos} />
 
       </div>

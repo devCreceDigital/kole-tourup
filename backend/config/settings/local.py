@@ -41,3 +41,14 @@ LOGGING["loggers"]["tottemhub"]["level"] = "DEBUG"           # type: ignore[inde
 # INSTALLED_APPS += ["debug_toolbar"]
 # MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
 # INTERNAL_IPS = ["127.0.0.1"]
+
+
+# Override de storage para desarrollo local: usar filesystem en vez de S3
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}

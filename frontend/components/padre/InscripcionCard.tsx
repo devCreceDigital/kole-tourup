@@ -1,18 +1,51 @@
-import { Badge } from '@/components/ui/Badge'
-import { ProgressBar } from '@/components/ui/ProgressBar'
 import { SubCardPagos } from './SubCardPagos'
 import { SubCardDocumentos } from './SubCardDocumentos'
 import { SubCardAlojamiento } from './SubCardAlojamiento'
 import Link from 'next/link'
 import Image from 'next/image'
 
-const ESTADO_BADGE: Record<string, { variant: 'default' | 'warning' | 'success' | 'info', icon: string, label: string }> = {
-  pre_inscrito: { variant: 'warning', icon: '○', label: 'Pre-inscrito' },
-  pendiente: { variant: 'warning', icon: '○', label: 'Pendiente' },
-  confirmado: { variant: 'success', icon: '✓', label: 'Confirmado' },
-  cancelado: { variant: 'default', icon: '✕', label: 'Cancelado' },
-  baja: { variant: 'default', icon: '↓', label: 'Baja' },
+// Badge de estado de la inscripción — fiel al mockup
+const ESTADO_CONFIG: Record<string, { label: string; classes: string }> = {
+  pre_inscrito:  { label: 'Lista de espera', classes: 'bg-amber-50 text-amber-700 border border-amber-200' },
+  pendiente:     { label: 'Pendiente',        classes: 'bg-amber-50 text-amber-700 border border-amber-200' },
+  confirmado:    { label: 'Plaza confirmada', classes: 'bg-green-50 text-green-700 border border-green-200' },
+  cancelado:     { label: 'Cancelado',        classes: 'bg-gray-100 text-gray-500 border border-gray-200' },
+  baja:          { label: 'Baja',             classes: 'bg-gray-100 text-gray-500 border border-gray-200' },
 }
+
+// Tabs inferiores — icono SVG consistente con el resto del proyecto
+const TABS = [
+  {
+    label: 'Itinerario',
+    path: (id: string) => `/app/inscripciones/${id}`,
+    icon: 'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7',
+  },
+  {
+    label: 'Pagos',
+    path: (id: string) => `/app/inscripciones/${id}/pagos`,
+    icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z',
+  },
+  {
+    label: 'Docs',
+    path: (id: string) => `/app/inscripciones/${id}/documentos`,
+    icon: 'M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z',
+  },
+  {
+    label: 'Vuelos',
+    path: (id: string) => `/app/inscripciones/${id}/vuelos`,
+    icon: 'M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z',
+  },
+  {
+    label: 'Hotel',
+    path: (id: string) => `/app/inscripciones/${id}/hoteles`,
+    icon: 'M3 12V7a1 1 0 011-1h16a1 1 0 011 1v5M3 12h18M3 12v4a1 1 0 001 1h16a1 1 0 001-1v-4M7 8v4',
+  },
+  {
+    label: 'Info',
+    path: (id: string) => `/app/inscripciones/${id}/info`,
+    icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+  },
+]
 
 interface InscripcionCardProps {
   inscripcion: {
@@ -20,111 +53,168 @@ interface InscripcionCardProps {
     estado: string
     precio_final: number
     porcentaje_pagado: number
-    viaje: { id: string; nombre: string; destino: string; fecha_salida: string; fecha_regreso: string; imagen_url?: string }
+    nivel_educativo?: string
+    grado?: string
+    viaje: {
+      id: string
+      nombre: string
+      destino: string
+      fecha_salida: string
+      fecha_regreso: string
+      imagen_url?: string
+    }
     alumno: { nombre: string; apellidos: string }
     colegio?: string
-    pagos_resumen: { total_cuotas: number; cuotas_pagadas: number; tiene_cuota_vencida: boolean }
-    documentos_resumen: { total_requeridos: number; total_validados: number; tiene_rechazado: boolean }
+    pagos_resumen: {
+      total_cuotas: number
+      cuotas_pagadas: number
+      tiene_cuota_vencida: boolean
+    }
+    documentos_resumen: {
+      total_requeridos: number
+      total_validados: number
+      tiene_rechazado: boolean
+    }
     hotel_asignado?: { nombre: string; maps_url: string }
   }
 }
 
-function formatDate(dateStr: string) {
-  if (!dateStr) return ''
-  const d = new Date(dateStr)
-  return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
+function formatDateRange(salida: string, regreso: string) {
+  if (!salida) return ''
+  const s = new Date(salida)
+  const r = regreso ? new Date(regreso) : null
+  const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' }
+  const optsDay: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' }
+  if (r) {
+    return `${s.toLocaleDateString('es-ES', optsDay)} – ${r.toLocaleDateString('es-ES', opts)}`
+  }
+  return s.toLocaleDateString('es-ES', opts)
 }
 
-export function InscripcionCard({ inscripcion }: InscripcionCardProps) {
-  const badge = ESTADO_BADGE[inscripcion.estado] ?? ESTADO_BADGE.pendiente
-  
+export function InscripcionCard({ inscripcion: ins }: InscripcionCardProps) {
+  const estadoConf = ESTADO_CONFIG[ins.estado] ?? ESTADO_CONFIG.pendiente
+  const progreso = Math.round(ins.porcentaje_pagado ?? 0)
+
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden mb-8 transition-shadow hover:shadow-md">
-      {/* Header section with image and basic info */}
-      <div className="relative h-32 md:h-40 bg-gray-100 border-b border-gray-200">
-        {inscripcion.viaje.imagen_url ? (
-          <Image 
-            src={inscripcion.viaje.imagen_url} 
-            alt={inscripcion.viaje.destino} 
-            fill 
-            className="object-cover" 
+    <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+
+      <div className="relative h-40 bg-gray-100">
+        {ins.viaje.imagen_url ? (
+          <Image
+            src={ins.viaje.imagen_url}
+            alt={ins.viaje.destino}
+            fill
+            className="object-cover"
           />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-700"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-primary to-primary/70" />
         )}
-        <div className="absolute inset-0 bg-black/40"></div>
-        <div className="absolute inset-0 p-6 flex flex-col justify-end">
-          <h2 className="text-xl md:text-2xl font-bold text-white mb-1 shadow-sm drop-shadow-md">
-            {inscripcion.viaje.nombre}
-          </h2>
-          <div className="flex items-center gap-4 text-sm font-medium text-white/90 drop-shadow-sm">
+      </div>
+
+      <div className="px-5 pt-4 pb-5 space-y-4">
+
+        <h2 className="text-lg font-bold text-gray-900 leading-snug">
+          {ins.viaje.nombre}
+        </h2>
+
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-gray-500">
+          <span className="flex items-center gap-1">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            {formatDateRange(ins.viaje.fecha_salida, ins.viaje.fecha_regreso)}
+          </span>
+          {ins.colegio && (
             <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-[16px]">calendar_month</span>
-              {formatDate(inscripcion.viaje.fecha_salida)} – {formatDate(inscripcion.viaje.fecha_regreso)}
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0v6M5.4 9.4L12 20l6.6-10.6" />
+              </svg>
+              {ins.colegio}
             </span>
+          )}
+          {(ins.grado || ins.nivel_educativo) && (
             <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-[16px]">school</span>
-              {inscripcion.colegio || 'Colegio no especificado'}
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+              {[ins.grado, ins.nivel_educativo].filter(Boolean).join(' ')}
             </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm flex-shrink-0">
+            {ins.alumno.nombre.charAt(0).toUpperCase()}
           </div>
+          <span className="text-sm font-medium text-gray-800">
+            {ins.alumno.nombre} {ins.alumno.apellidos}
+          </span>
+          <span className={`ml-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${estadoConf.classes}`}>
+            {estadoConf.label}
+          </span>
+        </div>
+
+        <div>
+          <div className="flex justify-between items-center mb-1.5">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+              Progreso de Inscripción
+            </span>
+            <span className="text-xs font-bold text-primary">{progreso}% Completado</span>
+          </div>
+          <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+            <div
+              className="h-2 rounded-full bg-primary transition-all duration-500"
+              style={{ width: `${progreso}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-0 border border-gray-100 rounded-lg overflow-hidden">
+          <div className="px-3 py-3 hover:bg-gray-50 transition-colors">
+            <SubCardPagos
+              totalCuotas={ins.pagos_resumen.total_cuotas}
+              cuotasPagadas={ins.pagos_resumen.cuotas_pagadas}
+              tieneCuotaVencida={ins.pagos_resumen.tiene_cuota_vencida}
+              href={`/app/inscripciones/${ins.id}/pagos`}
+            />
+          </div>
+          <div className="px-3 py-3 border-l border-r border-gray-100 hover:bg-gray-50 transition-colors">
+            <SubCardDocumentos
+              totalRequeridos={ins.documentos_resumen.total_requeridos}
+              totalValidados={ins.documentos_resumen.total_validados}
+              tieneRechazado={ins.documentos_resumen.tiene_rechazado}
+              href={`/app/inscripciones/${ins.id}/documentos`}
+            />
+          </div>
+          <div className="px-3 py-3 hover:bg-gray-50 transition-colors">
+            <SubCardAlojamiento
+              hotelNombre={ins.hotel_asignado?.nombre}
+              mapsUrl={ins.hotel_asignado?.maps_url}
+            />
+          </div>
+        </div>
+
+      </div>
+
+      <div className="border-t border-gray-100">
+        <div className="grid grid-cols-6 divide-x divide-gray-100">
+          {TABS.map((tab) => (
+            <Link
+              key={tab.label}
+              href={tab.path(ins.id)}
+              className="flex flex-col items-center justify-center py-3 gap-1 hover:bg-gray-50 transition-colors group"
+            >
+              <svg className="w-4 h-4 text-gray-400 group-hover:text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
+              </svg>
+              <span className="text-[10px] font-semibold text-gray-500 group-hover:text-primary transition-colors">
+                {tab.label}
+              </span>
+            </Link>
+          ))}
         </div>
       </div>
 
-      {/* Main content body */}
-      <div className="p-6">
-        {/* Student and Status */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-sm">
-              {inscripcion.alumno.nombre.charAt(0)}
-            </div>
-            <span className="font-semibold text-gray-900">{inscripcion.alumno.nombre} {inscripcion.alumno.apellidos}</span>
-          </div>
-          <Badge text={badge.label} icon={badge.icon} variant={badge.variant} />
-        </div>
-
-        {/* Progress */}
-        <div className="mb-6 bg-gray-50 p-4 rounded-lg border border-gray-100">
-          <div className="flex justify-between items-end mb-2">
-            <span className="text-xs font-bold text-gray-500 tracking-wider uppercase">Progreso de Inscripción</span>
-            <span className="text-sm font-bold text-blue-700">{inscripcion.porcentaje_pagado}%</span>
-          </div>
-          <ProgressBar porcentaje={inscripcion.porcentaje_pagado} />
-        </div>
-
-        {/* Subcards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-          <SubCardPagos
-            totalCuotas={inscripcion.pagos_resumen.total_cuotas}
-            cuotasPagadas={inscripcion.pagos_resumen.cuotas_pagadas}
-            tieneCuotaVencida={inscripcion.pagos_resumen.tiene_cuota_vencida}
-            href={`/app/inscripciones/${inscripcion.id}/pagos`}
-          />
-          <SubCardDocumentos
-            totalRequeridos={inscripcion.documentos_resumen.total_requeridos}
-            totalValidados={inscripcion.documentos_resumen.total_validados}
-            tieneRechazado={inscripcion.documentos_resumen.tiene_rechazado}
-            href={`/app/inscripciones/${inscripcion.id}/documentos`}
-          />
-          <SubCardAlojamiento
-            hotelNombre={inscripcion.hotel_asignado?.nombre}
-            mapsUrl={inscripcion.hotel_asignado?.maps_url}
-          />
-        </div>
-
-        {/* CTA Footer */}
-        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-          <Link href={`/app/inscripciones/${inscripcion.id}/pagos`} className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-            💳 Ir a Pagos
-          </Link>
-          <Link href={`/app/inscripciones/${inscripcion.id}/documentos`} className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-            📁 Subir Docs
-          </Link>
-          <Link href={`/app/inscripciones/${inscripcion.id}`} className="px-4 py-2 text-sm font-semibold text-white bg-blue-700 rounded-lg hover:bg-blue-800 transition-colors">
-            Ver todo →
-          </Link>
-        </div>
-      </div>
     </div>
   )
 }

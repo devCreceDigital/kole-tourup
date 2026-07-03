@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
+import { fetchApi } from '@/lib/api'
 
 interface Grupo { id: string; nombre: string; alumnos: any[] }
 
@@ -11,20 +12,23 @@ export default function GruposPage({ params }: { params: Promise<{ id: string }>
   const [creando, setCreando] = useState(false)
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_GATEWAY_URL}/api/v1/viajes/${viajeId}/grupos/`, { credentials: 'include' }).then(r => r.json()).then(setGrupos)
+    fetchApi(`/api/v1/viajes/${viajeId}/grupos/`)
+      .then(data => setGrupos(Array.isArray(data) ? data : data?.results ?? []))
+      .catch(console.error)
   }, [viajeId])
 
   async function crearGrupo() {
     if (!nuevoGrupo.trim()) return
     setCreando(true)
-    const res = await fetch(`${process.env.NEXT_PUBLIC_GATEWAY_URL}/api/v1/viajes/${viajeId}/grupos/`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nombre: nuevoGrupo })
-    })
-    if (res.ok) {
-      const g = await res.json()
+    try {
+      const g = await fetchApi(`/api/v1/viajes/${viajeId}/grupos/`, {
+        method: 'POST',
+        body: JSON.stringify({ nombre: nuevoGrupo })
+      })
       setGrupos(prev => [...prev, { ...g, alumnos: [] }])
       setNuevoGrupo('')
+    } catch (e) {
+      console.error(e)
     }
     setCreando(false)
   }
@@ -33,7 +37,7 @@ export default function GruposPage({ params }: { params: Promise<{ id: string }>
     <div className="p-8">
       <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
         <Link href={`/backoffice/viajes/${viajeId}`} className="hover:underline">Viaje</Link>
-        <span>›</span><span>Grupos</span>
+        <span>\u203a</span><span>Grupos</span>
       </div>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Gestion de grupos</h1>
       <div className="flex gap-2 mb-6">
