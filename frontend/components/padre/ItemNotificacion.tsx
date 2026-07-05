@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import Link from 'next/link'
 
 interface Notificacion {
@@ -27,8 +27,9 @@ const TIPO_CONFIG: Record<string, { icon: string; color: string }> = {
 
 function getHref(tipo: string, referenciaId?: string, referenciaTipo?: string): string {
   if (!referenciaId) return '#'
-  if (tipo === 'pago_vencido' || tipo === 'recordatorio') return `/app/pagos/${referenciaId}`
-  if (tipo === 'doc_rechazado' || tipo === 'doc_validado') return `/app/documentos/${referenciaId}`
+  // referenciaId = inscripcion_id
+  if (tipo === 'pago_vencido' || tipo === 'recordatorio') return `/app/inscripciones/${referenciaId}/pagos`
+  if (tipo === 'doc_rechazado' || tipo === 'doc_validado') return `/app/inscripciones/${referenciaId}/documentos`
   return '#'
 }
 

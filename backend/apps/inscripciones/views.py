@@ -141,6 +141,46 @@ class InscripcionPlanPagoView(generics.GenericAPIView):
         })
 
 
+class MisAlumnosView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        padre_tutor = _get_padre_tutor(request.user)
+        alumnos = padre_tutor.alumnos.all()
+        data = []
+        for a in alumnos:
+            data.append({
+                'id': str(a.id),
+                'nombre': a.nombre,
+                'apellidos': a.apellidos,
+                'dni': a.dni,
+                'fecha_nacimiento': a.fecha_nacimiento.isoformat() if a.fecha_nacimiento else None,
+                'genero': a.genero,
+                'colegio': a.colegio,
+                'departamento': a.departamento,
+                'nivel_educativo': a.nivel_educativo,
+                'grado': a.grado,
+                'telefono_emergencia': a.telefono_emergencia,
+                'necesidades_especiales': a.necesidades_especiales,
+                'nombre_tutor_legal': a.nombre_tutor_legal,
+                'alergeno_gluten': a.alergeno_gluten,
+                'alergeno_crustaceos': a.alergeno_crustaceos,
+                'alergeno_huevos': a.alergeno_huevos,
+                'alergeno_pescado': a.alergeno_pescado,
+                'alergeno_cacahuetes': a.alergeno_cacahuetes,
+                'alergeno_soja': a.alergeno_soja,
+                'alergeno_lacteos': a.alergeno_lacteos,
+                'alergeno_frutos_cascara': a.alergeno_frutos_cascara,
+                'alergeno_apio': a.alergeno_apio,
+                'alergeno_mostaza': a.alergeno_mostaza,
+                'alergeno_sesamo': a.alergeno_sesamo,
+                'alergeno_sulfitos': a.alergeno_sulfitos,
+                'alergeno_altramuces': a.alergeno_altramuces,
+                'alergeno_moluscos': a.alergeno_moluscos,
+            })
+        return Response(data)
+
+
 class InscripcionDocumentosView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 

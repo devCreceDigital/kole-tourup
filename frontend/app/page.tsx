@@ -25,7 +25,7 @@ export default function RootPage() {
 
   const handleInscribirse = () => {
     if (!viajeId) return;
-    router.push(`/app/inscribir/${viajeId}`);
+    router.push(`/inscribir/${viajeId}`);
   };
 
   return (
