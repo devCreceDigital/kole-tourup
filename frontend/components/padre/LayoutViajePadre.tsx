@@ -65,7 +65,7 @@ export function LayoutViajePadre({
           <span>/</span>
           <span className="text-white/90">Viaje</span>
           <span>/</span>
-          <span className="text-white font-medium">{tabs.find(t => t.href === pathname)?.label ?? 'Detalle'}</span>
+          <span className="text-white font-medium">{tabs.find(t => t.href === base ? pathname === base : pathname.startsWith(t.href))?.label ?? 'Detalle'}</span>
         </div>
 
         {/* Título y badge */}
@@ -85,7 +85,9 @@ export function LayoutViajePadre({
       <div className="bg-white border-b border-gray-200 sticky top-11 z-30 overflow-x-auto">
         <div className="max-w-5xl mx-auto px-2 flex">
           {tabs.map(tab => {
-            const isActive = pathname === tab.href
+            const isActive = tab.href === base
+              ? pathname === base
+              : pathname.startsWith(tab.href)
             return (
               <Link
                 key={tab.href}
