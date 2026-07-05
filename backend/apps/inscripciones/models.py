@@ -1,4 +1,4 @@
-﻿import uuid
+import uuid
 from django.db import models
 from django.db.models import Sum
 
@@ -119,5 +119,82 @@ class Inscripcion(models.Model):
         return str(self.alumno) + ' - ' + str(self.viaje)
 
 
+class InscripcionHotelPreferencia(models.Model):
+    TIPO_HABITACION_CHOICES = [
+        ('doble', 'Doble'),
+        ('triple', 'Triple'),
+        ('cuadruple', 'Cuadruple'),
+        ('sin_preferencia', 'Sin preferencia'),
+    ]
+    TIPO_CAMA_CHOICES = [
+        ('individuales', 'Camas individuales separadas'),
+        ('compartida', 'Cama doble compartida'),
+        ('sin_preferencia', 'Sin preferencia'),
+    ]
+    PLANTA_CHOICES = [
+        ('baja', 'Planta baja'),
+        ('alta', 'Planta alta'),
+        ('sin_preferencia', 'Sin preferencia'),
+    ]
+    ESTADO_CHOICES = [
+        ('pendiente', 'Pendiente confirmacion agencia'),
+        ('confirmado', 'Confirmado'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    inscripcion = models.ForeignKey(
+        Inscripcion, on_delete=models.CASCADE, related_name='preferencias_hotel'
+    )
+    hotel = models.ForeignKey(
+        'viajes.Hotel', on_delete=models.CASCADE, related_name='preferencias_inscripciones'
+    )
+    tipo_habitacion = models.CharField(
+        max_length=20, choices=TIPO_HABITACION_CHOICES, default='sin_preferencia'
+    )
+    tipo_cama = models.CharField(
+        max_length=20, choices=TIPO_CAMA_CHOICES, default='sin_preferencia'
+    )
+    planta = models.CharField(
+        max_length=20, choices=PLANTA_CHOICES, default='sin_preferencia'
+    )
+    necesidades_especiales = models.TextField(blank=True, default='')
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='pendiente')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Preferencia de Hotel'
+        unique_together = [('inscripcion', 'hotel')]
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'Preferencia {self.inscripcion} - {self.hotel}'
 
 
+class InscripcionRoommateSolicitud(models.Model):
+    ESTADO_CHOICES = [
+        ('pendiente', 'Pendiente'),
+        ('confirmado', 'Confirmado'),
+        ('rechazado', 'Rechazado'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    inscripcion = models.ForeignKey(
+        Inscripcion, on_delete=models.CASCADE, related_name='roommates_solicitados'
+    )
+    alumno_solicitado = models.ForeignKey(
+        Alumno, on_delete=models.CASCADE, related_name='solicitudes_roommate_recibidas'
+    )
+    hotel = models.ForeignKey(
+        'viajes.Hotel', on_delete=models.CASCADE, related_name='solicitudes_roommate'
+    )
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='pendiente')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Solicitud de Roommate'
+        unique_together = [('inscripcion', 'alumno_solicitado', 'hotel')]
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.inscripcion} solicita a {self.alumno_solicitado} en {self.hotel}'

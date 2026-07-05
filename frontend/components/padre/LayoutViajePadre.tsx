@@ -81,22 +81,27 @@ export function LayoutViajePadre({
         </div>
       </div>
 
-      {/* Tab bar */}
-      <div className="bg-white border-b border-gray-200 sticky top-11 z-30 overflow-x-auto">
-        <div className="max-w-5xl mx-auto px-2 flex">
+      {/* Contenido de la tab activa */}
+      <div className="max-w-5xl mx-auto px-4 py-6 pb-24">
+        {children}
+      </div>
+
+      {/* Tab bar - fija abajo, estilo bottom nav movil */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-30 overflow-x-auto">
+        <div className="max-w-5xl mx-auto px-2 flex justify-between md:justify-center md:gap-2">
           {tabs.map(tab => {
             const isActive = pathname === tab.href
             return (
               <Link
                 key={tab.href}
                 href={tab.href}
-                className={`flex items-center gap-1.5 px-3 py-3 text-xs font-semibold whitespace-nowrap border-b-2 transition-colors ${
+                className={`flex flex-col md:flex-row items-center gap-0.5 md:gap-1.5 px-2 md:px-3 py-2.5 text-[10px] md:text-xs font-semibold whitespace-nowrap border-t-2 md:border-t-0 md:border-b-2 transition-colors flex-1 md:flex-none justify-center ${
                   isActive
                     ? 'border-primary text-primary'
-                    : 'border-transparent text-gray-500 hover:text-gray-800 hover:border-gray-300'
+                    : 'border-transparent text-gray-500 hover:text-gray-800'
                 }`}
               >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 md:w-3.5 md:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
                 </svg>
                 <span>{tab.label}</span>
@@ -104,11 +109,6 @@ export function LayoutViajePadre({
             )
           })}
         </div>
-      </div>
-
-      {/* Contenido de la tab activa */}
-      <div className="max-w-5xl mx-auto px-4 py-6">
-        {children}
       </div>
     </div>
   )

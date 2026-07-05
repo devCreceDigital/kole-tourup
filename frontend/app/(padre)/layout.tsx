@@ -1,3 +1,5 @@
+'use client'
+import { usePathname } from 'next/navigation'
 import { PadreNavbar } from '@/components/padre/PadreNavbar'
 
 export default function PadreLayout({
@@ -5,6 +7,8 @@ export default function PadreLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname()
+  const ocultarFooter = pathname?.startsWith('/app/inscripciones/')
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <PadreNavbar />
@@ -13,7 +17,8 @@ export default function PadreLayout({
         {children}
       </main>
 
-      {/* Footer — igual al mockup */}
+      {/* Footer — igual al mockup, oculto en paginas de inscripcion */}
+      {!ocultarFooter && (
       <footer className="bg-white border-t border-gray-200 mt-10">
         <div className="max-w-5xl mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row justify-between gap-4 text-xs text-gray-500">
@@ -39,6 +44,7 @@ export default function PadreLayout({
           </p>
         </div>
       </footer>
+      )}
     </div>
   );
 }

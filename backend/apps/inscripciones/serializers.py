@@ -161,6 +161,7 @@ class InscripcionDetalleSerializer(serializers.ModelSerializer):
     documentos_resumen = serializers.SerializerMethodField()
     hotel_asignado = serializers.SerializerMethodField()
     alergias = serializers.SerializerMethodField()
+    padre_nombre = serializers.SerializerMethodField()
 
     class Meta:
         model = Inscripcion
@@ -168,8 +169,14 @@ class InscripcionDetalleSerializer(serializers.ModelSerializer):
             'id', 'estado', 'precio_final', 'saldo_pendiente',
             'porcentaje_pagado', 'total_pagado', 'viaje', 'alumno',
             'pagos_resumen', 'documentos_resumen', 'hotel_asignado',
-            'colegio', 'nivel_educativo', 'grado', 'alergias'
+            'colegio', 'nivel_educativo', 'grado', 'alergias', 'padre_nombre'
         ]
+
+    def get_padre_nombre(self, obj):
+        usuario = getattr(obj.padre_tutor, 'usuario', None)
+        if not usuario:
+            return None
+        return usuario.nombre
 
     def get_pagos_resumen(self, obj):
         plan = getattr(obj.viaje, 'plan_pago', None)

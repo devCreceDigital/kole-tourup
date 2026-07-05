@@ -190,3 +190,210 @@ class InscripcionDocumentosView(generics.GenericAPIView):
             'total_validados': validados,
             'documentos': documentos_data,
         })
+
+
+class InscripcionMecenasView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        try:
+            inscripcion = Inscripcion.objects.select_related('viaje', 'alumno').get(pk=pk)
+        except Inscripcion.DoesNotExist:
+            raise NotFound('Inscripcion no encontrada.')
+        if request.user.rol == 'padre':
+            padre_tutor = _get_padre_tutor(request.user)
+            if inscripcion.padre_tutor != padre_tutor:
+                raise PermissionDenied()
+        elif request.user.rol not in ['agente']:
+            raise PermissionDenied()
+
+        from apps.mecenas.models import MecenasInscripcion
+        from apps.mecenas.serializers import MecenasInscripcionSerializer
+        from datetime import date
+
+        patrocinios = MecenasInscripcion.objects.filter(
+            inscripcion=inscripcion
+        ).select_related('mecenas')
+
+        total_recaudado = sum(p.monto_pagado for p in patrocinios)
+        meta = inscripcion.precio_final
+
+        dias_restantes = None
+        if inscripcion.viaje.fecha_salida:
+            delta = (inscripcion.viaje.fecha_salida - date.today()).days
+            dias_restantes = max(delta, 0)
+
+        data = {
+            'meta': meta,
+            'recaudado': total_recaudado,
+            'porcentaje': round(float(total_recaudado) / float(meta) * 100, 2) if meta else 0,
+            'apoyos_count': patrocinios.count(),
+            'dias_restantes': dias_restantes,
+            'patrocinios': MecenasInscripcionSerializer(patrocinios, many=True).data,
+        }
+        return Response(data)
+
+
+class InscripcionHotelesView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        try:
+            inscripcion = Inscripcion.objects.select_related('viaje').get(pk=pk)
+        except Inscripcion.DoesNotExist:
+            raise NotFound('Inscripcion no encontrada.')
+        if request.user.rol == 'padre':
+            padre_tutor = _get_padre_tutor(request.user)
+            if inscripcion.padre_tutor != padre_tutor:
+                raise PermissionDenied()
+        elif request.user.rol not in ['agente']:
+            raise PermissionDenied()
+
+        from apps.viajes.serializers import HotelSerializer
+        from .models import InscripcionHotelPreferencia, InscripcionRoommateSolicitud
+        from .serializers import AlumnoResumenSerializer
+
+        hoteles = inscripcion.viaje.hoteles.all()
+        preferencias = {
+            p.hotel_id: p
+            for p in InscripcionHotelPreferencia.objects.filter(inscripcion=inscripcion)
+        }
+        roommates_por_hotel = {}
+        for r in InscripcionRoommateSolicitud.objects.filter(inscripcion=inscripcion).select_related('alumno_solicitado'):
+            roommates_por_hotel.setdefault(r.hotel_id, []).append(r)
+
+        data = []
+        for hotel in hoteles:
+            pref = preferencias.get(hotel.id)
+            roommates = roommates_por_hotel.get(hotel.id, [])
+            data.append({
+                'hotel': HotelSerializer(hotel).data,
+                'preferencia': {
+                    'tipo_habitacion': pref.tipo_habitacion if pref else None,
+                    'tipo_cama': pref.tipo_cama if pref else None,
+                    'planta': pref.planta if pref else None,
+                    'necesidades_especiales': pref.necesidades_especiales if pref else '',
+                    'estado': pref.estado if pref else None,
+                } if pref else None,
+                'roommates': [
+                    {
+                        'id': str(r.id),
+                        'alumno': AlumnoResumenSerializer(r.alumno_solicitado).data,
+                        'estado': r.estado,
+                    }
+                    for r in roommates
+                ],
+            })
+
+        return Response(data)
+
+
+class InscripcionHotelPreferenciaView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk, hotel_id):
+        try:
+            inscripcion = Inscripcion.objects.select_related('viaje').get(pk=pk)
+        except Inscripcion.DoesNotExist:
+            raise NotFound('Inscripcion no encontrada.')
+        if request.user.rol == 'padre':
+            padre_tutor = _get_padre_tutor(request.user)
+            if inscripcion.padre_tutor != padre_tutor:
+                raise PermissionDenied()
+        elif request.user.rol not in ['agente']:
+            raise PermissionDenied()
+
+        from apps.viajes.models import Hotel
+        from .models import InscripcionHotelPreferencia
+
+        try:
+            hotel = inscripcion.viaje.hoteles.get(pk=hotel_id)
+        except Hotel.DoesNotExist:
+            raise NotFound('Hotel no encontrado para este viaje.')
+
+        campos_validos = ['tipo_habitacion', 'tipo_cama', 'planta', 'necesidades_especiales']
+        valores = {k: v for k, v in request.data.items() if k in campos_validos}
+
+        pref, created = InscripcionHotelPreferencia.objects.update_or_create(
+            inscripcion=inscripcion, hotel=hotel,
+            defaults={**valores, 'estado': 'pendiente'}
+        )
+
+        return Response({
+            'tipo_habitacion': pref.tipo_habitacion,
+            'tipo_cama': pref.tipo_cama,
+            'planta': pref.planta,
+            'necesidades_especiales': pref.necesidades_especiales,
+            'estado': pref.estado,
+        }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+
+class InscripcionRoommatesView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def _get_inscripcion_validada(self, request, pk):
+        try:
+            inscripcion = Inscripcion.objects.select_related('viaje', 'alumno').get(pk=pk)
+        except Inscripcion.DoesNotExist:
+            raise NotFound('Inscripcion no encontrada.')
+        if request.user.rol == 'padre':
+            padre_tutor = _get_padre_tutor(request.user)
+            if inscripcion.padre_tutor != padre_tutor:
+                raise PermissionDenied()
+        elif request.user.rol not in ['agente']:
+            raise PermissionDenied()
+        return inscripcion
+
+    def get(self, request, pk, hotel_id):
+        """Lista alumnos sugeridos (otros inscritos al mismo viaje, mismo hotel) para pedir como roommate."""
+        inscripcion = self._get_inscripcion_validada(request, pk)
+        from apps.viajes.models import Hotel
+        from .serializers import AlumnoResumenSerializer
+
+        try:
+            inscripcion.viaje.hoteles.get(pk=hotel_id)
+        except Hotel.DoesNotExist:
+            raise NotFound('Hotel no encontrado para este viaje.')
+
+        otras_inscripciones = inscripcion.viaje.inscripciones.exclude(
+            alumno=inscripcion.alumno
+        ).select_related('alumno')
+
+        alumnos = [i.alumno for i in otras_inscripciones]
+        return Response(AlumnoResumenSerializer(alumnos, many=True).data)
+
+    def post(self, request, pk, hotel_id):
+        """Solicita a un alumno como companero de habitacion."""
+        inscripcion = self._get_inscripcion_validada(request, pk)
+        from apps.viajes.models import Hotel
+        from .models import Alumno, InscripcionRoommateSolicitud
+        from .serializers import AlumnoResumenSerializer
+
+        try:
+            hotel = inscripcion.viaje.hoteles.get(pk=hotel_id)
+        except Hotel.DoesNotExist:
+            raise NotFound('Hotel no encontrado para este viaje.')
+
+        alumno_id = request.data.get('alumno_id')
+        if not alumno_id:
+            return Response({'alumno_id': ['Este campo es requerido.']}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            alumno_solicitado = Alumno.objects.get(pk=alumno_id)
+        except Alumno.DoesNotExist:
+            raise NotFound('Alumno no encontrado.')
+
+        if alumno_solicitado == inscripcion.alumno:
+            return Response({'alumno_id': ['No puedes solicitarte a ti mismo.']}, status=status.HTTP_400_BAD_REQUEST)
+
+        solicitud, created = InscripcionRoommateSolicitud.objects.get_or_create(
+            inscripcion=inscripcion, alumno_solicitado=alumno_solicitado, hotel=hotel,
+            defaults={'estado': 'pendiente'}
+        )
+
+        return Response({
+            'id': str(solicitud.id),
+            'alumno': AlumnoResumenSerializer(alumno_solicitado).data,
+            'estado': solicitud.estado,
+        }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
