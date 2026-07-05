@@ -39,8 +39,10 @@ export function middleware(request: NextRequest) {
   // 3. Evaluar permisos por área protegida
   const isBackoffice = pathname.startsWith('/backoffice');
   const isAlumnoApp = pathname.startsWith('/app/alumno');
-  // Todas las rutas bajo /app son para padres autenticados (excepto /app/alumno)
-  const isPadreApp = pathname.startsWith('/app') && !isAlumnoApp;
+  // /app/inscribir es público — el wizard maneja el auth al finalizar
+  const isPublicWizard = pathname.startsWith('/app/inscribir');
+  // Todas las rutas bajo /app son para padres autenticados (excepto /app/alumno y /app/inscribir)
+  const isPadreApp = pathname.startsWith('/app') && !isAlumnoApp && !isPublicWizard;
 
   // Si no intenta acceder a rutas protegidas, dejar pasar
   if (!isBackoffice && !isAlumnoApp && !isPadreApp) {

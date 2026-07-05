@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { cookies } from 'next/headers'
-import { InscribirForm } from './InscribirForm'
+import { InscribirForm } from '../../(padre)/app/inscribir/[viaje_id]/InscribirForm'
 
 async function getAlumnos(): Promise<any[]> {
   try {
@@ -19,7 +19,7 @@ async function getAlumnos(): Promise<any[]> {
   }
 }
 
-export default async function InscribirPage() {
+export default async function InscribirPublicPage() {
   const cookieStore = await cookies()
   const isAuthenticated = !!cookieStore.get('access_token')?.value
   const alumnos = isAuthenticated ? await getAlumnos() : []

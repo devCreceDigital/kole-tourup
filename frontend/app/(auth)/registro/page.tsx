@@ -75,7 +75,23 @@ function RegisterForm() {
       if (callbackUrl && callbackUrl.startsWith("/")) {
         router.push(callbackUrl);
       } else if (pendingViajeId && (role === "padre" || role === "mecenas")) {
-        // En caso de que estemos a mitad de una inscripción
+        const payloadStr = localStorage.getItem(`pending_inscription_payload_${pendingViajeId}`)
+        if (payloadStr) {
+          try {
+            await fetchApi('/api/v1/inscripciones/', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: payloadStr,
+            })
+            localStorage.removeItem(`pending_inscription_payload_${pendingViajeId}`)
+            localStorage.removeItem('pending_viaje_id')
+            router.push(`/app/inscribir/${pendingViajeId}?success=true`)
+            return
+          } catch (e) {
+            console.error('Failed to submit pending inscription', e)
+          }
+        }
+        localStorage.removeItem('pending_viaje_id')
         router.push(`/app/inscribir/${pendingViajeId}`);
       } else if (role === "agente") {
         router.push("/backoffice");

@@ -14,7 +14,7 @@ class AlumnoInputSerializer(serializers.Serializer):
     num_pasaporte = serializers.CharField(max_length=30, required=False, allow_blank=True)
     necesidades_especiales = serializers.CharField(required=False, allow_blank=True)
     nombre_tutor_legal = serializers.CharField(max_length=200, required=False, allow_blank=True)
-    telefono_emergencia = serializers.CharField(max_length=20)
+    telefono_emergencia = serializers.CharField(max_length=20, required=False, allow_blank=True, default='')
     genero = serializers.CharField(max_length=20, required=False, allow_blank=True)
     colegio = serializers.CharField(max_length=200, required=False, allow_blank=True)
     departamento = serializers.CharField(max_length=100, required=False, allow_blank=True)
