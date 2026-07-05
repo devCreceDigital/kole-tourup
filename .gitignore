@@ -53,3 +53,5 @@ desktop.ini
 coverage/
 .coverage
 htmlcov/
+cookies.txt
+cookies_agente.txt
