@@ -28,7 +28,7 @@ export function HijosRegistrados({ hijos }: HijosRegistradosProps) {
           Hijos Registrados
         </h2>
         <Link
-          href="/app/buscar-viaje"
+          href="/app/hijos/nuevo"
           className="text-xs font-semibold text-[#0077B6] hover:text-blue-800 flex items-center gap-1 transition-colors"
         >
           <span className="text-base leading-none">+</span> Nuevo

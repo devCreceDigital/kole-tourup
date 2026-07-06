@@ -8,7 +8,7 @@ const ALERGIAS_UI = [
   { label: 'Ninguna',      field: null },                       // manejo especial
   { label: 'Gluten',       field: 'alergeno_gluten' },
   { label: 'Lactosa',      field: 'alergeno_lacteos' },
-  { label: 'Frutos secos', field: 'alergeno_frutos de cascara' },
+  { label: 'Frutos secos', field: 'alergeno_frutos_cascara' },
   { label: 'Pescado',      field: 'alergeno_pescado' },
   { label: 'Marisco',      field: 'alergeno_crustaceos' },
 ]

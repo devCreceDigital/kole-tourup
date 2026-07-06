@@ -14,6 +14,9 @@ interface Hotel {
   web_url: string
   maps_url: string
   imagen: string | null
+  telefono?: string
+  latitud?: string | number | null
+  longitud?: string | number | null
 }
 
 interface Preferencia {
@@ -78,6 +81,7 @@ export default function HotelesPage() {
   const [sugeridos, setSugeridos] = useState<AlumnoSugerido[]>([])
   const [busqueda, setBusqueda] = useState('')
   const [roommateSeleccionado, setRoommateSeleccionado] = useState<string | null>(null)
+  const [mostrarRoommates, setMostrarRoommates] = useState(false)
   const [fotoIdxPorHotel, setFotoIdxPorHotel] = useState<Record<string, number>>({})
   const [guardando, setGuardando] = useState(false)
   const [mostrarModal, setMostrarModal] = useState(false)
@@ -281,9 +285,39 @@ export default function HotelesPage() {
           <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
             <h3 className="font-bold text-gray-900 text-sm mb-3">{hotelData.hotel.nombre}</h3>
             <p className="text-sm text-gray-500 mb-4">{hotelData.hotel.descripcion}</p>
+
+            {hotelData.hotel.telefono && (
+              <a
+                href={`tel:${hotelData.hotel.telefono}`}
+                className="flex items-center gap-2 text-sm text-gray-700 font-medium mb-3"
+              >
+                <svg className="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+                {hotelData.hotel.telefono}
+              </a>
+            )}
+
+            {hotelData.hotel.latitud && hotelData.hotel.longitud && (
+              <div className="rounded-lg overflow-hidden mb-3 border border-gray-100">
+                <iframe
+                  title={`Mapa ${hotelData.hotel.nombre}`}
+                  width="100%"
+                  height="180"
+                  style={{ border: 0 }}
+                  loading="lazy"
+                  src={`https://maps.google.com/maps?q=${hotelData.hotel.latitud},${hotelData.hotel.longitud}&z=15&output=embed`}
+                />
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-3 text-xs">
-              <a href={hotelData.hotel.web_url} target="_blank" className="text-primary font-semibold hover:underline">Web oficial</a>
-              <a href={hotelData.hotel.maps_url} target="_blank" className="text-primary font-semibold hover:underline">Ver en mapa</a>
+              {hotelData.hotel.web_url && (
+                <a href={hotelData.hotel.web_url} target="_blank" className="text-primary font-semibold hover:underline">Web oficial</a>
+              )}
+              {hotelData.hotel.maps_url && (
+                <a href={hotelData.hotel.maps_url} target="_blank" className="text-primary font-semibold hover:underline">Abrir en Google Maps</a>
+              )}
             </div>
           </div>
 
@@ -309,8 +343,22 @@ export default function HotelesPage() {
               </div>
             </div>
 
-            <div className="mb-4">
-              <p className="text-xs font-semibold text-gray-500 mb-2">2. Con quien quiere compartir habitacion</p>
+            <div className="mb-4 border border-gray-200 rounded-xl overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setMostrarRoommates(!mostrarRoommates)}
+                className="w-full flex items-center justify-between text-xs font-semibold text-gray-600 p-3.5 bg-gray-50 hover:bg-gray-100 transition-colors"
+              >
+                <span>2. Con quien quiere compartir habitacion</span>
+                <svg
+                  className={`w-3.5 h-3.5 transition-transform ${mostrarRoommates ? 'rotate-180' : ''}`}
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {mostrarRoommates && (
+              <div className="p-4 border-t border-gray-100">
               <input
                 type="text"
                 placeholder="Buscar por nombre del companero..."
@@ -355,6 +403,8 @@ export default function HotelesPage() {
                 >
                   Guardar companero
                 </button>
+              )}
+              </div>
               )}
             </div>
 

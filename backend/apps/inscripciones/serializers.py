@@ -151,9 +151,19 @@ class AlumnoResumenSerializer(serializers.ModelSerializer):
         fields = ['id', 'nombre', 'apellidos']
 
 
+class AlumnoDetalleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Alumno
+        fields = [
+            'id', 'nombre', 'apellidos', 'dni', 'fecha_nacimiento',
+            'genero', 'colegio', 'nombre_tutor_legal', 'telefono_emergencia',
+            'necesidades_especiales',
+        ]
+
+
 class InscripcionDetalleSerializer(serializers.ModelSerializer):
     viaje = ViajeResumenSerializer(read_only=True)
-    alumno = AlumnoResumenSerializer(read_only=True)
+    alumno = AlumnoDetalleSerializer(read_only=True)
     saldo_pendiente = serializers.ReadOnlyField()
     total_pagado = serializers.ReadOnlyField()
     porcentaje_pagado = serializers.ReadOnlyField()
@@ -179,18 +189,40 @@ class InscripcionDetalleSerializer(serializers.ModelSerializer):
         return usuario.nombre
 
     def get_pagos_resumen(self, obj):
+        from datetime import date
         plan = getattr(obj.viaje, 'plan_pago', None)
         total_cuotas = plan.total_cuotas if plan else 0
         cuotas_pagadas = obj.pagos.filter(estado='verificado').count()
         tiene_vencida = False
+        if plan:
+            hoy = date.today()
+            fecha_inscripcion = obj.fecha_inscripcion.date()
+            cuotas_pagadas_ids = set(
+                obj.pagos.filter(estado='verificado', cuota__isnull=False).values_list('cuota_id', flat=True)
+            )
+            for cuota in plan.cuotas.all():
+                if cuota.id in cuotas_pagadas_ids:
+                    continue
+                if cuota.fecha_vencimiento < hoy and cuota.fecha_vencimiento >= fecha_inscripcion:
+                    tiene_vencida = True
+                    break
         return {'total_cuotas': total_cuotas, 'cuotas_pagadas': cuotas_pagadas, 'tiene_cuota_vencida': tiene_vencida}
 
     def get_documentos_resumen(self, obj):
-        total_requeridos = obj.viaje.documentos_requeridos.count()
-        return {'total_requeridos': total_requeridos, 'total_validados': 0, 'tiene_rechazado': False}
+        from apps.documentos.models import DocumentoEntregado
+        requeridos = obj.viaje.documentos_requeridos.all()
+        total_requeridos = requeridos.count()
+        entregados = DocumentoEntregado.objects.filter(inscripcion=obj)
+        total_validados = entregados.filter(estado='validado').count()
+        tiene_rechazado = entregados.filter(estado='rechazado').exists()
+        return {
+            'total_requeridos': total_requeridos,
+            'total_validados': total_validados,
+            'tiene_rechazado': tiene_rechazado,
+        }
 
     def get_hotel_asignado(self, obj):
-        hotel = obj.viaje.hoteles.first()
+        hotel = obj.hotel_asignado
         if not hotel:
             return None
         return {'nombre': hotel.nombre, 'maps_url': hotel.maps_url}

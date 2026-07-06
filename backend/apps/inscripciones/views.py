@@ -10,8 +10,8 @@ from apps.viajes.models import PlanPago
 from datetime import date
 from apps.documentos.models import DocumentoEntregado
 from apps.autenticacion.models import PadreTutor
-from .models import Inscripcion
-from .serializers import InscripcionCreateSerializer, InscripcionDetalleSerializer
+from .models import Inscripcion, Alumno
+from .serializers import InscripcionCreateSerializer, InscripcionDetalleSerializer, AlumnoInputSerializer, AlumnoResumenSerializer
 
 
 def _get_padre_tutor(user):
@@ -112,6 +112,7 @@ class InscripcionPlanPagoView(generics.GenericAPIView):
         }
 
         hoy = date.today()
+        fecha_inscripcion = inscripcion.fecha_inscripcion.date()
         cuotas_data = []
         for cuota in plan_pago.cuotas.all().order_by('numero_cuota'):
             pago = pagos_de_inscripcion.get(cuota.id)
@@ -119,7 +120,10 @@ class InscripcionPlanPagoView(generics.GenericAPIView):
                 estado = 'pagado'
             elif pago and pago.estado == 'pendiente':
                 estado = 'en_revision'
-            elif cuota.fecha_vencimiento < hoy:
+            elif cuota.fecha_vencimiento < hoy and cuota.fecha_vencimiento >= fecha_inscripcion:
+                # Solo se marca vencido si el plazo ya existia como valido
+                # cuando el alumno se inscribio. Si la cuota ya habia vencido
+                # antes de la inscripcion, no es justo penalizar de entrada.
                 estado = 'vencido'
             else:
                 estado = 'pendiente'
@@ -436,4 +440,28 @@ class InscripcionRoommatesView(generics.GenericAPIView):
             'alumno': AlumnoResumenSerializer(alumno_solicitado).data,
             'estado': solicitud.estado,
         }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+
+class AlumnoCreateView(generics.GenericAPIView):
+    """
+    POST /api/v1/inscripciones/alumnos/
+
+    Permite a un padre/tutor registrar un alumno de forma independiente,
+    sin necesidad de inscribirlo a un viaje todavia. El alumno queda
+    vinculado al padre via la relacion tutores, y puede reutilizarse
+    despues en el wizard de inscripcion.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = AlumnoInputSerializer
+
+    def post(self, request):
+        padre_tutor = _get_padre_tutor(request.user)
+        serializer = AlumnoInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        alumno = Alumno.objects.create(**serializer.validated_data)
+        alumno.tutores.add(padre_tutor)
+        return Response(
+            AlumnoResumenSerializer(alumno).data,
+            status=status.HTTP_201_CREATED,
+        )
 

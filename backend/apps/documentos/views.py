@@ -1,4 +1,4 @@
-﻿from rest_framework import generics, status
+from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -71,3 +71,30 @@ class DocumentoValidarRechazarView(generics.GenericAPIView):
             ip=request.META.get('REMOTE_ADDR')
         )
         return Response(DocumentoEntregadoDetalleSerializer(doc).data)
+
+
+class DocumentoEntregadoDeleteView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        try:
+            doc = DocumentoEntregado.objects.select_related(
+                'inscripcion__padre_tutor__usuario'
+            ).get(pk=pk)
+        except DocumentoEntregado.DoesNotExist:
+            raise NotFound('Documento no encontrado.')
+
+        if request.user.rol == 'padre':
+            if doc.inscripcion.padre_tutor.usuario != request.user:
+                raise PermissionDenied()
+        elif request.user.rol not in ['agente']:
+            raise PermissionDenied()
+
+        if doc.estado != 'pendiente':
+            raise ValidationError(
+                {'estado': 'Solo se puede eliminar un documento que aun esta en revision.'}
+            )
+
+        doc.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
