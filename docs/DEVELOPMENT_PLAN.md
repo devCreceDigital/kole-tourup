@@ -1,7 +1,8 @@
 # DEVELOPMENT_PLAN.md — Plan de Desarrollo: Tottem Hub (Fase 1)
 
 > Generado tras análisis completo de los 11 documentos de especificación.
-> Estado: **Pendiente de aprobación**. No se ha escrito ninguna línea de código.
+> Estado: **En desarrollo activo** (~70% backend, ~50% frontend).
+> Última actualización: 2026-07-09 — Incorporados hallazgos de code review y análisis de CLAUDE_RULES.md.
 
 ---
 
@@ -637,7 +638,42 @@ Una tarea **solo se considera terminada** cuando cumple todos los criterios sigu
 
 ---
 
-## 11. Estrategia de Desarrollo
+## 11. Análisis de CLAUDE_RULES.md — Cumplimiento Post-Code-Review
+
+> Se analizó `CLAUDE_RULES.md` a la luz de los hallazgos del code review del 2026-07-09.
+
+### Reglas cumplidas correctamente
+
+| Regla | Hallazgo |
+|-------|----------|
+| **R-05** (no cambiar arquitectura) | ✅ Stack respetado: Node.js puro sin Express, Django DRF, TailwindCSS 4 con `@theme {}` |
+| **R-13** (seguridad) | ✅ JWT en cookies httpOnly, LogAuditoria inmutable, doble validación archivos |
+| **R-14** (notas_internas) | ✅ No expuestas en serializers de padre/alumno |
+| **R-07** (una tarea por sesión) | ✅ Respetado — commits atómicos por tarea |
+
+### Reglas con incumplimiento parcial
+
+| Regla | Incumplimiento |
+|-------|----------------|
+| **R-11** (auto-revisión obligatoria) | ⚠️ El code review encontró bugs que debieron ser detectados en auto-revisión: TD-009 (field name mismatch), TD-010 (fetchApi validation incorrecta), TD-011 (console.log en producción). La checklist no incluía checks específicos para `get_or_create` field names ni validación de `fetchApi`. |
+| **R-12** (verificar DoD) | ⚠️ El DoD no incluye verificación de nombres de campos modelo vs serializer. |
+
+### Mejoras necesarias en CLAUDE_RULES.md
+
+1. **§3 R-11 — Ampliar auto-revisión:** Añadir verificación explícita de que los nombres de campos en `get_or_create(defaults=...)` y `Serializer.Meta.fields` coinciden con el modelo.
+2. **§3 R-13 — Seguridad:** Añadir check: "¿La validación de respuesta de fetchApi usa `if (!res.ok)` en lugar de `if (!res)`?"
+3. **§6 Errores Críticos — Backend:** Añadir error #11: "Usar `nombre` en lugar de `nombres` en get_or_create — el modelo Alumno expone `nombres`, no `nombre`."
+4. **§6 Errores Críticos — Frontend:** Añadir error #18: "Validar respuesta de fetchApi con `if (!res)` — usar `if (!res.ok)` y capturar ApiError."
+5. **§6 Errores Críticos — Frontend:** Añadir error #19: "Dejar console.log en producción."
+
+### Acciones requeridas
+
+- [ ] Actualizar `CLAUDE_RULES.md` con los nuevos errores críticos y checks de auto-revisión.
+- [ ] Actualizar `CODE_REVIEW_CHECKLIST.md` con los nuevos checks (ya se hizo en v2026-07-09).
+
+---
+
+## 12. Estrategia de Desarrollo
 
 Estas reglas son **obligatorias** para todo el proceso de desarrollo del proyecto.
 

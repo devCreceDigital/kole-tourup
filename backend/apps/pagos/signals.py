@@ -12,6 +12,7 @@ def pago_post_save(sender, instance, created, **kwargs):
     if not created:
         return
     LogAuditoria.objects.create(
+        usuario=instance.registrado_por,
         accion='PAGO_REGISTRADO',
         modelo='Pago',
         objeto_id=instance.id,

@@ -1,0 +1,106 @@
+# UI_UX.md-final — Contratos de Interfaz y Diseño UX (Estado Real)
+
+> Este documento describe las pantallas, estados visuales, componentes y reglas de interacción del sistema.
+> Última actualización: 2026-07-09
+
+---
+
+## Principios de Diseño — Sin cambios
+
+---
+
+## Portales y URLs Base — Sin cambios
+
+---
+
+## Pantalla 1 — Landing Pública del Viaje
+**URL:** `/viajes/{slug}/`  
+**Estado:** 🟡 Parcial — requiere integrar datos dinámicos desde API
+
+---
+
+## Pantalla 2 — Wizard de Inscripción
+**URL:** `/app/inscribir/{viaje_id}/`  
+**Estado:** 🟡 Parcial — implementado con `InscribirForm.tsx`, `Step3.tsx`
+
+### Nota sobre alergias
+Los 14 alérgenos EU están implementados como checkboxes en `Step3.tsx`:
+`Gluten, Crustáceos, Huevos, Pescado, Cacahuetes, Soja, Lácteos, Frutos cáscara, Apio, Mostaza, Sésamo, Sulfitos, Altramuces, Moluscos`
+
+Las claves del `ALLERGEN_MAP` se cambiaron de strings con espacios (ej. `'frutos de cascara'`) a camelCase sin espacios (`frutos_cascara`). Verificar consistencia con el backend.
+
+---
+
+## Pantalla 3 — Búsqueda de Viaje
+**URL:** `/app/buscar-viaje/`  
+**Estado:** ⏳ Pending
+
+---
+
+## Pantalla 4 — Dashboard del Padre
+**URL:** `/app/`  
+**Estado:** 🟡 Parcial — componente `ViajeCard` implementado, faltan alertas con deep-link
+
+---
+
+## Pantalla 5 — Gestión de Pagos
+**URL:** `/app/pagos/{inscripcion_id}/` → Ahora Client Component: `app/inscripciones/[id]/pagos/page.tsx`
+**Estado:** 🟡 Parcial — `PagarSection` + `FormularioPago` implementados
+
+### Nota sobre estado de implementación
+La página de pagos migró de Server Component a Client Component para resolver problemas de hidratación. Usa `fetchApi` con `credentials: 'include'` para autenticación. El componente `PagarSection` envuelve la tabla de cuotas y el formulario de pago.
+
+---
+
+## Pantalla 6 — Gestión de Documentos
+**URL:** `/app/documentos/{inscripcion_id}/`  
+**Estado:** 🟡 Parcial — `ItemDocumento` implementado, falta el listado completo
+
+---
+
+## Pantalla 7 — Centro de Notificaciones
+**URL:** `/app/notificaciones/`  
+**Estado:** 🟡 Parcial — implementado con `fetchApi`, pendiente deep-links y tipos de notificación
+
+---
+
+## Pantalla 8 — Chat In-App
+**URL:** `/app/mensajes/{viaje_id}/`  
+**Estado:** ⏳ Pending (bloqueado por D-01: modelo Conversacion/Mensaje)
+
+---
+
+## Pantalla 9 — Backoffice: Listado de Inscritos
+**URL:** `/backoffice/viajes/{viaje_id}/inscritos/`  
+**Estado:** ⏳ Pending
+
+---
+
+## Pantalla 10 — Backoffice: Validación de Documentos
+**URL:** `/backoffice/viajes/{viaje_id}/documentos/`  
+**Estado:** ⏳ Pending
+
+---
+
+## Pantalla 11 — Constructor de Itinerario
+**URL:** `/backoffice/viajes/{viaje_id}/itinerario/`  
+**Estado:** ⏳ Pending
+
+---
+
+## Componentes Transversales
+| Componente | Estado |
+|-----------|--------|
+| Badge de estado | ✅ Implementado |
+| Barra de progreso | ✅ Implementado |
+| Card de viaje | 🟡 Parcial |
+| File uploader | ✅ Implementado |
+| Alertas con deep-link | ⏳ Pending |
+| ErrorBoundary | ✅ Implementado (nuevo) |
+| NavbarPublico / FooterPublico | ✅ Implementado |
+
+---
+
+## Preferencias de Notificación
+**URL:** `/app/configuracion/notificaciones/`  
+**Estado:** ✅ Implementado — formulario con canal preferido, fetchApi integrado

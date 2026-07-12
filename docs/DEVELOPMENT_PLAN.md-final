@@ -1,0 +1,123 @@
+# DEVELOPMENT_PLAN.md-final — Plan de Desarrollo: Tottem Hub (Fase 1) — Estado Real
+
+> Generado tras análisis completo de los 11 documentos de especificación.
+> Estado: **En desarrollo activo** — ~70% backend, ~50% frontend.
+> Última actualización: 2026-07-09 — Incorporados hallazgos de code review y TD-009 a TD-015.
+
+---
+
+## 1. Arquitectura Entendida — Sin cambios estructurales. Ver `ARCHITECTURE.md-final`.
+
+---
+
+## 2. Módulos del Sistema — Sin cambios estructurales. Ver `MASTER_PLAN.md-final`.
+
+---
+
+## 3. Orden Recomendado de Implementación — Actualizado con estado real
+
+### FASE A — Cimientos ✅ Completada
+A1–A7: ✅ Todo completado (Infra, Django, Auth, Gateway, Next.js)
+
+### FASE B — Dominio Core Backend ✅ Completada
+B1–B16: ✅ Todo completado (Viajes, Inscripciones, Pagos, Documentos, LogAuditoria)
+
+### FASE C — Frontend Core 🟡 En progreso (~50%)
+| # | Tarea | Estado |
+|---|-------|--------|
+| C1 | Landing pública `/viajes/{slug}/` | 🟡 Parcial |
+| C2 | Búsqueda de viaje | ⏳ Pendiente |
+| C3 | Wizard inscripción 3 pasos | 🟡 Parcial (ver TD-009) |
+| C4 | Dashboard padre | 🟡 Parcial |
+| C5 | Pantalla pagos | 🟡 Parcial (ver TD-010, TD-011) |
+| C6 | Pantalla documentos | 🟡 Parcial |
+| C7 | Centro notificaciones | 🟡 Parcial |
+| C8 | Portal alumno | 🟡 Parcial |
+| C9 | Portal mecenas | ⏳ Pendiente |
+
+### FASE D — Backoffice Agente ⏳ Pendiente (~10%)
+D1–D11: Mayormente pendiente. APIs backend listas. Frontend sin implementar.
+
+### FASE E — Automatización Celery ⏳ Pendiente (~20%)
+E1: ✅ Notificacion model + API
+E2–E5, E8: ⏳ Pendiente
+E6–E7: ✅ Comunicados + task
+
+### FASE F — Características Avanzadas ⏳ Pendiente (~10%)
+F1–F11: Mayormente pendiente. F9 (Preferencias notificación) ✅ Done.
+
+---
+
+## 4. Dependencias entre Módulos — Sin cambios
+
+---
+
+## 5. Riesgos Técnicos — Actualizados
+
+| # | Riesgo | Prob. | Impacto | Estado |
+|---|--------|-------|---------|--------|
+| R1 | Gateway Node.js sin framework | Alta | Alta | Mitigado con 76 tests |
+| R2 | Drag & drop itinerario | Media | Media | Pendiente |
+| R3 | Celery idempotencia | Media | Alta | Pendiente |
+| R4 | File upload pipeline | Alta | Alta | ✅ Validado Gateway + Backend |
+| R5 | Notificaciones tiempo real | Alta | Media | Pendiente polling |
+| R6 | Chat sin modelo definido | Alta | Alta | Resuelto D-01 (por Inscripcion) |
+| R7 | TailwindCSS 4 | Media | Baja | ✅ Mitigado |
+| R8 | PDF generation | Media | Media | Pendiente |
+| R9 | Búsqueda typeahead colegios | Alta | Media | Pendiente |
+| R10 | React 19 + Server Components | Media | Media | ✅ Mitigado |
+| **R11** | **Inconsistencia campos modelo/serializer** | **Alta** | **Alta** | **NUEVO — TD-009** |
+| **R12** | **fetchApi validación incorrecta** | **Alta** | **Alta** | **NUEVO — TD-010** |
+
+---
+
+## 6. Dudas e Inconsistencias Detectadas — Actualizado con nuevas
+
+### D-01 a D-15 — Resueltas en su mayoría
+Ver `DEVELOPMENT_PLAN.md` original o `MASTER_PLAN.md-final` para el estado actualizado de cada duda.
+
+### Nueva: D-16 — Modelo `Alumno` duplicado (inscripciones vs viajes)
+
+**Problema:** Existen dos modelos `Alumno`: en `apps.viajes` y `apps.inscripciones`. El campo `nombre` en el serializer de inscripciones no coincide con `nombres` en el modelo de viajes. Esto causa errores en `get_or_create` y en serializers.
+
+**Pregunta:** ¿Consolidar en un solo modelo o mantener ambos con referencias explícitas?
+
+---
+
+## 7. Lista Completa de Tareas (Checklist) — Actualizado
+Ver `TASKS.md` y `tareas.md` para el detalle granular actualizado.
+
+---
+
+## 8. Estimación de Complejidad por Módulo — Sin cambios
+
+---
+
+## 9. Resumen de Dudas Críticas — Actualizado
+
+| Duda | Impacto | Estado |
+|------|---------|--------|
+| D-01: Modelo Chat | CRÍTICO | ✅ Resuelto: por Inscripcion |
+| D-02: Slug/Código viaje | CRÍTICO | ✅ Resuelto en implementación |
+| D-03: Colegios | ALTO | ✅ Resuelto: agente los crea |
+| D-04/D-05: Campos Alumno | ALTO | ✅ Implementados |
+| D-06: Alergias | MEDIO | ✅ 14 BooleanFields |
+| D-07: Hotel asignación | MEDIO | ✅ `Inscripcion.hotel_asignado` |
+| D-08: Preferencias | MEDIO | ✅ Implementado |
+| D-16: Alumno duplicado | ALTO | ⏳ Pendiente de resolución (TD-009) |
+
+---
+
+## 10. Definition of Done (DoD) — Sin cambios
+
+---
+
+## 11. Estrategia de Desarrollo
+
+### Reglas adicionales (post-code-review)
+
+| # | Regla | Detalle |
+|---|-------|---------|
+| ED-08 | **Verificar field names** | Antes de usar `get_or_create(defaults=...)` o definir `Serializer.Meta.fields`, verificar que el nombre del campo coincida exactamente con el del modelo destino. |
+| ED-09 | **Validar fetchApi usage** | Siempre verificar con `if (!res.ok)` y capturar `ApiError`. No usar `if (!res)`. |
+| ED-10 | **Sin console.log en producción** | Eliminar logs de depuración antes del commit o envolver con `process.env.NODE_ENV === 'development'`. |

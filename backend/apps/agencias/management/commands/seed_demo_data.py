@@ -17,7 +17,9 @@ class Command(BaseCommand):
         
         with transaction.atomic():
             # Limpiar datos para que sea idempotente
-            Inscripcion.objects.all().delete()
+            from apps.pagos.models import Pago
+            Pago.objects.filter(inscripcion__viaje__agencia__slug='agencia-tottem-demo').delete()
+            Inscripcion.objects.filter(viaje__agencia__slug='agencia-tottem-demo').delete()
             Viaje.objects.filter(agencia__slug='agencia-tottem-demo').delete()
             Agencia.objects.filter(slug='agencia-tottem-demo').delete()
             Usuario.objects.filter(email='agente@tottem.com').delete()

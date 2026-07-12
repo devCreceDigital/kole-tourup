@@ -93,13 +93,7 @@ class PlanPago(models.Model):
 
     @property
     def tiene_pagos_verificados(self):
-        """
-        Verifica si el plan de pagos posee pagos con estado 'verificado'.
-        Actualmente retorna False hasta que se implemente la app Pagos.
-        """
-        # TODO: Implementar validación real cuando exista la app Pagos (TASK-036)  # noqa: E501
-        # return self.cuotas.filter(pagos__estado='verificado').exists()
-        return False
+        return self.cuotas.filter(pagos__estado='verificado').exists()
 
 
 class Cuota(models.Model):
@@ -343,6 +337,34 @@ def generar_slug_viaje(sender, instance, **kwargs):
         slug = base
         n = 1
         while Viaje.objects.filter(slug=slug).exclude(pk=instance.pk).exists():
+            slug = f"{base}-{n}"
+            n += 1
+        instance.slug = slug
+    if not instance.codigo:
+        instance.codigo = str(instance.id)[:8].upper()
+
+
+@receiver(pre_save, sender=Hotel)
+def generar_slug_codigo_hotel(sender, instance, **kwargs):
+    if not instance.slug:
+        base = slugify(instance.nombre)[:80]
+        slug = base
+        n = 1
+        while Hotel.objects.filter(slug=slug).exclude(pk=instance.pk).exists():
+            slug = f"{base}-{n}"
+            n += 1
+        instance.slug = slug
+    if not instance.codigo:
+        instance.codigo = str(instance.id)[:8].upper()
+
+
+@receiver(pre_save, sender=EtapaItinerario)
+def generar_slug_codigo_etapa(sender, instance, **kwargs):
+    if not instance.slug:
+        base = slugify(instance.titulo)[:80]
+        slug = base
+        n = 1
+        while EtapaItinerario.objects.filter(slug=slug).exclude(pk=instance.pk).exists():
             slug = f"{base}-{n}"
             n += 1
         instance.slug = slug

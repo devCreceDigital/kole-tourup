@@ -1,0 +1,89 @@
+# AI_CONTEXT.md-final — Contexto para Agentes IA (Estado Real)
+
+> Lee este archivo completo antes de escribir cualquier línea de código. Contiene las decisiones ya tomadas, los invariantes del dominio, los errores críticos a evitar y los contratos entre capas.
+
+---
+
+## Identidad del Proyecto
+
+| Campo | Valor |
+|-------|-------|
+| Nombre | Tottem Hub |
+| Cliente | Totem Travel — agencia de viajes escolares, Perú |
+| Propósito | Digitalizar el ciclo de vida completo de viajes grupales escolares |
+| Fase actual | Fase 1 — MVP mono-agencia (~70% backend, ~50% frontend) |
+| KPI #1 | −70% tiempo validación de pagos y documentos |
+| KPI #2 | −40% morosidad en cuotas (recordatorios automáticos) |
+
+---
+
+## Stack — No Cambiar, No Sustituir
+
+| Capa | Tecnología | Versión | Restricción |
+|------|-----------|---------|-------------|
+| Frontend | Next.js | **16.2.6** | App Router — sin Pages Router |
+| Frontend | React | **19** | Server Components por defecto |
+| Frontend | TailwindCSS | **4** | `@theme {}` en CSS — sin `tailwind.config.js` |
+| Frontend | Framer Motion | latest | Solo UI — sin lógica de negocio |
+| Gateway | Node.js puro | LTS | `node:http` — **sin Express, Fastify, Koa, Hapi** |
+| Backend | Django + DRF | **4.2+** | ORM + Signals + Permisos por rol |
+| BD | PostgreSQL | — | UUID PKs, constraints de BD, índices explícitos |
+| Cache/Broker | Redis | — | Allowlist JWT + broker Celery |
+| Tareas | Celery | — | Idempotentes — reintentables sin duplicados |
+| Storage | S3 / GCS | configurable | `FileField` con backend intercambiable |
+| Auth | JWT | — | access 15 min · refresh 7 días · cookies `httpOnly` |
+
+---
+
+## Invariantes — Nunca Violar
+
+| # | Invariante | Estado Real |
+|---|-----------|-------------|
+| 1 | `(alumno_id, viaje_id)` es **UNIQUE** en `Inscripcion` | ✅ Implementado |
+| 2 | `fecha_regreso > fecha_salida` — constraint de BD | ✅ Implementado |
+| 3 | `saldo_pendiente` — propiedad Python, **nunca columna** | ✅ Implementado |
+| 4 | Solo pagos con `estado='verificado'` cuentan para el saldo | ✅ Implementado |
+| 5 | Un viaje nuevo siempre nace en `estado='borrador'` | ✅ Implementado |
+| 6 | `LogAuditoria` es inmutable — **nunca UPDATE ni DELETE** | ✅ Implementado |
+| 7 | Archivos máx. 10 MB — validado en gateway **y** en backend | ✅ Implementado |
+| 8 | Login bloqueado si `email_verificado=False` | ✅ Implementado |
+| 9 | `notas_internas` de `Inscripcion` **nunca** en serializers del padre/alumno | ✅ Implementado |
+| 10 | `importe` de Pago y Cuota debe ser **> 0** — constraint de BD | ✅ Implementado |
+| 11 | Al crear un Viaje → se crea automáticamente un Itinerario vacío | ✅ Implementado |
+| 12 | JWT en cookies `httpOnly` en el frontend — **nunca en localStorage** | ✅ Implementado |
+| 13 | Toda consulta del agente **debe filtrar por `agencia_id`** | ✅ Implementado |
+| 14 | Las tareas Celery deben ser **idempotentes** | ⏳ Implementación parcial |
+
+---
+
+## Errores Críticos a Evitar
+
+### Backend (Django)
+1. Calcular `saldo_pendiente` como columna de BD — es propiedad Python
+2. Exponer `notas_internas` en serializers del padre o alumno
+3. Permitir login con `email_verificado=False`
+4. Contar pagos `pendiente` o `rechazado` al calcular saldo
+5. Olvidar filtrar por `agencia_id` en endpoints del agente
+6. Validar tamaño de archivo solo en Django — debe validarse también en el gateway
+7. No crear itinerario vacío al crear un viaje
+8. Reutilizar refresh_token invalidado (no está en Redis allowlist)
+9. Reordenar actividades con PATCH individual — usar `/actividades/reordenar/`
+10. No registrar en `LogAuditoria` — usar signal, no el endpoint directamente
+11. **Usar `nombre` en lugar de `nombres` en `get_or_create`** — el modelo tiene `nombres`
+
+### Frontend (Next.js)
+12. Guardar JWT en `localStorage`
+13. Añadir `'use client'` a componentes que solo muestran datos
+14. Usar `useEffect` para fetching — preferir Server Components
+15. Definir design tokens en `tailwind.config.js`
+16. Importar `motion` completo de Framer Motion
+17. Mezclar layouts de portal
+18. Mostrar alertas sin deep-link
+19. **Validar respuesta de `fetchApi` con `if (!res)` sin capturar `ApiError`**
+20. **Dejar `console.log` en producción**
+21. **Usar nombre de campo incorrecto en serializers**
+
+### Gateway (Node.js puro)
+22. Instalar Express, Fastify u otro framework
+23. Poner lógica de negocio en el gateway
+24. No validar tamaño de archivo antes de enviar al backend

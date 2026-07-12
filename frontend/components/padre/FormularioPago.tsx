@@ -1,6 +1,7 @@
 ﻿'use client'
 import { useState } from 'react'
 import { FileUploader } from '@/components/forms/FileUploader'
+import { fetchApi } from '@/lib/api'
 
 interface Cuota {
   id: string
@@ -12,11 +13,12 @@ interface Cuota {
 interface FormularioPagoProps {
   inscripcionId: string
   cuotas: Cuota[]
+  cuotaIdInicial?: string
   onExito: () => void
 }
 
-export function FormularioPago({ inscripcionId, cuotas, onExito }: FormularioPagoProps) {
-  const [cuotaId, setCuotaId] = useState('')
+export function FormularioPago({ inscripcionId, cuotas, cuotaIdInicial, onExito }: FormularioPagoProps) {
+  const [cuotaId, setCuotaId] = useState(cuotaIdInicial ?? '')
   const [importe, setImporte] = useState('')
   const [fechaPago, setFechaPago] = useState('')
   const [metodoPago, setMetodoPago] = useState('')
@@ -40,8 +42,7 @@ export function FormularioPago({ inscripcionId, cuotas, onExito }: FormularioPag
       formData.append('metodo_pago', metodoPago)
       if (cuotaId) formData.append('cuota', cuotaId)
       if (comprobante) formData.append('comprobante', comprobante)
-      const res = await fetch('/api/v1/pagos/', { method: 'POST', body: formData })
-      if (!res.ok) throw new Error('Error al registrar pago')
+      await fetchApi('/api/v1/pagos/', { method: 'POST', body: formData })
       setExito(true)
       onExito()
     } catch {

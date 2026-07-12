@@ -273,6 +273,9 @@ Antes de implementar cualquier endpoint verificar:
 15. Importar `motion` completo de Framer Motion — usar `LazyMotion` + `domAnimation`
 16. Mezclar layouts de portal — cada portal tiene su propio layout group y middleware
 17. Mostrar alertas sin deep-link — siempre con CTA que lleve a la pantalla de acción
+18. Validar respuesta de `fetchApi` con `if (!res)` — usar `if (!res.ok)` o capturar `ApiError` explícitamente
+19. Dejar `console.log` en producción — eliminar o envolver con `process.env.NODE_ENV === 'development'`
+20. Usar nombre de campo incorrecto en `get_or_create` — verificar que el nombre del campo coincida exactamente con el modelo
 
 ### Gateway (Node.js puro)
 18. Instalar Express, Fastify u otro framework — usar solo `node:http`/`node:https`

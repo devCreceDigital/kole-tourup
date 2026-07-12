@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { cookies } from 'next/headers'
-import { InscribirForm } from '../../(padre)/app/inscribir/[viaje_id]/InscribirForm'
+import { InscribirForm } from '@/app/(padre)/app/inscribir/[viaje_id]/InscribirForm'
 
 async function getAlumnos(): Promise<any[]> {
   try {

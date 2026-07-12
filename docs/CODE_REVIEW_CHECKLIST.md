@@ -86,6 +86,20 @@
 
 ---
 
+## 6.1 Model Field Consistency
+
+- [ ] ¿Los nombres de campos usados en `get_or_create(defaults=...)` coinciden exactamente con los nombres de campos del modelo?
+- [ ] ¿Los `Serializer.Meta.fields` referencian nombres de campos que existen en el modelo?
+- [ ] ¿Los campos de alergias (o listas similares) no están duplicados 3+ veces en el mismo archivo?
+
+## 6.2 API Client (Frontend)
+
+- [ ] ¿Las llamadas a `fetchApi` verifican correctamente la respuesta? (`if (!res.ok)` en lugar de `if (!res)`)
+- [ ] ¿Los errores HTTP (ApiError) se capturan y manejan explícitamente?
+- [ ] ¿No hay `console.log` en componentes de producción?
+
+---
+
 ## 7. Lint y Tipado
 
 ### Frontend (TypeScript + ESLint)

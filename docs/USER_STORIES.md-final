@@ -1,0 +1,69 @@
+# USER_STORIES.md-final — Historias de Usuario (Estado Real)
+
+> Formato: `Como [actor], quiero [acción] para [beneficio].`
+> Criterios de aceptación incluidos en las historias críticas.
+> Última actualización: 2026-07-09
+
+---
+
+## Módulo: Autenticación
+
+### US-AUTH-01 — Registro de cuenta ✅ Done
+### US-AUTH-02 — Login ✅ Done
+### US-AUTH-03 — Recuperación de contraseña ✅ Done
+
+---
+
+## Módulo: Viajes (Agente)
+
+### US-V-01 — Crear viaje ✅ Done
+### US-V-02 — Configurar plan de pagos ✅ Done
+### US-V-03 — Construir itinerario ✅ Done
+### US-V-04 — Activar viaje ✅ Done
+### US-V-05 — Panel de métricas ⏳ Pending
+
+---
+
+## Módulo: Inscripción (Padre)
+
+### US-INS-01 — Descubrir el viaje 🟡 Parcial (landing pública con datos dinámicos pendiente)
+### US-INS-02 — Wizard de inscripción 🟡 Parcial
+**Nota:** El campo `nombre` del alumno en el serializer difiere del modelo (`nombres`). Ver TD-009.
+### US-INS-03 — Buscar el viaje correcto ⏳ Pending
+### US-INS-04 — Dashboard de inscripción 🟡 Parcial
+
+---
+
+## Módulo: Pagos
+
+### US-PAG-01 — Registrar pago 🟡 Parcial
+### US-PAG-02 — Ver plan de pagos 🟡 Parcial
+### US-PAG-03 — Verificar pago (Agente) ✅ Done
+### US-PAG-04 — Recordatorios automáticos ⏳ Pending
+
+---
+
+## Módulo: Documentación
+
+### US-DOC-01 — Ver checklist de documentos ⏳ Pending
+### US-DOC-02 — Subir documento 🟡 Parcial
+### US-DOC-03 — Validar documento (Agente) ✅ Done
+
+---
+
+## Módulo: Comunicación
+
+### US-COM-01 — Enviar comunicado masivo (Agente) ✅ Done
+### US-COM-02 — Chat in-app ⏳ Pending
+
+---
+
+## Módulo: Mecenas — Todos ⏳ Pending
+
+---
+
+## Módulo: Backoffice (Agente)
+
+### US-BO-01 — Listado de inscritos ⏳ Pending
+### US-BO-02 — Exportaciones ⏳ Pending
+### US-BO-03 — Notas internas ⏳ Pending

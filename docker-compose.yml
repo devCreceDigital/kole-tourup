@@ -121,7 +121,7 @@ services:
       PORT: "3001"
       BACKEND_URL: http://backend:8000
       REDIS_URL: redis://redis:6379
-      CORS_ORIGINS: http://localhost:3000,http://localhost:3002,http://localhost:3001
+      CORS_ORIGINS: http://localhost:3000,http://localhost:3002,http://localhost:3001,${EXTERNAL_ORIGIN:-http://localhost:3000}
       RATE_LIMIT_WINDOW_MS: "60000"
       RATE_LIMIT_MAX: "100"
       MAX_FILE_SIZE_BYTES: "10485760"
@@ -146,15 +146,15 @@ services:
       - /app/node_modules
       - /app/.next
     environment:
-      NEXT_PUBLIC_GATEWAY_URL: http://localhost:3001
+      NEXT_PUBLIC_GATEWAY_URL: ${NEXT_PUBLIC_GATEWAY_URL:-http://localhost:3001}
       NEXT_PUBLIC_GATEWAY_INTERNAL_URL: http://gateway:3001
       NODE_OPTIONS: --max-old-space-size=4096
+      NEXT_PUBLIC_API_MOCKING: "disabled"
     ports:
       - "3000:3000"
     depends_on:
       - gateway
-    # TASK-018: npm run dev
-    command: npm run dev
+    command: sh -c "npm run build && npm start"
 
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # VOLUMES

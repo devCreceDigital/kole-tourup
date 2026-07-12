@@ -1,6 +1,6 @@
 # TECH_DEBT.md — Registro de Deuda Técnica
 
-> Última actualización: 2026-06-28 (TASK-015)
+> Última actualización: 2026-07-12 (Code Review & Fix)
 
 > Solo registra deuda. No resuelve. Cada entrada requiere aprobación antes de ser trabajada.
 >
@@ -41,7 +41,7 @@ Crear `backend/apps/autenticacion/tests/` con:
 ## TD-002 — JWTAuthentication no lee cookies (requiere Gateway para funcionar en producción)
 
 **ID:** TD-002  
-**Estado:** Parcialmente resuelta (TASK-015 implementó Gateway cookie→header)  
+**Estado:** Parcialmente Resuelta  
 **Prioridad:** Media  
 **Detectado en:** TASK-012 (2026-06-28)  
 **Actualizado en:** TASK-015 (2026-06-28)
@@ -203,3 +203,139 @@ La relación M2M entre Alumno y Grupo se introdujo anticipadamente. Aunque es fu
 
 **Tarea sugerida:**
 Añadir prefetch_related('grupos') cuando los grupos se empiecen a serializar y revisar la estructura M2M en TASK-033.
+
+---
+
+### TD-009: `InscripcionCreateSerializer` usa `nombre` en lugar de `nombres` (model field mismatch)
+
+**ID:** TD-009  
+**Estado:** Resuelta — Falso positivo  
+**Prioridad:** Alta (original) → N/A  
+**Detectado en:** Code Review (2026-07-09)  
+**Actualizado en:** 2026-07-12 (Code Review)
+
+**Descripción:**
+El `InscripcionCreateSerializer` importa `Alumno` desde `apps.inscripciones.models`, donde el campo se llama `nombre` (singular). El reporte original asumió erróneamente que importaba desde `apps.viajes.models`, donde el campo se llama `nombres` (plural). El código es correcto y funcional.
+
+**Resolución:**
+Se determinó que es un falso positivo. El serializer usa el modelo correcto (`inscripciones.Alumno`) que tiene el campo `nombre`.
+
+---
+
+### TD-010: `fetchApi` response handling inconsistente con `FormularioPago`
+
+**ID:** TD-010  
+**Estado:** Resuelta  
+**Prioridad:** Alta (original) → N/A  
+**Detectado en:** Code Review (2026-07-09)  
+**Actualizado en:** 2026-07-12 (Code Review)
+
+**Descripción:**
+El `FormularioPago.tsx` tenía un `const res = await fetchApi(...)` seguido de `if (!res) throw`, que era código muerto mal implementado. `fetchApi` ya lanza `ApiError` en respuestas no-OK, por lo que el `if (!res)` nunca se ejecutaba en errores reales y solo causaba falsos negativos en respuestas 204 exitosas.
+
+**Resolución:**
+Se eliminó la variable `res` y la comprobación `if (!res)`, dejando solo `await fetchApi(...)` envuelto en el `try/catch` existente que captura `ApiError` correctamente.
+
+---
+
+### TD-011: `console.log` de depuración en producción (`PagarSection`)
+
+**ID:** TD-011  
+**Estado:** Resuelta  
+**Prioridad:** Baja (original) → N/A  
+**Detectado en:** Code Review (2026-07-09)  
+**Actualizado en:** 2026-07-12 (Code Review)
+
+**Descripción:**
+El componente `frontend/components/padre/PagarSection.tsx` tenía tres llamadas `console.log` utilizadas para depuración durante el desarrollo del fix de hidratación.
+
+**Resolución:**
+Se eliminaron las tres llamadas `console.log` del componente. El archivo actual no contiene ninguna sentencia `console.log`.
+
+---
+
+### TD-012: Repetición masiva de campos de alergias (14 campos × múltiples lugares)
+
+**ID:** TD-012  
+**Estado:** Parcialmente Resuelta  
+**Prioridad:** Media  
+**Detectado en:** Code Review (2026-07-09)  
+**Actualizado en:** 2026-07-12 (Code Review)
+
+**Descripción:**
+Los 14 campos booleanos de alergias (`alergeno_gluten`, `alergeno_crustaceos`, etc.) se repiten en múltiples lugares del código.
+
+**Progreso:**
+- ✅ Constante `CAMPOS_ALERGENOS` creada en `serializers.py`
+- ✅ `defaults_dict` refactorizado a bucle sobre `CAMPOS_ALERGENOS`
+- ✅ `inscripcion_kwargs` refactorizado a bucle sobre `CAMPOS_ALERGENOS`
+- ✅ `AlumnoInputSerializer`: campos generados dinámicamente vía `__init__`
+- ✅ `get_alergias()`: refactorizado a list comprehension sobre `ETIQUETAS_ALERGENOS`
+- ✅ `MisAlumnosView` en `views.py`: refactorizado a bucle sobre `CAMPOS_ALERGENOS`
+- ⏳ `Alumno` model: los 14 campos `BooleanField` en `models.py` (requeriría migración)
+- ⏳ `Inscripcion` model: los 14 campos `BooleanField` en `models.py` (requeriría migración)
+
+**Impacto:**
+- Medio: el riesgo de error humano al añadir/quitar alérgenos se redujo en las secciones refactorizadas, pero persiste en models, serializer fields y get_alergias.
+
+**Prioridad:** Media — no afecta funcionalidad actual pero es fuente de bugs futuros.
+
+**Tarea sugerida:**
+- Refactorizar `AlumnoInputSerializer` para generar los campos dinámicamente
+- Refactorizar `get_alergias()` para iterar sobre `CAMPOS_ALERGENOS`
+- Considerar migrar los campos de alergias a un modelo relacionado (tabla separada) para eliminar completamente la duplicación a nivel de BD
+
+---
+
+### TD-013: `NavBackoffice` perdió elementos de navegación
+
+**ID:** TD-013  
+**Estado:** Resuelta  
+**Prioridad:** Alta (original) → N/A  
+**Detectado en:** Code Review (2026-07-09)  
+**Actualizado en:** 2026-07-12 (Code Review)
+
+**Descripción:**
+El array `NAV_ITEMS` en `NavBackoffice.tsx` fue reducido a solo 2 entradas durante una refactorización, eliminando secciones enteras del backoffice.
+
+**Resolución:**
+Se restauraron los 8 ítems de navegación: Dashboard, Viajes, Inscripciones, Pagos, Documentos, Comunicados, Chat, Notificaciones. Nota: algunas rutas destino pueden no tener página implementada aún (ver PENDING.txt).
+
+---
+
+### TD-014: IP hardcodeada en `docker-compose.yml`
+
+**ID:** TD-014  
+**Estado:** Resuelta  
+**Prioridad:** Alta (original) → N/A  
+**Detectado en:** Code Review (2026-07-09)  
+**Actualizado en:** 2026-07-12 (Code Review)
+
+**Descripción:**
+La IP `64.181.196.217` estaba hardcodeada en `CORS_ORIGINS` y `NEXT_PUBLIC_GATEWAY_URL` en `docker-compose.yml`.
+
+**Resolución:**
+Se reemplazaron los valores hardcodeados por variables de entorno con defaults seguros para localhost:
+- `CORS_ORIGINS`: usa `${EXTERNAL_ORIGIN:-http://localhost:3000}`
+- `NEXT_PUBLIC_GATEWAY_URL`: usa `${NEXT_PUBLIC_GATEWAY_URL:-http://localhost:3001}`
+
+---
+
+### TD-015: Filtro de viaje público cambiado de `'publicado'` a `'activo'`
+
+**ID:** TD-015  
+**Estado:** Activa  
+**Prioridad:** Media  
+**Detectado en:** Code Review (2026-07-09)
+
+**Descripción:**
+En `backend/apps/viajes/views.py:499,514`, los endpoints `ViajePublicoListView` y `ViajePublicoDetailView` cambiaron de filtrar por `estado='publicado'` a `estado='activo'`. Aunque esto alinea el filtro con las opciones reales del modelo (`EstadoViaje.choices` no incluye `'publicado'`), es un cambio de comportamiento en la API pública que no fue documentado en `API.md` ni `DATABASE.md`.
+
+**Impacto:**
+- Medio: cambia el comportamiento esperado de la API pública.
+- Si algún cliente externo o frontend usaba `estado=publicado`, ahora falla.
+
+**Prioridad:** Media — correcto en sí mismo pero no documentado.
+
+**Tarea sugerida:**
+Actualizar `API.md` y `DATABASE.md` para reflejar que los viajes públicos se filtran por `estado='activo'`.

@@ -4,11 +4,13 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 
 const NAV_ITEMS = [
+  { href: '/backoffice', label: 'Dashboard', icon: '📊' },
   { href: '/backoffice/viajes', label: 'Viajes', icon: '✈️' },
-  { href: '/backoffice/inscripciones', label: 'Inscripciones', icon: '👥' },
-  { href: '/backoffice/pagos', label: 'Pagos', icon: '💳' },
+  { href: '/backoffice/inscripciones', label: 'Inscripciones', icon: '📋' },
+  { href: '/backoffice/pagos', label: 'Pagos', icon: '💰' },
   { href: '/backoffice/documentos', label: 'Documentos', icon: '📄' },
   { href: '/backoffice/comunicados', label: 'Comunicados', icon: '📢' },
+  { href: '/backoffice/chat', label: 'Chat', icon: '💬' },
   { href: '/backoffice/notificaciones', label: 'Notificaciones', icon: '🔔' },
 ]
 

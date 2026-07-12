@@ -11,20 +11,20 @@ import { fetchApi } from '@/lib/api'
 const LABELS = ['Datos básicos', 'Centro educativo', 'Salud y T&C']
 
 const ALLERGEN_MAP: Record<string, string> = {
-  'gluten': 'alergeno_gluten',
-  'crustaceos': 'alergeno_crustaceos',
-  'huevos': 'alergeno_huevos',
-  'pescado': 'alergeno_pescado',
-  'cacahuetes': 'alergeno_cacahuetes',
-  'soja': 'alergeno_soja',
-  'lacteos': 'alergeno_lacteos',
-  'frutos de cascara': 'alergeno_frutos_cascara',
-  'apio': 'alergeno_apio',
-  'mostaza': 'alergeno_mostaza',
-  'sesamo': 'alergeno_sesamo',
-  'sulfitos': 'alergeno_sulfitos',
-  'altramuces': 'alergeno_altramuces',
-  'moluscos': 'alergeno_moluscos'
+  gluten: 'alergeno_gluten',
+  crustaceos: 'alergeno_crustaceos',
+  huevos: 'alergeno_huevos',
+  pescado: 'alergeno_pescado',
+  cacahuetes: 'alergeno_cacahuetes',
+  soja: 'alergeno_soja',
+  lacteos: 'alergeno_lacteos',
+  frutos_cascara: 'alergeno_frutos_cascara',
+  apio: 'alergeno_apio',
+  mostaza: 'alergeno_mostaza',
+  sesamo: 'alergeno_sesamo',
+  sulfitos: 'alergeno_sulfitos',
+  altramuces: 'alergeno_altramuces',
+  moluscos: 'alergeno_moluscos'
 }
 
 export function InscribirForm({ initialAlumnos = [], isAuthenticated = false }: { initialAlumnos?: any[], isAuthenticated?: boolean }) {
@@ -90,7 +90,7 @@ export function InscribirForm({ initialAlumnos = [], isAuthenticated = false }: 
       alergeno_cacahuetes: alumno.alergeno_cacahuetes ?? false,
       alergeno_soja: alumno.alergeno_soja ?? false,
       alergeno_lacteos: alumno.alergeno_lacteos ?? false,
-      'alergeno_frutos de cascara': alumno.alergeno_frutos_cascara ?? false,
+      alergeno_frutos_cascara: alumno.alergeno_frutos_cascara ?? false,
       alergeno_apio: alumno.alergeno_apio ?? false,
       alergeno_mostaza: alumno.alergeno_mostaza ?? false,
       alergeno_sesamo: alumno.alergeno_sesamo ?? false,
@@ -171,8 +171,8 @@ export function InscribirForm({ initialAlumnos = [], isAuthenticated = false }: 
     setError(null)
 
     const alergenosPayload: Record<string, boolean> = {}
-    Object.keys(ALLERGEN_MAP).forEach(rawName => {
-      alergenosPayload[ALLERGEN_MAP[rawName]] = !!data[`alergeno_${rawName}`]
+    Object.values(ALLERGEN_MAP).forEach(dbField => {
+      alergenosPayload[dbField] = !!data[dbField]
     })
 
     const payload = {

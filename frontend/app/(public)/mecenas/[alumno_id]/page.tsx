@@ -2,28 +2,63 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
+import { fetchApi } from '@/lib/api'
 
-// Página pública — no requiere autenticación
-// URL: /mecenas/[alumno_id]
+interface CampaniaData {
+  alumno_nombre: string
+  apellidos: string
+  destino: string
+  fecha_salida: string
+  dias_restantes: number
+  apoyos: number
+  recaudado: number
+  meta: number
+}
 
 export default function MecenasPage() {
   const params = useParams()
   const alumnoId = params.alumno_id as string
 
-  // TODO: Fetch real alumno/mecenas data from /api/v1/mecenas/[alumno_id]/
-  // Por ahora usamos datos de demo para el mockup
-  const [diasRestantes] = useState(280)
-  const [apoyos] = useState(0)
-  const [recaudado] = useState(0)
-  const [meta] = useState(700)
-  const [alumno] = useState({
-    nombre: 'Ignacio',
-    destino: 'Nápoles / Pompeya / Positano',
-    fechaViaje: '04 de Agosto',
-    imagen_url: null as string | null,
-  })
+  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState<CampaniaData | null>(null)
+  const [error, setError] = useState(false)
 
-  const porcentaje = Math.round((recaudado / meta) * 100)
+  useEffect(() => {
+    if (!alumnoId) return
+    setLoading(true)
+    fetchApi(`/api/v1/mecenas/campania/${alumnoId}/`)
+      .then((res) => {
+        setData(res as CampaniaData)
+      })
+      .catch(() => {
+        setError(true)
+      })
+      .finally(() => setLoading(false))
+  }, [alumnoId])
+
+  const alumno = {
+    nombre: data?.alumno_nombre ?? 'Ignacio',
+    destino: data?.destino ?? 'Nápoles / Pompeya / Positano',
+    fechaViaje: data?.fecha_salida
+      ? new Date(data.fecha_salida).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
+      : '04 de Agosto',
+    imagen_url: null as string | null,
+  }
+
+  const diasRestantes = data?.dias_restantes ?? 280
+  const apoyos = data?.apoyos ?? 0
+  const recaudado = data?.recaudado ?? 0
+  const meta = data?.meta ?? 700
+
+  const porcentaje = meta > 0 ? Math.round((recaudado / meta) * 100) : 0
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-gray-500 text-sm">Cargando...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

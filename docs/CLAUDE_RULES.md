@@ -139,6 +139,9 @@ Los siguientes checks de seguridad se aplican a **cada endpoint** sin excepción
 - [ ] ¿La acción requiere log? → `LogAuditoria`
 - [ ] ¿La acción requiere notificación? → signal o Celery
 - [ ] ¿Es un archivo? → validar ≤ 10 MB y formato en Gateway Y en Backend
+- [ ] ¿Se usa `get_or_create()`? → verificar que los nombres de campo en `defaults` coinciden exactamente con el modelo
+- [ ] ¿Se usa `fetchApi()`? → verificar que la respuesta se valida con `if (!res.ok)` y se captura `ApiError`
+- [ ] ¿Hay `console.log`? → eliminar o dejar solo en desarrollo
 
 ### R-14 — Nunca exponer notas internas al padre/alumno
 
@@ -195,6 +198,7 @@ Estos errores están documentados en `AI_CONTEXT.md`. Se repiten aquí como reco
 8. Reutilizar refresh_token invalidado
 9. Reordenar actividades con PATCH individual (usar `/actividades/reordenar/`)
 10. No registrar en `LogAuditoria`
+11. Usar `nombre` en lugar de `nombres` en `get_or_create()` — el modelo Alumno tiene `nombres`, revisar todos los `defaults_dict`
 
 ### Frontend (Next.js)
 11. Guardar JWT en `localStorage`
@@ -204,6 +208,8 @@ Estos errores están documentados en `AI_CONTEXT.md`. Se repiten aquí como reco
 15. Importar `motion` completo de Framer Motion
 16. Mezclar layouts de portal
 17. Mostrar alertas sin deep-link
+18. Validar respuesta de `fetchApi` con `if (!res)` — usar `if (!res.ok)` y capturar `ApiError`
+19. Dejar `console.log` en producción — eliminar o envolver con `if (process.env.NODE_ENV === 'development')`
 
 ### Gateway (Node.js puro)
 18. Instalar Express, Fastify u otro framework

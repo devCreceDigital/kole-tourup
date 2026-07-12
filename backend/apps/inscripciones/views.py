@@ -11,7 +11,7 @@ from datetime import date
 from apps.documentos.models import DocumentoEntregado
 from apps.autenticacion.models import PadreTutor
 from .models import Inscripcion
-from .serializers import InscripcionCreateSerializer, InscripcionDetalleSerializer
+from .serializers import InscripcionCreateSerializer, InscripcionDetalleSerializer, CAMPOS_ALERGENOS
 
 
 def _get_padre_tutor(user):
@@ -149,7 +149,7 @@ class MisAlumnosView(generics.GenericAPIView):
         alumnos = padre_tutor.alumnos.all()
         data = []
         for a in alumnos:
-            data.append({
+            alumno_data = {
                 'id': str(a.id),
                 'nombre': a.nombre,
                 'apellidos': a.apellidos,
@@ -163,21 +163,10 @@ class MisAlumnosView(generics.GenericAPIView):
                 'telefono_emergencia': a.telefono_emergencia,
                 'necesidades_especiales': a.necesidades_especiales,
                 'nombre_tutor_legal': a.nombre_tutor_legal,
-                'alergeno_gluten': a.alergeno_gluten,
-                'alergeno_crustaceos': a.alergeno_crustaceos,
-                'alergeno_huevos': a.alergeno_huevos,
-                'alergeno_pescado': a.alergeno_pescado,
-                'alergeno_cacahuetes': a.alergeno_cacahuetes,
-                'alergeno_soja': a.alergeno_soja,
-                'alergeno_lacteos': a.alergeno_lacteos,
-                'alergeno_frutos_cascara': a.alergeno_frutos_cascara,
-                'alergeno_apio': a.alergeno_apio,
-                'alergeno_mostaza': a.alergeno_mostaza,
-                'alergeno_sesamo': a.alergeno_sesamo,
-                'alergeno_sulfitos': a.alergeno_sulfitos,
-                'alergeno_altramuces': a.alergeno_altramuces,
-                'alergeno_moluscos': a.alergeno_moluscos,
-            })
+            }
+            for campo in CAMPOS_ALERGENOS:
+                alumno_data[campo] = getattr(a, campo)
+            data.append(alumno_data)
         return Response(data)
 
 

@@ -1,0 +1,89 @@
+# REQUIREMENTS.md-final — Requerimientos del Sistema (Estado Real)
+
+> Última actualización: 2026-07-09
+> Marcados los requerimientos según estado real de implementación.
+
+---
+
+## RF — Requerimientos Funcionales
+
+### Actor: Padre / Tutor
+
+| ID | Requerimiento | Prioridad | Estado |
+|----|---------------|-----------|--------|
+| RF-PT-01 | Registrarse con email y contraseña; verificar cuenta vía email | Alta | ✅ Done |
+| RF-PT-02 | Iniciar sesión con credenciales propias | Alta | ✅ Done |
+| RF-PT-03 | Visualizar dashboard con resumen de viajes activos | Alta | 🟡 Parcial |
+| RF-PT-04 | Inscribir a alumnos mediante wizard de 3 pasos | Alta | 🟡 Parcial |
+| RF-PT-05 | Visualizar el plan de pagos: cuotas, fechas e importes | Alta | 🟡 Parcial |
+| RF-PT-06 | Registrar un pago manual con comprobante adjunto (PDF/JPG, 10 MB) | Alta | 🟡 Parcial |
+| RF-PT-07 | Consultar el historial de pagos realizados y pendientes | Alta | 🟡 Parcial |
+| RF-PT-08 | Cargar documentos requeridos (DNI, autorización, seguro, etc.) | Alta | 🟡 Parcial |
+| RF-PT-09 | Consultar el estado de validación de cada documento | Media | 🟡 Parcial |
+| RF-PT-10 | Visualizar el itinerario detallado del viaje | Alta | ✅ Done |
+| RF-PT-11 | Acceder al tablón de anuncios y comunicados del viaje | Media | ⏳ Pending |
+| RF-PT-12 | Comunicarse con el agente a través de mensajería interna in-app | Media | ⏳ Pending |
+| RF-PT-13 | Registrar solicitudes especiales: necesidades alimentarias, médicas | Media | 🟡 Parcial |
+| RF-PT-14 | Descargar el resumen de inscripción en PDF | Media | ⏳ Pending |
+| RF-PT-15 | Recibir notificaciones por email y en plataforma | Alta | ✅ Done |
+| RF-PT-16 | Actualizar datos de perfil y contraseña | Media | ⏳ Pending |
+| RF-PT-17 | Ver información del hotel asignado | Baja | 🟡 Parcial |
+| RF-PT-18 | Configurar preferencias de notificación | Media | ✅ Done |
+
+### Actor: Alumno
+
+| ID | Requerimiento | Prioridad | Estado |
+|----|---------------|-----------|--------|
+| RF-AL-01 | Acceder a su perfil de viaje si el agente habilita el acceso | Media | ⏳ Pending |
+| RF-AL-02 | Visualizar su itinerario asignado | Alta | ⏳ Pending |
+| RF-AL-03 | Ver el estado de su documentación personal | Media | ⏳ Pending |
+| RF-AL-04 | Ver el estado de los pagos vinculados | Media | ⏳ Pending |
+| RF-AL-05 | Acceder a los comunicados y anuncios | Media | ⏳ Pending |
+| RF-AL-06 | Descargar ficha resumen de viaje en PDF | Baja | ⏳ Pending |
+| RF-AL-07 | Ver datos de contacto del agente responsable | Baja | ⏳ Pending |
+
+### Actor: Agente de Viajes
+
+| ID | Requerimiento | Prioridad | Estado |
+|----|---------------|-----------|--------|
+| RF-AV-01 | Crear un nuevo viaje con nombre, destino, fechas, imagen | Alta | ✅ Done |
+| RF-AV-02 | Definir el plan de pagos: cuotas, fechas e importes | Alta | ✅ Done |
+| RF-AV-03 | Asignar hoteles al viaje | Alta | ✅ Done |
+| RF-AV-04 | Construir el itinerario con drag & drop | Alta | ✅ Done |
+| RF-AV-05 | Crear grupos dentro de un viaje | Alta | ✅ Done |
+| RF-AV-06 | Asignar alumnos a grupos | Alta | ✅ Done |
+| RF-AV-07 | Ver listado de inscritos con estado de pago y documentación | Alta | 🟡 Parcial |
+| RF-AV-08 | Validar o rechazar documentos subidos | Alta | ✅ Done |
+| RF-AV-09 | Registrar pagos manuales | Alta | ✅ Done |
+| RF-AV-10 | Enviar comunicados masivos | Alta | ✅ Done |
+| RF-AV-11 | Configurar tipos de documentos requeridos | Media | ✅ Done |
+| RF-AV-12 | Exportar listados en Excel/CSV | Alta | ⏳ Pending |
+| RF-AV-13 | Generar informes de estado del viaje en PDF | Media | ⏳ Pending |
+| RF-AV-14 | Gestionar el perfil de la agencia | Media | ✅ Done |
+| RF-AV-15 | Ver panel de métricas del viaje | Alta | ⏳ Pending |
+| RF-AV-16 | Activar o desactivar un viaje | Alta | ✅ Done |
+| RF-AV-17 | Asignar mecenas a alumnos | Media | ⏳ Pending |
+| RF-AV-18 | Gestionar múltiples viajes simultáneamente | Alta | ✅ Done |
+| RF-AV-19 | Configurar recordatorios automáticos de pago | Media | ⏳ Pending |
+| RF-AV-20 | Añadir notas internas a cada inscripción | Baja | ⏳ Pending |
+| RF-AV-21 | Responder mensajes del padre desde el backoffice | Media | ⏳ Pending |
+| RF-AV-22 | Ver alertas de documentación incompleta | Media | ⏳ Pending |
+
+### Actor: Mecenas — Todos ⏳ Pending
+
+### Actor: Sistema (Automatizado — Celery)
+
+| ID | Requerimiento | Prioridad | Estado |
+|----|---------------|-----------|--------|
+| RF-SIS-01 | Recordatorios de pago en cadencia (30/15/7/3/0 días) | Alta | ⏳ Pending |
+| RF-SIS-02 | Marcar cuotas vencidas automáticamente | Alta | ⏳ Pending |
+| RF-SIS-03 | Notificaciones al validar/rechazar documentos | Alta | ✅ Done |
+| RF-SIS-04 | Calcular saldo pendiente por inscripción | Alta | ✅ Done |
+| RF-SIS-05 | Email de confirmación al registrar pago | Media | ✅ Done |
+| RF-SIS-06 | Alertar al agente por documentación incompleta | Media | ⏳ Pending |
+| RF-SIS-07 | Archivar viajes finalizados automáticamente | Baja | ⏳ Pending |
+| RF-SIS-08 | Log de auditoría inmutable | Alta | ✅ Done |
+
+---
+
+## RNF — Requerimientos No Funcionales — Sin cambios en especificación

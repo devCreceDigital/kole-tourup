@@ -1,0 +1,836 @@
+# API.md-final — Endpoints REST (Actualizado)
+
+> **Última actualización:** 2026-07-09  
+> **Estado:** Refleja los endpoints realmente implementados en `backend/apps/*/views.py` y `urls.py`
+
+---
+
+## Convenciones
+
+- **Base URL:** `/api/v1/`
+- **Autenticación:** JWT. Header: `Authorization: Bearer <access_token>`
+- **Formato:** JSON (request y response)
+- **Paginación:** En listados (offset/limit o page/page_size)
+- **Permisos:** `[agente]` = solo rol agente. `[padre]` = padre/tutor. `[any]` = cualquier autenticado.
+- **Cookies:** `access_token` (Path=/, Max-Age=900), `refresh_token` (Path=/api/v1/auth/, Max-Age=604800) — ambos `HttpOnly; Secure; SameSite=Strict`
+
+---
+
+## Auth
+
+### POST `/auth/registro/`
+Crea nuevo usuario. Envía email de verificación. Si `rol='padre'`, crea `PadreTutor` vacío.
+
+**Payload:**
+```json
+{
+  "email": "string",
+  "password": "string",
+  "nombre": "string",
+  "apellidos": "string",
+  "rol": "padre | alumno | mecenas",
+  "telefono": "string (opcional)"
+}
+```
+**Respuesta:** `201 Created` `{ "mensaje": "Cuenta creada exitosamente." }`
+
+> **Nota:** Actualmente el bypass de verificación está activo (`email_verificado = True` al crear). Ver código en `RegistroAPIView.post()`.
+
+---
+
+### GET `/auth/verificar/?token=<TOKEN>`
+Activa la cuenta del usuario. Idempotente: usuario ya verificado → `200 OK`.
+
+**Errores:**
+- Token ausente → `400 "Token de verificación requerido."`
+- Token expirado → `400 "El enlace de verificación ha expirado."`
+- Token inválido / usuario no existe → `400 "El enlace de verificación no es válido."`
+
+---
+
+### POST `/auth/login/`
+Valida credenciales. Genera par JWT. Establece cookies httpOnly. Actualiza `ultimo_login`.
+
+**Payload:**
+```json
+{ "email": "string", "password": "string" }
+```
+
+**Respuesta `200 OK`:**
+```json
+{ "rol": "padre | agente | alumno | mecenas", "agencia_id": "uuid | null" }
+```
+
+**Cookies establecidas:**
+- `access_token` — HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=900
+- `refresh_token` — HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth/; Max-Age=604800
+
+**Errores:**
+- `401` — credenciales inválidas (mismo mensaje para email inexistente y password incorrecta)
+- `403` — email no verificado
+- `403` — cuenta inactiva
+
+---
+
+### POST `/auth/refresh/`
+Renueva access_token. Lee refresh_token de cookie. **No rota** refresh_token (DEC-003).
+
+**Respuesta:** `200 OK` `{}` + nueva cookie `access_token`
+
+**Errores:**
+- `401` — cookie ausente
+- `401` — firma inválida ("Token de sesión inválido.")
+- `401` — expirado / JTI no en Redis ("La sesión ha expirado.")
+- `403` — usuario inactivo
+
+---
+
+### POST `/auth/logout/`
+Invalida refresh_token en Redis. Elimina cookies. Idempotente.
+
+**Respuesta:** `200 OK` `{ "mensaje": "Sesión cerrada correctamente." }`
+
+---
+
+### POST `/auth/password-reset/`
+Solicita recuperación de contraseña.
+
+**Payload:** `{ "email": "string" }`
+
+**Respuesta:** `200 OK` `{ "detail": "Si el email existe, recibirás un enlace." }`
+
+---
+
+### POST `/auth/password-reset/confirm/`
+Confirma nueva contraseña.
+
+**Payload:** `{ "uid": "string", "token": "string", "nueva_password": "string" }`
+
+**Respuesta:** `200 OK` `{ "detail": "Contraseña actualizada correctamente." }`
+
+---
+
+## Agencia
+
+### GET `/agencias/perfil/` `[agente]`
+Obtiene el perfil de la agencia del agente autenticado.
+
+**Respuesta `200 OK`:**
+```json
+{
+  "id": "uuid",
+  "nombre": "Totem Travel",
+  "logo": "url | null",
+  "email_contacto": "info@totemtravel.com",
+  "telefono": "+51 999 000 000",
+  "licencia_agencia": "LIC-001",
+  "slug": "totem",
+  "activa": true,
+  "created_at": "2026-06-28T00:00:00Z"
+}
+```
+
+**Errores:** `401`, `403` (rol ≠ agente), `404` (agente sin agencia)
+
+---
+
+### PATCH `/agencias/perfil/` `[agente]`
+Actualiza nombre, logo, teléfono, email_contacto. Parcial.
+
+**Payload:** `multipart/form-data` (si logo) o `application/json`
+```json
+{
+  "nombre": "string (opcional)",
+  "logo": "file (opcional)",
+  "telefono": "string (opcional)",
+  "email_contacto": "email (opcional)"
+}
+```
+
+**Respuesta:** `200 OK` — objeto Agencia completo
+
+**Campos read-only (ignoran input):** `id`, `slug`, `licencia_agencia`, `activa`, `created_at`
+
+**Errores:** `400` (email inválido/duplicado), `401`, `403`, `404`
+
+---
+
+## Viajes
+
+### GET `/viajes/` `[agente]`
+Lista viajes de la agencia. Filtros: `estado`, `fecha_salida`. Orden: `fecha_salida` asc.
+
+---
+
+### POST `/viajes/` `[agente]`
+Crea viaje en estado `borrador`. Crea `Itinerario` vacío automáticamente (signal).
+
+**Payload:**
+```json
+{
+  "nombre": "string",
+  "destino": "string",
+  "fecha_salida": "YYYY-MM-DD",
+  "fecha_regreso": "YYYY-MM-DD",
+  "cupo_maximo": 50,
+  "precio_total": "850.00",
+  "descripcion": "string (opcional)",
+  "imagen": "file (opcional)"
+}
+```
+
+**Respuesta:** `201 Created` `{ "viaje_id": "uuid", "estado": "borrador" }`
+
+---
+
+### GET `/viajes/{viaje_id}/` `[agente | padre | alumno]`
+Detalle del viaje. Para padre/alumno: solo si viaje `activo` y tienen inscripción.
+
+---
+
+### PATCH `/viajes/{viaje_id}/` `[agente]`
+Actualiza campos. Para activar: `{ "estado": "activo" }`.
+
+**Validaciones:**
+- Fechas coherentes incluso en updates parciales
+- `id` y `agencia` ignorados (read-only)
+
+---
+
+### DELETE `/viajes/{viaje_id}/` `[agente]`
+Solo si estado `borrador` y sin inscripciones.
+
+---
+
+### GET `/viajes/{viaje_id}/metricas/` `[agente]`
+Panel de métricas.
+
+**Respuesta:**
+```json
+{
+  "total_inscritos": 45,
+  "cupo_maximo": 50,
+  "porcentaje_inscripcion": 90.0,
+  "total_pagado": 12500.00,
+  "total_esperado": 38250.00,
+  "porcentaje_pagado": 32.7,
+  "documentos_completos": 30,
+  "documentos_pendientes": 15,
+  "porcentaje_documentado": 66.7
+}
+```
+
+---
+
+### GET `/viajes/publico/` `[any]`
+Lista viajes con `estado='publicado'` (NOTA: el modelo usa `activo`, no `publicado`). Filtro opcional: `?slug=...`
+
+---
+
+### GET `/viajes/publico/{slug}/` `[any]`
+Detalle de viaje público. Acepta slug o UUID en la URL.
+
+---
+
+## Plan de Pagos
+
+### POST `/viajes/{viaje_id}/plan-pago/` `[agente]`
+Crea PlanPago + cuotas en una request (atomic + bulk_create).
+
+**Payload:**
+```json
+{
+  "descripcion": "string (opcional)",
+  "total_cuotas": 3,
+  "cuotas": [
+    { "numero_cuota": 1, "descripcion": "Reserva", "importe": "200.00", "fecha_vencimiento": "YYYY-MM-DD" },
+    { "numero_cuota": 2, "descripcion": "2ª cuota", "importe": "300.00", "fecha_vencimiento": "YYYY-MM-DD" },
+    { "numero_cuota": 3, "descripcion": "Saldo final", "importe": "350.00", "fecha_vencimiento": "YYYY-MM-DD" }
+  ]
+}
+```
+
+---
+
+### GET `/viajes/{viaje_id}/plan-pago/` `[any]`
+Plan con cuotas. `prefetch_related('cuotas')`.
+
+---
+
+### PATCH `/viajes/{viaje_id}/plan-pago/` `[agente]`
+Actualiza plan (solo si no hay pagos verificados). Upsert inteligente: conserva UUID de cuotas existentes, elimina las que desaparecen del payload.
+
+---
+
+## Alumnos (Catálogo Agencia)
+
+### GET `/alumnos/` `[agente]`
+Lista alumnos de la agencia.
+
+---
+
+### POST `/alumnos/` `[agente]`
+Crea alumno en la agencia del agente.
+
+---
+
+### GET `/alumnos/{id}/` `[agente]`
+Detalle alumno.
+
+---
+
+### PATCH `/alumnos/{id}/` `[agente]`
+Actualización parcial.
+
+---
+
+## Itinerario
+
+### GET `/viajes/{viaje_id}/itinerario/` `[agente]`
+Itinerario completo con etapas y actividades anidadas.
+
+---
+
+### GET `/viajes/{viaje_id}/etapas/` `[agente]`
+Lista etapas (sin actividades).
+
+---
+
+### POST `/viajes/{viaje_id}/etapas/` `[agente]`
+Crea etapa.
+
+**Payload:**
+```json
+{
+  "dia_numero": 1,
+  "titulo": "Llegada a Madrid",
+  "descripcion": "string (opcional)",
+  "imagen": "file (opcional)"
+}
+```
+
+**Error:** `400` si `dia_numero` duplicado.
+
+---
+
+### GET `/viajes/{viaje_id}/etapas/{etapa_id}/` `[agente]`
+
+---
+
+### PATCH `/viajes/{viaje_id}/etapas/{etapa_id}/` `[agente]`
+Edita etapa. Valida `dia_numero` único.
+
+---
+
+### DELETE `/viajes/{viaje_id}/etapas/{etapa_id}/` `[agente]`
+Elimina etapa + actividades (CASCADE).
+
+---
+
+### GET `/viajes/{viaje_id}/etapas/{etapa_id}/actividades/` `[agente]`
+
+---
+
+### POST `/viajes/{viaje_id}/etapas/{etapa_id}/actividades/` `[agente]`
+Crea actividad. `orden` se asigna auto (default 0).
+
+**Payload:**
+```json
+{
+  "titulo": "Traslado al hotel",
+  "hora": "09:00 (opcional)",
+  "descripcion": "string (opcional)",
+  "tipo": "vuelo | bus | hotel | comida | excursion | libre | otro (opcional)"
+}
+```
+
+---
+
+### GET `/viajes/{viaje_id}/etapas/{etapa_id}/actividades/{actividad_id}/` `[agente]`
+
+---
+
+### PATCH `/viajes/{viaje_id}/etapas/{etapa_id}/actividades/{actividad_id}/` `[agente]`
+Edita actividad. **`orden` es read-only** (ignorado).
+
+---
+
+### DELETE `/viajes/{viaje_id}/etapas/{etapa_id}/actividades/{actividad_id}/` `[agente]`
+
+---
+
+### PATCH `/viajes/{viaje_id}/etapas/{etapa_id}/actividades/reordenar/` `[agente]`
+**Único endpoint que modifica `orden`**. Bulk update en transacción.
+
+**Payload:**
+```json
+{
+  "actividades": [
+    { "id": "uuid", "orden": 0 },
+    { "id": "uuid", "orden": 1 },
+    { "id": "uuid", "orden": 2 }
+  ]
+}
+```
+
+**Errores:** `400` IDs duplicados / IDs no pertenecen a esta etapa / payload vacío.
+
+---
+
+## Hoteles
+
+### GET `/viajes/{viaje_id}/hoteles/` `[agente]`
+
+---
+
+### POST `/viajes/{viaje_id}/hoteles/` `[agente]`
+**Payload:** `multipart/form-data` o JSON
+```json
+{
+  "nombre": "Hotel Sol",
+  "descripcion": "string (opcional)",
+  "tasa_turistica": "15.00 (opcional)",
+  "fianza": "100.00 (opcional)",
+  "web_url": "string (opcional)",
+  "maps_url": "string (opcional)",
+  "imagen": "file (opcional)"
+}
+```
+
+---
+
+### GET `/viajes/{viaje_id}/hoteles/{hotel_id}/` `[agente]`
+
+---
+
+### PATCH `/viajes/{viaje_id}/hoteles/{hotel_id}/` `[agente]`
+
+---
+
+### DELETE `/viajes/{viaje_id}/hoteles/{hotel_id}/` `[agente]`
+
+---
+
+## Grupos
+
+### GET `/viajes/{viaje_id}/grupos/` `[agente]`
+
+---
+
+### POST `/viajes/{viaje_id}/grupos/` `[agente]`
+```json
+{ "nombre": "Grupo A", "descripcion": "string (opcional)", "capacidad": 25 }
+```
+
+---
+
+### GET `/viajes/{viaje_id}/grupos/{grupo_id}/` `[agente]`
+
+---
+
+### PATCH `/viajes/{viaje_id}/grupos/{grupo_id}/` `[agente]`
+
+---
+
+### DELETE `/viajes/{viaje_id}/grupos/{grupo_id}/` `[agente]`
+
+---
+
+### POST `/viajes/{viaje_id}/grupos/{grupo_id}/alumnos/` `[agente]`
+Asigna lista de alumnos al grupo. Idempotente.
+
+**Payload:** `{ "alumno_ids": ["uuid1", "uuid2"] }`
+
+**Respuesta:** `{ "asignados": 2, "total_en_grupo": 3 }`
+
+**Errores:** `400` IDs duplicados / alumno de otra agencia / excede capacidad.
+
+---
+
+## Documentos Requeridos
+
+### GET `/viajes/{viaje_id}/documentos-requeridos/` `[any autenticado]`
+
+---
+
+### POST `/viajes/{viaje_id}/documentos-requeridos/` `[agente]`
+```json
+{ "nombre": "DNI alumno", "descripcion": "", "obligatorio": true, "formatos_permitidos": "pdf,jpg,png" }
+```
+
+---
+
+### PATCH `/documentos-requeridos/{id}/` `[agente]`
+
+---
+
+### DELETE `/documentos-requeridos/{id}/` `[agente]`
+
+---
+
+## Inscripciones
+
+### GET `/inscripciones/` `[padre]`
+Lista inscripciones del padre autenticado. `select_related('alumno', 'viaje')`.
+
+---
+
+### POST `/inscripciones/` `[padre]`
+Inscribe alumno a viaje. Verifica cupo y unicidad.
+
+**Payload:**
+```json
+{
+  "viaje_id": "uuid",
+  "alumno": {
+    "nombre": "string",
+    "apellidos": "string",
+    "fecha_nacimiento": "YYYY-MM-DD",
+    "dni": "string",
+    "necesidades_especiales": "string (opcional)",
+    "nombre_tutor_legal": "string",
+    "telefono_emergencia": "string",
+    "genero": "masculino | femenino | otro (opcional)",
+    "colegio": "string (opcional)",
+    "departamento": "string (opcional)",
+    "nivel_educativo": "string (opcional)",
+    "grado": "string (opcional)",
+    "alergeno_gluten": false,  // 14 alergenos EU
+    ...
+  }
+}
+```
+
+**Errores:** `409 Conflict` sin cupo / alumno ya inscrito
+
+**Respuesta:** `201 Created` — `InscripcionDetalleSerializer` (ver contrato abajo)
+
+---
+
+### GET `/inscripciones/{id}/` `[agente | padre propietario]`
+Detalle completo con resúmenes.
+
+**Contrato de respuesta (InscripcionDetalleSerializer):**
+```json
+{
+  "id": "uuid",
+  "estado": "pendiente",
+  "precio_final": "840.00",
+  "saldo_pendiente": "560.00",
+  "porcentaje_pagado": 33.3,
+  "total_pagado": "280.00",
+  "viaje": { "id": "...", "nombre": "...", "destino": "...", "fecha_salida": "...", "fecha_regreso": "...", "imagen_url": "..." },
+  "alumno": { "nombre": "...", "apellidos": "...", "nombre_colegio": "..." },
+  "pagos_resumen": { "total_cuotas": 3, "cuotas_pagadas": 1, "tiene_cuota_vencida": true },
+  "documentos_resumen": { "total_requeridos": 4, "total_validados": 1, "tiene_rechazado": true },
+  "hotel_asignado": { "nombre": "...", "maps_url": "..." } | null
+}
+```
+
+---
+
+### PATCH `/inscripciones/{id}/` `[agente]`
+Actualiza `estado` o `notas_internas`. `notas_internas` **nunca** en serializer padre/alumno.
+
+---
+
+### GET `/inscripciones/{id}/itinerario/` `[agente | padre propietario]`
+Itinerario del viaje de la inscripción.
+
+---
+
+### GET `/inscripciones/{id}/plan-pago/` `[agente | padre propietario]`
+Plan de pagos con estado por cuota.
+
+**Respuesta:**
+```json
+{
+  "id": "uuid",
+  "descripcion": "...",
+  "total_cuotas": 3,
+  "cuotas": [
+    {
+      "id": "uuid",
+      "numero_cuota": 1,
+      "descripcion": "Reserva",
+      "importe": "200.00",
+      "fecha_vencimiento": "YYYY-MM-DD",
+      "estado": "pagado | en_revision | vencido | pendiente",
+      "pago_id": "uuid | null"
+    }
+  ]
+}
+```
+
+---
+
+### GET `/inscripciones/{id}/documentos/` `[agente | padre propietario]`
+Checklist de documentos con estado.
+
+**Respuesta:**
+```json
+{
+  "total_requeridos": 4,
+  "total_validados": 1,
+  "documentos": [
+    {
+      "id": "uuid",
+      "nombre": "DNI alumno",
+      "descripcion": "...",
+      "obligatorio": true,
+      "formatos_permitidos": ["pdf","jpg","png"],
+      "estado": "validado | rechazado | pendiente | no_subido",
+      "entrega_id": "uuid | null",
+      "nombre_archivo": "dni_juan.pdf | null",
+      "motivo_rechazo": "string | null"
+    }
+  ]
+}
+```
+
+---
+
+### GET `/inscripciones/mis-alumnos/` `[padre]`
+Alumnos vinculados al padre para seleccionar en wizard.
+
+---
+
+## Pagos
+
+### GET `/pagos/` `[agente]`
+Lista pagos. Filtros: `?estado=pendiente&viaje_id=uuid`
+
+---
+
+### POST `/pagos/` `[padre | mecenas | agente]`
+Registra pago con comprobante (multipart).
+
+**Campos:**
+- `inscripcion_id` (uuid)
+- `cuota_id` (uuid, opcional)
+- `importe` (decimal, > 0)
+- `fecha_pago` (date)
+- `metodo_pago` (transferencia|efectivo|tarjeta|otro)
+- `comprobante` (file, opcional, max 10MB, pdf/jpg)
+- `pagado_por` (uuid usuario, solo agente puede especificar)
+
+**Respuesta:** `201 Created` `{ "pago_id": "uuid", "estado": "pendiente" }`
+
+---
+
+### PATCH `/pagos/{pago_id}/` `[agente]`
+Verifica o rechaza pago.
+
+```json
+{ "estado": "verificado" }
+// o
+{ "estado": "rechazado", "notas": "Motivo del rechazo" }
+```
+
+**Signals automáticos:**
+- CREATE → `LogAuditoria(PAGO_REGISTRADO)` + email agente
+- estado → `verificado` → `LogAuditoria(PAGO_ACTUALIZADO)` + `Notificacion` tutor + email
+- estado → `rechazado` → `LogAuditoria` + `Notificacion` con motivo + email
+
+---
+
+## Documentos Entregados
+
+### POST `/documentos/` `[padre]`
+Sube documento (multipart). Valida MIME + extensión + tamaño ≤ 10MB. Sube a S3.
+
+**Campos:**
+- `inscripcion_id` (uuid)
+- `documento_requerido_id` (uuid)
+- `archivo` (file)
+
+**Respuesta:** `201 Created` `{ "documento_id": "uuid", "estado": "pendiente" }`
+
+**Permite múltiples versiones** del mismo documento (tras rechazos).
+
+---
+
+### GET `/documentos/?estado=pendiente&viaje_id=uuid` `[agente]`
+Panel agente: documentos pendientes de revisión.
+
+---
+
+### PATCH `/documentos/{id}/` `[agente]`
+Valida o rechaza.
+
+```json
+{ "estado": "validado" }
+// o
+{ "estado": "rechazado", "motivo_rechazo": "La póliza está caducada." }
+```
+
+**Signals automáticos:**
+- `validado` → `Notificacion(doc_validado)` tutor
+- `rechazado` → `Notificacion(doc_rechazado)` con motivo
+
+---
+
+## Comunicados
+
+### GET `/viajes/{viaje_id}/comunicados/` `[any autenticado con inscripción]`
+
+---
+
+### POST `/viajes/{viaje_id}/comunicados/` `[agente]`
+Crea comunicado y encola task Celery envío masivo.
+
+**Payload:** `{ "titulo": "string", "cuerpo": "string" }`
+
+**Respuesta:** `201 Created` `{ "comunicado_id": "uuid", "enviado_email": false }`
+
+**Celery task:** `enviar_comunicado_masivo` (idempotente, actualiza `enviado_email=True` al terminar)
+
+---
+
+## Notificaciones
+
+### GET `/notificaciones/` `[any autenticado]`
+Lista notificaciones del usuario. Filtro: `?leida=false`
+
+---
+
+### PATCH `/notificaciones/{id}/` `[any autenticado]`
+Marca como leída: `{ "leida": true }`
+
+---
+
+### POST `/notificaciones/marcar-todas/` `[any autenticado]`
+Marca todas como leídas.
+
+---
+
+### GET `/notificaciones/preferencias/` `[any autenticado]`
+Obtiene preferencias de notificación del usuario.
+
+---
+
+### PATCH `/notificaciones/preferencias/` `[any autenticado]`
+Actualiza preferencias.
+
+---
+
+## Mecenas
+
+### GET `/mecenas/{mecenas_id}/alumnos/` `[mecenas]`
+Lista alumnos patrocinados.
+
+---
+
+### POST `/viajes/{viaje_id}/inscripciones/{id}/mecenas/` `[agente]`
+Asigna mecenas a inscripción.
+
+**Payload:** `{ "mecenas_id": "uuid", "monto_comprometido": "200.00" }`
+
+---
+
+## Exportaciones
+
+### GET `/viajes/{viaje_id}/exportar/inscritos/?formato=csv|xlsx` `[agente]`
+
+---
+
+### GET `/viajes/{viaje_id}/exportar/pagos/?formato=csv|xlsx` `[agente]`
+
+---
+
+### GET `/viajes/{viaje_id}/exportar/documentacion/?formato=csv|xlsx` `[agente]`
+
+---
+
+### GET `/viajes/{viaje_id}/exportar/informe-pdf/` `[agente]`
+
+---
+
+### GET `/inscripciones/{id}/resumen-pdf/` `[padre | alumno]`
+
+---
+
+## Chat
+
+### GET `/chat/{inscripcion_id}/mensajes/` `[any autenticado con acceso]`
+Historial de mensajes.
+
+---
+
+### POST `/chat/{inscripcion_id}/mensajes/` `[any autenticado con acceso]`
+Envía mensaje.
+
+**Payload:** `{ "contenido": "string", "adjunto": "file (opcional)" }`
+
+---
+
+### PATCH `/chat/mensajes/{id}/` `[any autenticado]`
+Marca mensaje como leído.
+
+---
+
+## Códigos de Error Estándar
+
+| Código | Significado |
+|--------|-------------|
+| 400 | Bad Request — validación fallida |
+| 401 | Unauthorized — token inválido o ausente |
+| 403 | Forbidden — sin permisos para esta acción |
+| 404 | Not Found |
+| 409 | Conflict — unicidad violada (alumno ya inscrito, sin cupo) |
+| 413 | Payload Too Large — archivo > 10 MB |
+| 422 | Unprocessable Entity — lógica de negocio |
+| 500 | Internal Server Error |
+
+---
+
+## Endpoints Documentados en API.md Original PERO NO IMPLEMENTADOS
+
+> Estos endpoints aparecen en el `API.md` original pero **no existen** en el código actual:
+
+| Endpoint | Estado | Notas |
+|----------|--------|-------|
+| `GET /viajes/{viaje_id}/grupos/{grupo_id}/alumnos/` | ❌ No implementado | Solo POST existe |
+| `GET /pagos/?estado=pendiente&viaje_id=` | ⚠️ Parcial | Filtro `viaje_id` no verificado en vista |
+| `GET /inscripciones/{id}/pagos/` | ❌ No implementado | Usar `/inscripciones/{id}/plan-pago/` |
+| `GET /documentos/?estado=pendiente&viaje_id=` | ⚠️ Existe en urls | Vista `DocumentoEntregadoCreateView` solo POST |
+| `POST /viajes/{id}/exportar/inscritos/` | ❌ No implementado | Solo GET |
+| `POST /viajes/{id}/exportar/pagos/` | ❌ No implementado | Solo GET |
+| `POST /viajes/{id}/exportar/documentacion/` | ❌ No implementado | Solo GET |
+| `POST /viajes/{id}/exportar/informe-pdf/` | ❌ No implementado | Solo GET |
+| `GET /inscripciones/{id}/resumen-pdf/` | ❌ No implementado | |
+| `GET /mecenas/{mecenas_id}/alumnos/` | ⚠️ Url existe | Vista no verificada |
+
+---
+
+## Diferencias Clave vs API.md Original
+
+| Aspecto | API.md Original | Implementación Real |
+|---------|-----------------|---------------------|
+| Auth login response | `{access, refresh, rol, agencia_id}` | `{rol, agencia_id}` + cookies |
+| Auth refresh payload | `{refresh_token}` | Cookie automática (sin body) |
+| Viaje público estado | `publicado` | `activo` (modelo usa `activo`) |
+| Inscripcion estado inicial | `pendiente` | `pre_inscrito` |
+| Inscripcion estados UX | 4 estados | 5 estados (incluye `pre_inscrito`) |
+| Alumnos endpoint | `/viajes/{id}/alumnos/` | `/alumnos/` (sub-router separado) |
+| Documentos requeridos PATCH/DELETE | `/documentos-requeridos/{id}/` | No implementados |
+| Exportaciones | GET + POST | Solo GET |
+
+---
+
+## Contratos de Serializers (Referencia)
+
+### InscripcionCreateSerializer (input POST /inscripciones/)
+Campos: `viaje_id`, `alumno` (objeto con 30+ campos incluyendo 14 alergenos)
+
+### InscripcionDetalleSerializer (output GET /inscripciones/{id}/)
+Incluye: `viaje`, `alumno`, `pagos_resumen`, `documentos_resumen`, `hotel_asignado`, propiedades computadas
+
+### PlanPagoSerializer / CuotaSerializer
+Cuotas con `id`, `numero_cuota`, `descripcion`, `importe`, `fecha_vencimiento`
+
+### ItinerarioSerializer
+Anidado: `etapas[]` → `actividades[]` con `orden`, `hora`, `tipo`
+
+### DocumentoRequeridoSerializer
+`formatos_permitidos` serializado como lista via `formatos_lista` property

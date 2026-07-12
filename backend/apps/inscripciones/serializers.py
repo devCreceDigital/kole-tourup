@@ -6,6 +6,30 @@ from apps.viajes.models import Viaje
 from .models import Alumno, Inscripcion
 
 
+CAMPOS_ALERGENOS = [
+    'alergeno_gluten', 'alergeno_crustaceos', 'alergeno_huevos', 'alergeno_pescado',
+    'alergeno_cacahuetes', 'alergeno_soja', 'alergeno_lacteos', 'alergeno_frutos_cascara',
+    'alergeno_apio', 'alergeno_mostaza', 'alergeno_sesamo', 'alergeno_sulfitos',
+    'alergeno_altramuces', 'alergeno_moluscos',
+]
+
+ETIQUETAS_ALERGENOS = {
+    'alergeno_gluten': 'Gluten',
+    'alergeno_crustaceos': 'Crustáceos',
+    'alergeno_huevos': 'Huevos',
+    'alergeno_pescado': 'Pescado',
+    'alergeno_cacahuetes': 'Cacahuetes',
+    'alergeno_soja': 'Soja',
+    'alergeno_lacteos': 'Lácteos',
+    'alergeno_frutos_cascara': 'Frutos de cáscara',
+    'alergeno_apio': 'Apio',
+    'alergeno_mostaza': 'Mostaza',
+    'alergeno_sesamo': 'Sésamo',
+    'alergeno_sulfitos': 'Sulfitos',
+    'alergeno_altramuces': 'Altramuces',
+    'alergeno_moluscos': 'Moluscos',
+}
+
 class AlumnoInputSerializer(serializers.Serializer):
     nombre = serializers.CharField(max_length=100)
     apellidos = serializers.CharField(max_length=150)
@@ -20,20 +44,11 @@ class AlumnoInputSerializer(serializers.Serializer):
     departamento = serializers.CharField(max_length=100, required=False, allow_blank=True)
     nivel_educativo = serializers.CharField(max_length=20, required=False, allow_blank=True)
     grado = serializers.CharField(max_length=10, required=False, allow_blank=True)
-    alergeno_gluten = serializers.BooleanField(default=False)
-    alergeno_crustaceos = serializers.BooleanField(default=False)
-    alergeno_huevos = serializers.BooleanField(default=False)
-    alergeno_pescado = serializers.BooleanField(default=False)
-    alergeno_cacahuetes = serializers.BooleanField(default=False)
-    alergeno_soja = serializers.BooleanField(default=False)
-    alergeno_lacteos = serializers.BooleanField(default=False)
-    alergeno_frutos_cascara = serializers.BooleanField(default=False)
-    alergeno_apio = serializers.BooleanField(default=False)
-    alergeno_mostaza = serializers.BooleanField(default=False)
-    alergeno_sesamo = serializers.BooleanField(default=False)
-    alergeno_sulfitos = serializers.BooleanField(default=False)
-    alergeno_altramuces = serializers.BooleanField(default=False)
-    alergeno_moluscos = serializers.BooleanField(default=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for campo in CAMPOS_ALERGENOS:
+            self.fields[campo] = serializers.BooleanField(default=False)
 
 
 class InscripcionCreateSerializer(serializers.Serializer):
@@ -48,7 +63,7 @@ class InscripcionCreateSerializer(serializers.Serializer):
 
     def validate(self, data):
         viaje = data['viaje_id']
-        if viaje.estado != 'publicado':
+        if viaje.estado != 'activo':
             raise serializers.ValidationError('El viaje no esta activo.')
         inscritos = viaje.inscripciones.filter(estado__in=['pendiente', 'confirmado']).count()
         if inscritos >= viaje.cupo_maximo:
@@ -73,21 +88,9 @@ class InscripcionCreateSerializer(serializers.Serializer):
             'departamento': alumno_data.get('departamento', ''),
             'nivel_educativo': alumno_data.get('nivel_educativo', ''),
             'grado': alumno_data.get('grado', ''),
-            'alergeno_gluten': alumno_data.get('alergeno_gluten', False),
-            'alergeno_crustaceos': alumno_data.get('alergeno_crustaceos', False),
-            'alergeno_huevos': alumno_data.get('alergeno_huevos', False),
-            'alergeno_pescado': alumno_data.get('alergeno_pescado', False),
-            'alergeno_cacahuetes': alumno_data.get('alergeno_cacahuetes', False),
-            'alergeno_soja': alumno_data.get('alergeno_soja', False),
-            'alergeno_lacteos': alumno_data.get('alergeno_lacteos', False),
-            'alergeno_frutos_cascara': alumno_data.get('alergeno_frutos_cascara', False),
-            'alergeno_apio': alumno_data.get('alergeno_apio', False),
-            'alergeno_mostaza': alumno_data.get('alergeno_mostaza', False),
-            'alergeno_sesamo': alumno_data.get('alergeno_sesamo', False),
-            'alergeno_sulfitos': alumno_data.get('alergeno_sulfitos', False),
-            'alergeno_altramuces': alumno_data.get('alergeno_altramuces', False),
-            'alergeno_moluscos': alumno_data.get('alergeno_moluscos', False),
         }
+        for campo in CAMPOS_ALERGENOS:
+            defaults_dict[campo] = alumno_data.get(campo, False)
         
         alumno, created = Alumno.objects.get_or_create(
             dni=alumno_data['dni'],
@@ -102,32 +105,21 @@ class InscripcionCreateSerializer(serializers.Serializer):
         if viaje.inscripciones.filter(alumno=alumno).exists():
             raise serializers.ValidationError({'alumno': 'Este alumno ya esta inscrito en este viaje.'})
             
-        inscripcion = Inscripcion.objects.create(
-            alumno=alumno,
-            viaje=viaje,
-            padre_tutor=padre_tutor,
-            precio_final=viaje.precio_total,
-            estado='pre_inscrito',
-            genero=alumno_data.get('genero', ''),
-            colegio=alumno_data.get('colegio', ''),
-            departamento=alumno_data.get('departamento', ''),
-            nivel_educativo=alumno_data.get('nivel_educativo', ''),
-            grado=alumno_data.get('grado', ''),
-            alergeno_gluten=alumno_data.get('alergeno_gluten', False),
-            alergeno_crustaceos=alumno_data.get('alergeno_crustaceos', False),
-            alergeno_huevos=alumno_data.get('alergeno_huevos', False),
-            alergeno_pescado=alumno_data.get('alergeno_pescado', False),
-            alergeno_cacahuetes=alumno_data.get('alergeno_cacahuetes', False),
-            alergeno_soja=alumno_data.get('alergeno_soja', False),
-            alergeno_lacteos=alumno_data.get('alergeno_lacteos', False),
-            alergeno_frutos_cascara=alumno_data.get('alergeno_frutos_cascara', False),
-            alergeno_apio=alumno_data.get('alergeno_apio', False),
-            alergeno_mostaza=alumno_data.get('alergeno_mostaza', False),
-            alergeno_sesamo=alumno_data.get('alergeno_sesamo', False),
-            alergeno_sulfitos=alumno_data.get('alergeno_sulfitos', False),
-            alergeno_altramuces=alumno_data.get('alergeno_altramuces', False),
-            alergeno_moluscos=alumno_data.get('alergeno_moluscos', False),
-        )
+        inscripcion_kwargs = {
+            'alumno': alumno,
+            'viaje': viaje,
+            'padre_tutor': padre_tutor,
+            'precio_final': viaje.precio_total,
+            'estado': 'pre_inscrito',
+            'genero': alumno_data.get('genero', ''),
+            'colegio': alumno_data.get('colegio', ''),
+            'departamento': alumno_data.get('departamento', ''),
+            'nivel_educativo': alumno_data.get('nivel_educativo', ''),
+            'grado': alumno_data.get('grado', ''),
+        }
+        for campo in CAMPOS_ALERGENOS:
+            inscripcion_kwargs[campo] = alumno_data.get(campo, False)
+        inscripcion = Inscripcion.objects.create(**inscripcion_kwargs)
         return inscripcion
 
 
@@ -179,8 +171,16 @@ class InscripcionDetalleSerializer(serializers.ModelSerializer):
         return {'total_cuotas': total_cuotas, 'cuotas_pagadas': cuotas_pagadas, 'tiene_cuota_vencida': tiene_vencida}
 
     def get_documentos_resumen(self, obj):
-        total_requeridos = obj.viaje.documentos_requeridos.count()
-        return {'total_requeridos': total_requeridos, 'total_validados': 0, 'tiene_rechazado': False}
+        viaje = obj.viaje
+        total_requeridos = viaje.documentos_requeridos.count()
+        entregados = obj.documentos.all()
+        total_validados = entregados.filter(estado='validado').count()
+        tiene_rechazado = entregados.filter(estado='rechazado').exists()
+        return {
+            'total_requeridos': total_requeridos,
+            'total_validados': total_validados,
+            'tiene_rechazado': tiene_rechazado,
+        }
 
     def get_hotel_asignado(self, obj):
         hotel = obj.viaje.hoteles.first()
@@ -189,22 +189,10 @@ class InscripcionDetalleSerializer(serializers.ModelSerializer):
         return {'nombre': hotel.nombre, 'maps_url': hotel.maps_url}
 
     def get_alergias(self, obj):
-        alergias_list = []
-        if obj.alergeno_gluten: alergias_list.append('Gluten')
-        if obj.alergeno_crustaceos: alergias_list.append('Crustáceos')
-        if obj.alergeno_huevos: alergias_list.append('Huevos')
-        if obj.alergeno_pescado: alergias_list.append('Pescado')
-        if obj.alergeno_cacahuetes: alergias_list.append('Cacahuetes')
-        if obj.alergeno_soja: alergias_list.append('Soja')
-        if obj.alergeno_lacteos: alergias_list.append('Lácteos')
-        if obj.alergeno_frutos_cascara: alergias_list.append('Frutos de cáscara')
-        if obj.alergeno_apio: alergias_list.append('Apio')
-        if obj.alergeno_mostaza: alergias_list.append('Mostaza')
-        if obj.alergeno_sesamo: alergias_list.append('Sésamo')
-        if obj.alergeno_sulfitos: alergias_list.append('Sulfitos')
-        if obj.alergeno_altramuces: alergias_list.append('Altramuces')
-        if obj.alergeno_moluscos: alergias_list.append('Moluscos')
-        
+        alergias_list = [
+            etiqueta for campo, etiqueta in ETIQUETAS_ALERGENOS.items()
+            if getattr(obj, campo)
+        ]
         if not alergias_list:
             return ['sin especificar']
         return alergias_list

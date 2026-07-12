@@ -1,4 +1,7 @@
-﻿from rest_framework import generics, status
+﻿from django.conf import settings
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound, PermissionDenied
@@ -35,9 +38,34 @@ from apps.auditoria.models import LogAuditoria
 class PagoVerificarRechazarView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated, EsAgente]
 
+    def _enviar_email_estado(self, pago):
+        tutor = pago.inscripcion.padre_tutor.usuario
+        contexto = {
+            'nombre_tutor': tutor.nombre,
+            'importe': str(pago.importe),
+            'nombre_viaje': pago.inscripcion.viaje.nombre,
+        }
+        if pago.estado == 'verificado':
+            html = render_to_string('emails/pago_verificado.html', contexto)
+            subject = 'Pago verificado - ' + pago.inscripcion.viaje.nombre
+        else:
+            contexto['motivo'] = pago.notas or 'Sin motivo especificado.'
+            html = render_to_string('emails/pago_rechazado.html', contexto)
+            subject = 'Pago rechazado - ' + pago.inscripcion.viaje.nombre
+        send_mail(
+            subject=subject,
+            message='',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[tutor.email],
+            html_message=html,
+            fail_silently=True,
+        )
+
     def patch(self, request, pk):
         try:
-            pago = Pago.objects.select_related('inscripcion__padre_tutor__usuario', 'inscripcion__viaje').get(pk=pk)
+            pago = Pago.objects.select_related(
+                'inscripcion__padre_tutor__usuario', 'inscripcion__viaje'
+            ).get(pk=pk)
         except Pago.DoesNotExist:
             raise NotFound('Pago no encontrado.')
         nuevo_estado = request.data.get('estado')
@@ -58,4 +86,5 @@ class PagoVerificarRechazarView(generics.GenericAPIView):
             valor_nuevo={'estado': nuevo_estado},
             ip=request.META.get('REMOTE_ADDR')
         )
+        self._enviar_email_estado(pago)
         return Response(PagoDetalleSerializer(pago).data)

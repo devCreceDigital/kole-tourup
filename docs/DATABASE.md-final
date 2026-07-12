@@ -1,0 +1,561 @@
+# DATABASE.md-final — Esquema de Base de Datos (Actualizado)
+
+> **Última actualización:** 2026-07-09  
+> **Estado:** Refleja la implementación real en `backend/apps/*/models.py`
+
+---
+
+## Motor: PostgreSQL
+## ORM: Django 4.2+ (`models.py`)
+
+---
+
+## Convenciones Globales
+
+- **PK:** `UUIDField(primary_key=True, default=uuid.uuid4, editable=False)` en todas las tablas
+- **Timestamps:** `created_at = auto_now_add=True`, `updated_at = auto_now=True`
+- **Enumeraciones:** `models.TextChoices`
+- **Storage:** `FileField` / `ImageField` con backend S3/GCS configurable
+- **Multi-tenant:** campo `agencia` (FK) en modelos raíz
+- **Eliminación protegida:** `on_delete=PROTECT` en relaciones que no deben perder datos
+
+---
+
+## Enumeraciones (TextChoices) Implementadas
+
+```python
+# apps.autenticacion.models
+class RolUsuario(TextChoices):
+    PADRE    = 'padre'
+    ALUMNO   = 'alumno'
+    AGENTE   = 'agente'
+    MECENAS  = 'mecenas'
+
+class RelacionAlumno(TextChoices):
+    PADRE = 'padre'
+    MADRE = 'madre'
+    TUTOR = 'tutor_legal'
+
+# apps.viajes.models
+class EstadoViaje(TextChoices):
+    BORRADOR  = 'borrador'
+    ACTIVO    = 'activo'
+    CERRADO   = 'cerrado'
+    ARCHIVADO = 'archivado'
+
+class TipoActividad(TextChoices):
+    VUELO      = 'vuelo', 'Vuelo / Traslado aéreo'
+    BUS        = 'bus', 'Transporte terrestre'
+    HOTEL      = 'hotel', 'Alojamiento / Check-in'
+    COMIDA     = 'comida', 'Comidas (Desayuno, Almuerzo, Cena)'
+    EXCURSION  = 'excursion', 'Excursión / Tour'
+    LIBRE      = 'libre', 'Tiempo libre'
+    OTRO       = 'otro', 'Otra actividad'
+
+class TipoDocumento(TextChoices):
+    DNI      = 'DNI', 'DNI'
+    PASAPORTE = 'PASAPORTE', 'Pasaporte'
+    OTRO     = 'OTRO', 'Otro'
+
+# apps.inscripciones.models (Inscripcion.estado)
+ESTADO_INSCRIPCION_CHOICES = [
+    ('pre_inscrito', 'Pre-inscrito'),
+    ('pendiente',    'Pendiente'),
+    ('confirmado',   'Confirmado'),
+    ('cancelado',    'Cancelado'),
+    ('baja',         'Baja'),
+]
+
+# apps.pagos.models (cuando se implemente)
+class EstadoPago(TextChoices):
+    PENDIENTE  = 'pendiente'
+    VERIFICADO = 'verificado'
+    RECHAZADO  = 'rechazado'
+
+class MetodoPago(TextChoices):
+    TRANSFERENCIA = 'transferencia'
+    EFECTIVO      = 'efectivo'
+    TARJETA       = 'tarjeta'
+    OTRO          = 'otro'
+
+# apps.documentos.models (cuando se implemente)
+class EstadoDocumento(TextChoices):
+    PENDIENTE = 'pendiente'
+    VALIDADO  = 'validado'
+    RECHAZADO = 'rechazado'
+
+# apps.comunicados.models (cuando se implemente)
+class TipoNotificacion(TextChoices):
+    PAGO_VENCIDO  = 'pago_vencido'
+    DOC_RECHAZADO = 'doc_rechazado'
+    DOC_VALIDADO  = 'doc_validado'
+    COMUNICADO    = 'comunicado'
+    RECORDATORIO  = 'recordatorio'
+
+# apps.mecenas.models (cuando se implemente)
+class TipoMecenas(TextChoices):
+    EMPRESA     = 'empresa'
+    PARTICULAR  = 'particular'
+    INSTITUCION = 'institucion'
+```
+
+---
+
+## Entidades — Detalle Completo (Implementado)
+
+### Agencia (Tenant raíz) — `apps.agencias.models.Agencia`
+
+| Campo | Tipo ORM | Restricción | Descripción |
+|-------|----------|-------------|-------------|
+| id | UUIDField PK | NOT NULL | Identificador único |
+| nombre | CharField(200) | NOT NULL | Nombre comercial |
+| logo | ImageField | NULLABLE | upload_to='agencias/logos/' |
+| email_contacto | EmailField | UNIQUE NOT NULL | Email principal |
+| telefono | CharField(20) | blank=True | Teléfono de contacto |
+| licencia_agencia | CharField(100) | blank=True | Nº licencia oficial |
+| slug | SlugField(100) | UNIQUE NOT NULL | Identificador URL |
+| activa | BooleanField | DEFAULT True | Estado del tenant |
+| created_at | DateTimeField | auto_now_add | Fecha de creación |
+
+**Meta:** `ordering = ['nombre']`
+
+---
+
+### Usuario (Custom Auth — AbstractBaseUser) — `apps.autenticacion.models.Usuario`
+
+| Campo | Tipo ORM | Restricción | Descripción |
+|-------|----------|-------------|-------------|
+| id | UUIDField PK | NOT NULL | Identificador único |
+| email | EmailField | UNIQUE NOT NULL | Login principal |
+| nombre | CharField(100) | NOT NULL | Nombre |
+| apellidos | CharField(150) | NOT NULL | Apellidos |
+| telefono | CharField(20) | blank=True | Teléfono |
+| rol | CharField(20) | NOT NULL | RolUsuario.choices |
+| agencia | FK(Agencia) | SET_NULL nullable | Agencia a la que pertenece |
+| email_verificado | BooleanField | DEFAULT False | Verificación de email |
+| activo | BooleanField | DEFAULT True | Estado de la cuenta |
+| ultimo_login | DateTimeField | NULLABLE | Último acceso |
+| is_staff | BooleanField | DEFAULT False | Acceso admin Django |
+| is_superuser | BooleanField | DEFAULT False | Superusuario |
+| created_at | DateTimeField | auto_now_add | |
+
+**USERNAME_FIELD:** `email`  
+**Índices:** `(agencia, rol)`, `email`  
+**Propiedad:** `nombre_completo → f'{nombre} {apellidos}'`  
+**Manager:** `CustomUserManager` con `create_user` / `create_superuser`
+
+---
+
+### PadreTutor (perfil extendido) — `apps.autenticacion.models.PadreTutor`
+
+| Campo | Tipo ORM | Restricción | Descripción |
+|-------|----------|-------------|-------------|
+| id | UUIDField PK | | |
+| usuario | OneToOneField(Usuario) | CASCADE | related_name='perfil_tutor' |
+| dni | CharField(20) | blank=True | DNI del tutor |
+| relacion_alumno | CharField(20) | RelacionAlumno.choices, blank=True | padre / madre / tutor_legal |
+| created_at | DateTimeField | auto_now_add | |
+
+**Relación:** `PadreTutor ↔ Alumno` es M:N vía `Alumno.tutores` (ManyToManyField).
+
+---
+
+### Alumno — **DOS MODELOS EXISTEN** (ver nota abajo)
+
+#### A) `apps.viajes.models.Alumno` — Alumno de la agencia (catálogo)
+
+| Campo | Tipo ORM | Restricción | Descripción |
+|-------|----------|-------------|-------------|
+| id | UUIDField PK | | |
+| agencia | FK(Agencia) | CASCADE NOT NULL | related_name='alumnos' |
+| nombres | CharField(100) | NOT NULL | Nombre propio |
+| apellidos | CharField(150) | NOT NULL | Apellidos |
+| tipo_documento | CharField(20) | TipoDocumento.choices, default=DNI | |
+| numero_documento | CharField(50) | NOT NULL | Documento de identidad |
+| fecha_nacimiento | DateField | NOT NULL | Para cálculo de edad |
+| telefono | CharField(20) | blank=True, default="" | |
+| email | EmailField | blank=True, default="" | |
+| activo | BooleanField | DEFAULT True | |
+| created_at | DateTimeField | auto_now_add | |
+| updated_at | DateTimeField | auto_now | |
+| grupos | M2M(Grupo) | blank=True | related_name='alumnos' |
+
+**Constraint:** `unique_together = [('agencia', 'numero_documento')]`  
+**Índice:** `dni`  
+**Propiedad:** `nombre_completo → f'{nombres} {apellidos}'`
+
+#### B) `apps.inscripciones.models.Alumno` — Perfil de inscripción (extendido)
+
+| Campo | Tipo ORM | Restricción | Descripción |
+|-------|----------|-------------|-------------|
+| id | UUIDField PK | | |
+| usuario | OneToOneField(Usuario) | CASCADE nullable | related_name='perfil_alumno' |
+| nombre | CharField(100) | | |
+| apellidos | CharField(150) | | |
+| fecha_nacimiento | DateField | | |
+| dni | CharField(20) | | |
+| num_pasaporte | CharField(30) | blank=True | |
+| necesidades_especiales | TextField | blank=True | Alergias, condiciones médicas (texto libre) |
+| nombre_tutor_legal | CharField(200) | | |
+| telefono_emergencia | CharField(20) | | |
+| tutores | M2M(PadreTutor) | blank=True | related_name='alumnos' |
+| grupo | FK(Grupo) | SET_NULL nullable | related_name='alumnos_inscritos' |
+| genero | CharField(20) | choices, blank=True | masculino / femenino / otro |
+| colegio | CharField(200) | blank=True | |
+| departamento | CharField(100) | blank=True | |
+| nivel_educativo | CharField(20) | blank=True | |
+| grado | CharField(10) | blank=True | |
+| **14 alergenos EU** (BooleanField default=False): | | | |
+| alergeno_gluten, alergeno_crustaceos, alergeno_huevos, alergeno_pescado, alergeno_cacahuetes, alergeno_soja, alergeno_lacteos, alergeno_frutos_cascara, alergeno_apio, alergeno_mostaza, alergeno_sesamo, alergeno_sulfitos, alergeno_altramuces, alergeno_moluscos | | | |
+| created_at | DateTimeField | auto_now_add | |
+
+> **⚠ Nota:** Existen dos modelos `Alumno` en apps distintas con campos diferentes. El de `viajes` es catálogo de la agencia; el de `inscripciones` es perfil específico por inscripción con datos de salud/colegio/alergenos. Revisar consolidación en Fase 2.
+
+---
+
+### Mecenas (perfil extendido) — `apps.autenticacion.models.Mecenas` *(PENDIENTE - no implementado)*
+
+> **Estado:** Modelo no existe aún. Documentado en DATABASE.md original pero no creado en código.
+
+---
+
+### Viaje — `apps.viajes.models.Viaje`
+
+| Campo | Tipo ORM | Restricción | Descripción |
+|-------|----------|-------------|-------------|
+| id | UUIDField PK | | |
+| agencia | FK(Agencia) | CASCADE NOT NULL | related_name='viajes' |
+| nombre | CharField(300) | NOT NULL | Nombre del viaje |
+| destino | CharField(200) | NOT NULL | Destino principal |
+| fecha_salida | DateField | NOT NULL | Fecha de inicio |
+| fecha_regreso | DateField | NOT NULL | Fecha de fin |
+| descripcion | TextField | blank=True, default="" | Descripción larga |
+| cupo_maximo | PositiveIntegerField | NOT NULL | Plazas disponibles |
+| precio_total | DecimalField(10,2) | NOT NULL | Precio por alumno |
+| estado | CharField(20) | DEFAULT 'borrador' | EstadoViaje.choices |
+| colegio | CharField(200) | blank=True, default="" | Colegio asociado |
+| nivel_educativo | CharField(50) | blank=True, default="" | Nivel (ej. Secundaria) |
+| grado | CharField(50) | blank=True, default="" | Grado (ej. 5to) |
+| slug | SlugField(100) | UNIQUE NOT NULL | Generado auto (pre_save) |
+| codigo | CharField(20) | UNIQUE NOT NULL | Generado auto (pre_save) |
+| imagen | ImageField | NULLABLE | upload_to='viajes/portadas/' |
+| created_at | DateTimeField | auto_now_add | |
+| updated_at | DateTimeField | auto_now | |
+
+**Índices:** `(agencia, estado)`, `fecha_salida`  
+**Constraint:** `fecha_regreso > fecha_salida` (CheckConstraint BD)  
+**Propiedad:** `duracion_dias → (fecha_regreso - fecha_salida).days`  
+**Signal:** `pre_save` genera `slug` y `codigo` si no existen
+
+---
+
+### Grupo — `apps.viajes.models.Grupo`
+
+| Campo | Tipo ORM | Restricción | Descripción |
+|-------|----------|-------------|-------------|
+| id | UUIDField PK | | |
+| viaje | FK(Viaje) | CASCADE NOT NULL | related_name='grupos' |
+| nombre | CharField(100) | NOT NULL | "Grupo A", "Bus 2" |
+| descripcion | CharField(300) | blank=True, default="" | |
+| capacidad | PositiveIntegerField | NULLABLE | Límite de alumnos |
+| created_at | DateTimeField | auto_now_add | |
+
+**Unique Together:** `(viaje, nombre)`
+
+---
+
+### PlanPago — `apps.viajes.models.PlanPago`
+
+| Campo | Tipo ORM | Restricción | Descripción |
+|-------|----------|-------------|-------------|
+| id | UUIDField PK | | |
+| viaje | OneToOneField(Viaje) | CASCADE | related_name='plan_pago' |
+| descripcion | CharField(300) | blank=True, default="" | |
+| total_cuotas | PositiveIntegerField | NOT NULL | Número de pagos |
+| created_at | DateTimeField | auto_now_add | |
+
+**Propiedad:** `tiene_pagos_verificados` → False (TODO: implementar con app Pagos)
+
+---
+
+### Cuota — `apps.viajes.models.Cuota`
+
+| Campo | Tipo ORM | Restricción | Descripción |
+|-------|----------|-------------|-------------|
+| id | UUIDField PK | | |
+| plan_pago | FK(PlanPago) | CASCADE NOT NULL | related_name='cuotas' |
+| numero_cuota | PositiveIntegerField | NOT NULL | Orden: 1, 2, 3… |
+| descripcion | CharField(200) | blank=True, default="" | "Reserva", "2ª cuota" |
+| importe | DecimalField(10,2) | NOT NULL, > 0 | Monto a pagar |
+| fecha_vencimiento | DateField | NOT NULL | Fecha límite |
+
+**Unique Together:** `(plan_pago, numero_cuota)`  
+**Constraint:** `importe > 0` (CheckConstraint BD)  
+**Meta:** `ordering = ['numero_cuota']`
+
+---
+
+### Inscripcion — `apps.inscripciones.models.Inscripcion`
+
+| Campo | Tipo ORM | Restricción | Descripción |
+|-------|----------|-------------|-------------|
+| id | UUIDField PK | | |
+| alumno | FK(Alumno) | PROTECT NOT NULL | related_name='inscripciones' |
+| viaje | FK(Viaje) | PROTECT NOT NULL | related_name='inscripciones' |
+| padre_tutor | FK(PadreTutor) | PROTECT NOT NULL | related_name='inscripciones' |
+| fecha_inscripcion | DateTimeField | auto_now_add | |
+| estado | CharField(20) | DEFAULT 'pre_inscrito' | pre_inscrito/pendiente/confirmado/cancelado/baja |
+| acceso_alumno_habilitado | BooleanField | DEFAULT False | Flag para portal alumno |
+| hotel_asignado | FK(Hotel) | SET_NULL nullable | related_name='inscripciones' |
+| notas_internas | TextField | blank=True | Solo visible para agente (invariante #9) |
+| precio_final | DecimalField(10,2) | NOT NULL | Precio acordado |
+| **Campos duplicados del alumno para snapshot:** | | | |
+| genero | CharField(20) | choices, blank=True | masculino/femenino/otro |
+| colegio | CharField(200) | blank=True | |
+| departamento | CharField(100) | blank=True | |
+| nivel_educativo | CharField(20) | blank=True | |
+| grado | CharField(10) | blank=True | |
+| **14 alergenos EU** (BooleanField default=False): | | | |
+| alergeno_gluten, alergeno_crustaceos, alergeno_huevos, alergeno_pescado, alergeno_cacahuetes, alergeno_soja, alergeno_lacteos, alergeno_frutos_cascara, alergeno_apio, alergeno_mostaza, alergeno_sesamo, alergeno_sulfitos, alergeno_altramuces, alergeno_moluscos | | | |
+| created_at | DateTimeField | auto_now_add | |
+| updated_at | DateTimeField | auto_now | |
+
+**Unique Together:** `(alumno, viaje)` — un alumno, un viaje, una inscripción  
+**Índices:** `(viaje, estado)`, `padre_tutor`  
+**Propiedades computadas (Python, NO columnas):**
+- `total_pagado → SUM(pagos.importe WHERE estado='verificado')`
+- `saldo_pendiente → precio_final - total_pagado`
+- `porcentaje_pagado → round(total_pagado / precio_final * 100, 2)`
+
+---
+
+### Pago — `apps.pagos.models.Pago` **(PENDIENTE - no implementado)**
+
+> **Estado:** App `pagos` existe pero modelo no creado. Documentado en DATABASE.md original.
+
+| Campo | Tipo ORM | Restricción | Descripción |
+|-------|----------|-------------|-------------|
+| id | UUIDField PK | | |
+| inscripcion | FK(Inscripcion) | PROTECT NOT NULL | related_name='pagos' |
+| cuota | FK(Cuota) | SET_NULL nullable | Cuota específica cubierta |
+| pagado_por | FK(Usuario) | PROTECT NOT NULL | Quién realizó el pago |
+| registrado_por | FK(Usuario) | PROTECT NOT NULL | Quién lo cargó (agente/tutor) |
+| importe | DecimalField(10,2) | NOT NULL, > 0 | Monto pagado |
+| fecha_pago | DateField | NOT NULL | Fecha del pago |
+| metodo_pago | CharField(20) | NOT NULL | MetodoPago.choices |
+| comprobante | FileField | NULLABLE | upload_to='pagos/comprobantes/%Y/%m/' |
+| estado | CharField(20) | DEFAULT 'pendiente' | EstadoPago.choices |
+| notas | TextField | blank=True | Observaciones del agente |
+| created_at | DateTimeField | auto_now_add | |
+| updated_at | DateTimeField | auto_now | |
+
+**Índices:** `(inscripcion, estado)`, `fecha_pago`  
+**Constraint:** `importe > 0` (CheckConstraint BD)
+
+---
+
+### DocumentoRequerido — `apps.viajes.models.DocumentoRequerido`
+
+| Campo | Tipo ORM | Restricción | Descripción |
+|-------|----------|-------------|-------------|
+| id | UUIDField PK | | |
+| viaje | FK(Viaje) | CASCADE NOT NULL | related_name='documentos_requeridos' |
+| nombre | CharField(200) | NOT NULL | "DNI alumno", "Autorización" |
+| descripcion | TextField | blank=True, default="" | Instrucciones para la familia |
+| obligatorio | BooleanField | DEFAULT True | Si es mandatorio |
+| formatos_permitidos | CharField(100) | DEFAULT 'pdf,jpg,png' | Extensiones separadas por comas |
+
+**Propiedad:** `formatos_lista → ['pdf', 'jpg', 'png']`
+
+---
+
+### DocumentoEntregado — `apps.documentos.models.DocumentoEntregado` **(PENDIENTE - no implementado)**
+
+> **Estado:** App `documentos` existe pero modelo no creado.
+
+| Campo | Tipo ORM | Restricción | Descripción |
+|-------|----------|-------------|-------------|
+| id | UUIDField PK | | |
+| inscripcion | FK(Inscripcion) | CASCADE NOT NULL | related_name='documentos' |
+| documento_requerido | FK(DocumentoRequerido) | PROTECT NOT NULL | Tipo de documento |
+| archivo | FileField | NOT NULL | upload_to='documentos/%Y/%m/' |
+| nombre_archivo | CharField(255) | NOT NULL | Nombre original |
+| tamano_bytes | PositiveIntegerField | NOT NULL | Máx: 10_485_760 (10 MB) |
+| estado | CharField(20) | DEFAULT 'pendiente' | EstadoDocumento.choices |
+| motivo_rechazo | TextField | blank=True | Razón del rechazo |
+| validado_por | FK(Usuario) | SET_NULL nullable | Agente que revisó |
+| fecha_validacion | DateTimeField | NULLABLE | Cuándo fue revisado |
+| uploaded_at | DateTimeField | auto_now_add | |
+
+**Regla:** Por `(inscripcion, documento_requerido)` puede haber múltiples registros (resubidas), pero solo uno con `estado=validado` simultáneamente.  
+**Índices:** `(inscripcion, estado)`, `(documento_requerido, estado)`  
+**Propiedad:** `tamano_legible → 'X.X KB' o 'X.X MB'`
+
+---
+
+### Itinerario — `apps.viajes.models.Itinerario`
+
+| Campo | Tipo ORM | Descripción |
+|-------|----------|-------------|
+| id | UUIDField PK | |
+| viaje | OneToOneField(Viaje) CASCADE | related_name='itinerario' |
+| created_at | DateTimeField auto_now_add | |
+| updated_at | DateTimeField auto_now | |
+
+---
+
+### EtapaItinerario — `apps.viajes.models.EtapaItinerario`
+
+| Campo | Tipo ORM | Restricción | Descripción |
+|-------|----------|-------------|-------------|
+| id | UUIDField PK | | |
+| itinerario | FK(Itinerario) | CASCADE NOT NULL | related_name='etapas' |
+| dia_numero | PositiveIntegerField | NOT NULL | Día 1, 2, 3… |
+| titulo | CharField(200) | NOT NULL | "Día 1 — Llegada" |
+| descripcion | TextField | blank=True, default="" | |
+| slug | SlugField(100) | UNIQUE NOT NULL | Generado auto |
+| codigo | CharField(20) | UNIQUE NOT NULL | Generado auto |
+| imagen | ImageField | NULLABLE | upload_to='itinerarios/etapas/' |
+
+**Unique Together:** `(itinerario, dia_numero)`  
+**Meta:** `ordering = ['dia_numero']`
+
+---
+
+### Actividad — `apps.viajes.models.Actividad`
+
+| Campo | Tipo ORM | Restricción | Descripción |
+|-------|----------|-------------|-------------|
+| id | UUIDField PK | | |
+| etapa | FK(EtapaItinerario) | CASCADE NOT NULL | related_name='actividades' |
+| hora | TimeField | NULLABLE | Hora aproximada |
+| titulo | CharField(200) | NOT NULL | Nombre de la actividad |
+| descripcion | TextField | blank=True, default="" | |
+| tipo | CharField(20) | NULLABLE | TipoActividad.choices |
+| orden | PositiveIntegerField | DEFAULT 0 | Posición dentro de la etapa |
+
+**Meta:** `ordering = ['orden', 'hora']`  
+**Invariante:** `orden` es read-only en serializer; solo se modifica vía `PATCH /actividades/reordenar/` (bulk)
+
+---
+
+### Hotel — `apps.viajes.models.Hotel`
+
+| Campo | Tipo ORM | Restricción | Descripción |
+|-------|----------|-------------|-------------|
+| id | UUIDField PK | | |
+| viaje | FK(Viaje) | CASCADE NOT NULL | related_name='hoteles' |
+| nombre | CharField(200) | NOT NULL | Nombre del hotel |
+| descripcion | TextField | blank=True, default="" | |
+| tasa_turistica | DecimalField(8,2) | NULLABLE | Importe tasa por noche |
+| fianza | DecimalField(8,2) | NULLABLE | Depósito requerido |
+| web_url | URLField(500) | blank=True, default="" | Enlace sitio web |
+| maps_url | URLField(500) | blank=True, default="" | Enlace Google Maps |
+| slug | SlugField(100) | UNIQUE NOT NULL | Generado auto |
+| codigo | CharField(20) | UNIQUE NOT NULL | Generado auto |
+| imagen | ImageField | NULLABLE | upload_to='hoteles/' |
+
+---
+
+### MecenasInscripcion (tabla relación M:N) — `apps.mecenas.models.MecenasInscripcion` **(PENDIENTE)**
+
+---
+
+### Comunicado — `apps.comunicados.models.Comunicado` **(PENDIENTE)**
+
+---
+
+### Notificacion — `apps.notificaciones.models.Notificacion` **(PENDIENTE)**
+
+---
+
+### LogAuditoria (inmutable) — `apps.auditoria.models.LogAuditoria` **(PENDIENTE)**
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| id | UUIDField PK | |
+| usuario_id | FK(Usuario) nullable | Quien realizó la acción |
+| accion | VARCHAR(100) | PAGO_REGISTRADO, PAGO_ACTUALIZADO, etc. |
+| modelo | VARCHAR(100) | Nombre del modelo afectado |
+| objeto_id | UUID nullable | ID del objeto afectado |
+| valor_anterior | JSONField nullable | Estado previo |
+| valor_nuevo | JSONField nullable | Estado posterior |
+| ip | GenericIPAddressField nullable | IP del request |
+| timestamp | DateTimeField auto_now_add | |
+
+**Regla:** `save()` bloquea UPDATE; `delete()` lanza excepción. Solo INSERT permitido.
+
+---
+
+## Índices Críticos Declarados
+
+```python
+# Usuario
+Index(fields=['agencia', 'rol'])
+Index(fields=['email'])
+
+# Viaje
+Index(fields=['agencia', 'estado'])
+Index(fields=['fecha_salida'])
+
+# Alumno (viajes)
+Index(fields=['dni'])
+
+# Inscripcion
+Index(fields=['viaje', 'estado'])
+Index(fields=['padre_tutor'])
+
+# Pago (cuando exista)
+Index(fields=['inscripcion', 'estado'])
+Index(fields=['fecha_pago'])
+
+# DocumentoEntregado (cuando exista)
+Index(fields=['inscripcion', 'estado'])
+Index(fields=['documento_requerido', 'estado'])
+```
+
+---
+
+## Constraints de Base de Datos
+
+```python
+# Viaje
+CheckConstraint(check=Q(fecha_regreso__gt=F('fecha_salida')), name='fecha_regreso_posterior_salida')
+
+# Cuota
+CheckConstraint(check=Q(importe__gt=0), name='cuota_importe_positivo')
+
+# Pago (cuando exista)
+CheckConstraint(check=Q(importe__gt=0), name='pago_importe_positivo')
+
+# MecenasInscripcion (cuando exista)
+CheckConstraint(check=Q(monto_comprometido__gt=0), name='mecenas_monto_positivo')
+```
+
+---
+
+## Diferencias Clave vs DATABASE.md Original
+
+| Aspecto | DATABASE.md Original | Implementación Real |
+|---------|---------------------|---------------------|
+| `Viaje` | Sin slug, codigo, colegio, nivel, grado, imagen | Con todos esos campos + signal pre_save |
+| `EtapaItinerario` | Sin slug, codigo, imagen | Con slug, codigo, imagen |
+| `Hotel` | Sin slug, codigo, imagen | Con slug, codigo, imagen |
+| `Grupo` | Sin created_at | Con created_at |
+| `Alumno` | Un modelo con campos específicos | **Dos modelos** en apps distintas con campos diferentes |
+| `Inscripcion` | Campos básicos | + hotel_asignado, acceso_alumno_habilitado, genero, colegio, dept, nivel, grado, 14 alergenos |
+| `Pago`, `DocumentoEntregado`, `Notificacion`, `LogAuditoria`, `Comunicado`, `Mecenas` | Definidos | **No implementados** (apps existen, modelos no) |
+| `TipoActividad` | transporte, comida, visita, alojamiento, libre | vuelo, bus, hotel, comida, excursion, libre, otro |
+
+---
+
+## Próximos Pasos (Modelos Pendientes)
+
+1. **TASK-032:** Crear `Inscripcion` con todos los campos documentados aquí (parcialmente hecho en `inscripciones/models.py`)
+2. **TASK-035:** Modelo `Pago` + API upload comprobante
+3. **TASK-037:** Modelo `DocumentoEntregado` + API upload
+4. **TASK-039:** Modelo `Notificacion` + API
+5. **TASK-040:** Modelo `Comunicado` + API + Celery task
+6. **TASK-031:** Modelo `LogAuditoria` inmutable
+7. **TASK-059:** Modelos `Mecenas`, `MecenasInscripcion`
+8. **TASK-061:** Modelos `Conversacion`, `Mensaje` (chat)

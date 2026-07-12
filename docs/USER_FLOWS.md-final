@@ -1,0 +1,175 @@
+# USER_FLOWS.md-final — Flujos de Secuencia (Estado Real)
+
+> Notación: Mermaid `sequenceDiagram`. Renderizable en GitHub, Notion, y cualquier editor compatible.
+> Última actualización: 2026-07-09 — Se actualizaron los flujos para reflejar el uso de `fetchApi` y cookies `httpOnly`.
+
+---
+
+## FLOW 01 — Registro y Verificación de Cuenta (Padre/Tutor)
+
+```mermaid
+sequenceDiagram
+    actor PT as Padre/Tutor
+    participant UI as Frontend
+    participant API as Django API
+    participant DB as Base de Datos
+    participant EMAIL as Servicio Email
+
+    PT->>UI: Completa formulario de registro
+    UI->>API: POST /auth/registro/ {email, password, nombre, apellidos, rol}
+    API->>DB: Verifica que email no exista
+    DB-->>API: Email disponible
+    API->>DB: Crea Usuario (email_verificado=False)
+    API->>EMAIL: Envía email con token de verificación
+    EMAIL-->>PT: Email con enlace de activación
+    API-->>UI: 201 Created
+    UI-->>PT: Pantalla de confirmación
+
+    PT->>UI: Clic en enlace de activación
+    UI->>API: GET /auth/verificar/?token=<TOKEN>
+    API->>DB: Valida token y actualiza email_verificado=True
+    DB-->>API: OK
+    API-->>UI: 200 OK
+    UI-->>PT: Redirect a /login
+```
+
+---
+
+## FLOW 02 — Login y Generación de JWT
+
+```mermaid
+sequenceDiagram
+    actor U as Usuario (cualquier rol)
+    participant UI as Frontend
+    participant GW as Gateway (Node.js)
+    participant API as Django API
+    participant DB as Base de Datos
+    participant CACHE as Redis Cache
+
+    U->>UI: Ingresa email y contraseña
+    UI->>GW: POST /auth/login/ {email, password}
+    GW->>API: Reenvía al backend
+    API->>DB: Busca usuario por email
+    DB-->>API: Usuario encontrado
+    API->>API: Verifica password_hash con bcrypt
+
+    alt Credenciales inválidas
+        API-->>GW: 401 Unauthorized
+        GW-->>UI: 401
+        UI-->>U: "Email o contraseña incorrectos"
+    else Cuenta no verificada
+        API-->>GW: 403 Forbidden
+        GW-->>UI: 403
+        UI-->>U: "Verifica tu email primero"
+    else Credenciales válidas
+        API->>API: Genera JWT access_token (15min) + refresh_token (7d)
+        API->>DB: Actualiza ultimo_login
+        API->>CACHE: Almacena refresh_token en allowlist
+        API-->>GW: 200 + Set-Cookie (access_token, refresh_token) httpOnly
+        GW-->>UI: Reenvía response con cookies
+        UI->>UI: Cookies almacenadas automáticamente (httpOnly)
+        UI-->>U: Redirect a dashboard según rol
+    end
+```
+
+---
+
+## FLOW 03 — Creación de Viaje (Agente) — Sin cambios
+
+---
+
+## FLOW 04 — Inscripción (Wizard 3 pasos)
+
+```mermaid
+sequenceDiagram
+    actor PT as Padre/Tutor
+    participant UI as Frontend
+    participant GW as Gateway
+    participant API as Django API
+    participant DB as Base de Datos
+
+    PT->>UI: Completa Paso 1 (datos alumno)
+    PT->>UI: Completa Paso 2 (colegio)
+    PT->>UI: Completa Paso 3 (alergias + T&C) + Confirma
+
+    UI->>GW: POST /inscripciones/ (via fetchApi + credentials: include)
+    GW->>API: POST /api/v1/inscripciones/ {viaje_id, alumno{...}}
+
+    API->>DB: Verifica cupo disponible
+    API->>DB: Verifica alumno no inscrito en este viaje
+    API->>DB: get_or_create Alumno (por dni) + update campos
+    API->>DB: Crea Inscripcion (estado='pre_inscrito', precio_final=viaje.precio_total)
+    API->>API: Signal post_save → email bienvenida
+
+    API-->>GW: 201 Created {inscripcion_id, estado}
+    GW-->>UI: Response
+    UI-->>PT: Confirmación + redirect a dashboard
+```
+
+**NOTA:** El campo `nombre` en el serializer debe ser `nombres` para coincidir con el modelo `Alumno`. Ver TD-009.
+
+---
+
+## FLOW 05 — Registro de Pago
+
+```mermaid
+sequenceDiagram
+    actor PT as Padre/Tutor
+    participant UI as Frontend
+    participant GW as Gateway
+    participant API as Django API
+    participant DB as Base de Datos
+    participant STORAGE as S3/GCS
+
+    PT->>UI: Selecciona cuota, ingresa importe, adjunta comprobante
+    UI->>GW: POST /pagos/ (multipart via fetchApi)
+    GW->>GW: Valida tamaño ≤ 10 MB
+    alt > 10 MB
+        GW-->>UI: 413 Payload Too Large
+        UI-->>PT: "El archivo excede el tamaño máximo"
+    else ≤ 10 MB
+        GW->>API: Reenvía multipart
+        API->>API: Valida formato (MIME + extensión)
+        API->>STORAGE: Sube comprobante
+        API->>DB: Crea Pago (estado='pendiente')
+        API->>API: Signal post_save → LogAuditoria + email agente
+        API-->>GW: 201 Created
+        GW-->>UI: Response
+        UI-->>PT: "Pago registrado — pendiente de verificación"
+    end
+```
+
+---
+
+## FLOW 06 — Verificación de Pago (Agente)
+
+```mermaid
+sequenceDiagram
+    actor AV as Agente
+    participant UI as Frontend
+    participant GW as Gateway
+    participant API as Django API
+    participant DB as Base de Datos
+
+    AV->>UI: Ve lista de pagos pendientes
+    AV->>UI: Revisa comprobante y decide: verificar o rechazar
+    UI->>GW: PATCH /pagos/{id}/ {estado, notas} (via fetchApi)
+    GW->>API: PATCH /api/v1/pagos/{id}/
+
+    alt Verificar
+        API->>DB: pago.estado = 'verificado'
+        API->>API: Signal → LogAuditoria + Notificacion + email tutor
+        API-->>GW: 200 OK
+    else Rechazar
+        API->>DB: pago.estado = 'rechazado', pago.notas = motivo
+        API->>API: Signal → LogAuditoria + Notificacion con motivo + email
+        API-->>GW: 200 OK
+    end
+
+    GW-->>UI: Response
+    UI-->>AV: Confirmación visual
+```
+
+---
+
+## FLOW 07 — Subida y Validación de Documento — Análogo a FLOW 05/06

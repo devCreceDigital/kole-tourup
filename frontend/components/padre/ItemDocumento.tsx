@@ -1,6 +1,7 @@
 ﻿'use client'
 import { useState } from 'react'
 import { FileUploader } from '@/components/forms/FileUploader'
+import { fetchApi } from '@/lib/api'
 
 interface EntregaActual {
   id: string
@@ -48,7 +49,7 @@ export function ItemDocumento({ inscripcionId, documentoRequeridoId, nombre, obl
     formData.append('documento_requerido', documentoRequeridoId)
     formData.append('archivo', file)
     try {
-      await fetch('/api/v1/documentos/', { method: 'POST', body: formData })
+      await fetchApi('/api/v1/documentos/', { method: 'POST', body: formData })
       setMostrarUploader(false)
       onSubido()
     } finally {

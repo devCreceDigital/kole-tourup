@@ -1,0 +1,76 @@
+# BUSINESS_RULES.md-final — Reglas de Negocio (Estado Real)
+
+> Estas reglas son invariantes del dominio. Ningún agente IA, desarrollador ni configuración puede violarlas. Están respaldadas por constraints de base de datos, signals de Django y validaciones de API.
+> Última actualización: 2026-07-09 — Se agregaron reglas de fetchApi y model field consistency.
+
+---
+
+## 1. Globales del Sistema
+
+| ID | Regla | Estado |
+|----|-------|--------|
+| BR-G-01 | **Fase 1:** Una sola agencia operativa: Totem Travel (`slug = 'totem'`) | ✅ |
+| BR-G-02 | Toda consulta de datos debe filtrarse por `agencia_id` del usuario autenticado | ✅ |
+| BR-G-03 | No hay pasarela de pago automática. Pagos manuales: padre sube comprobante → agente verifica | ✅ |
+| BR-G-04 | UUID v4 como PK en todas las tablas, sin excepción | ✅ |
+| BR-G-05 | `fetchApi` nunca debe validarse con `if (!res)` — usar `if (!res.ok)` y capturar `ApiError` | ✅ Nueva |
+| BR-G-06 | Los nombres de campos en serializers/`get_or_create` deben coincidir exactamente con el modelo | ✅ Nueva |
+
+---
+
+## 2. Autenticación y Usuarios — Sin cambios
+
+---
+
+## 3. Viajes — Sin cambios
+
+### Transiciones de Estado — Viaje
+```
+borrador ──→ activo ──→ cerrado ──→ archivado
+```
+
+---
+
+## 4. Inscripciones
+
+| ID | Regla | Estado |
+|----|-------|--------|
+| BR-INS-01 | Combinación `(alumno_id, viaje_id)` UNIQUE | ✅ |
+| BR-INS-02 | Verificar cupo disponible antes de crear | ✅ |
+| BR-INS-03 | Nueva inscripción nace con `estado='pendiente'` | ✅ Implementado como `'pre_inscrito'` |
+| BR-INS-04 | `saldo_pendiente` como propiedad Python, nunca columna | ✅ |
+| BR-INS-05 | `on_delete=PROTECT` en relaciones críticas | ✅ |
+| BR-INS-06 | Alumno puede no tener cuenta propia (`usuario_id` nullable) | ✅ |
+| BR-INS-07 | `notas_internas` solo visibles para el agente | ✅ |
+
+### Estados UX Comunicados al Padre
+| Estado UX | Color | Condición |
+|-----------|-------|-----------|
+| Lista de espera | 🟠 Naranja | `pendiente`, sin cupo |
+| Pre-inscrito | 🟡 Amarillo | `pendiente`, cupo disponible, incompleto |
+| Confirmado | 🟢 Verde | `confirmado` |
+| En camino | 🔵 Azul | `confirmado` + hoy entre fechas |
+
+---
+
+## 5. Pagos — Sin cambios
+
+### Transiciones de Estado — Pago
+```
+pendiente ──→ verificado
+           ──→ rechazado
+```
+
+---
+
+## 6. Documentación — Sin cambios
+
+### Transiciones de Estado — Documento
+```
+pendiente ──→ validado
+           ──→ rechazado (padre puede resubir)
+```
+
+---
+
+## 7–13 — Sin cambios estructurales. Ver original `BUSINESS_RULES.md` para detalle completo.

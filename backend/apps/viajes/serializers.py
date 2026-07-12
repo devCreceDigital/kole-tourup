@@ -15,6 +15,7 @@ class ViajeSerializer(serializers.ModelSerializer):
             'id', 'agencia', 'nombre', 'destino', 'fecha_salida',
             'fecha_regreso', 'descripcion', 'cupo_maximo',
             'precio_total', 'estado', 'imagen', 'duracion_dias',
+            'slug', 'codigo', 'colegio', 'nivel_educativo', 'grado',
             'inscripciones_count',
             'created_at', 'updated_at'
         ]

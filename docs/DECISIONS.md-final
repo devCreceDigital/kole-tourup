@@ -1,0 +1,48 @@
+# DECISIONS.md-final — Registro de Decisiones Técnicas (Estado Real)
+
+Este archivo documenta decisiones donde la especificación era ambigua o contradictoria.
+Cada entrada incluye el problema, los documentos involucrados, las alternativas evaluadas
+y la decisión adoptada.
+
+---
+
+## DEC-001 — Campo `relacion_alumno` en `PadreTutor`
+**Estado:** Aprobado e implementado ✅
+
+## DEC-002 — Login endpoint establece cookies httpOnly directamente
+**Estado:** Aprobado e implementado ✅
+
+## DEC-003 — Sin rotación de Refresh Token en cada /refresh/
+**Estado:** Aprobado e implementado ✅
+
+## DEC-004 — Gateway auth middleware elimina Authorization del cliente si no hay cookie
+**Estado:** Aprobado e implementado ✅
+
+## DEC-005 — Rate limiting fail-open cuando Redis no está disponible
+**Estado:** Aprobado e implementado ✅
+
+## DEC-006 — Restricción de proxy inverso solo a rutas `/api/`
+**Estado:** Aprobado e implementado ✅
+
+## DEC-007 — Opciones definidas para TipoActividad
+**Estado:** Aprobado e implementado ✅
+
+---
+
+## DEC-008 — Modelo Alumno duplicado: `inscripciones.Alumno` vs `viajes.Alumno`
+
+**ID:** DEC-008  
+**Estado:** Pendiente de resolución  
+**Fecha:** 2026-07-09  
+**Afecta:** `backend/apps/viajes/models.py`, `backend/apps/inscripciones/models.py`
+
+### Problema
+Existen dos modelos `Alumno`: uno en `apps.viajes` (modelo completo con `nombres`, `apellidos`, `numero_documento`, etc.) y otro en `apps.inscripciones` (con `nombre`, `apellidos`, `dni`, `alergeno_*`, etc.). `InscripcionCreateSerializer` usa `apps.inscripciones.Alumno` pero referencia campos de ambos modelos. El campo `nombre` del serializer no coincide con `nombres` del modelo.
+
+### Decisión adoptada
+**Pendiente:** Se requiere consolidar en un solo modelo `Alumno` o migrar todos los campos a `apps.inscripciones.Alumno` y referenciar desde `apps.viajes` mediante herencia o import. Mientras tanto, verificar que cada `get_or_create` y `Serializer.Meta.fields` use exactamente el nombre del campo del modelo destino.
+
+### Referencia
+- `backend/apps/inscripciones/serializers.py:64` — `'nombre'` debe ser `'nombres'`
+- `backend/apps/inscripciones/serializers.py:151` — `AlumnoResumenSerializer.Meta.fields` referencia `nombre`
+- TD-009 en `TECH_DEBT.md`

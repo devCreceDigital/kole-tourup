@@ -23,33 +23,40 @@ export class ApiError extends Error {
 
 export async function fetchApi(endpoint: string, options: RequestInit = {}) {
   const url = `${GATEWAY_URL}${endpoint}`;
-  
-  // Incluimos credenciales para que se envíe/reciba la cookie httpOnly access_token
+
+  const isFormData = options.body instanceof FormData;
+
   const finalOptions: RequestInit = {
     ...options,
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+    headers: isFormData
+      ? { ...options.headers as Record<string, string> }
+      : {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
   };
 
   const response = await fetch(url, finalOptions);
 
   if (!response.ok) {
-    let errorData = {};
+    let errorData: any = { error: 'Error inesperado del servidor' };
     try {
       errorData = await response.json();
     } catch {
-      errorData = { error: 'Error inesperado del servidor' };
+      // keep default error
     }
     throw new ApiError(response.status, errorData);
   }
 
-  // Si es 204 No Content, no intentamos parsear JSON
   if (response.status === 204) {
     return null;
   }
 
-  return response.json();
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    return response.json();
+  }
+
+  return null;
 }

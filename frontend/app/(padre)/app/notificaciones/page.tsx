@@ -1,25 +1,25 @@
 ﻿'use client'
 import { useState, useEffect } from 'react'
 import { ItemNotificacion } from '@/components/padre/ItemNotificacion'
+import { fetchApi } from '@/lib/api'
 
 export default function NotificacionesPage() {
   const [notificaciones, setNotificaciones] = useState<any[]>([])
   const [cargando, setCargando] = useState(true)
 
   useEffect(() => {
-    fetch('/api/v1/notificaciones/')
-      .then(r => r.json())
-      .then(data => setNotificaciones(data))
+    fetchApi('/api/v1/notificaciones/')
+      .then(data => setNotificaciones(data || []))
       .finally(() => setCargando(false))
   }, [])
 
   async function marcarLeida(id: string) {
-    await fetch(`/api/v1/notificaciones/${id}/`, { method: 'PATCH' })
+    await fetchApi(`/api/v1/notificaciones/${id}/`, { method: 'PATCH' })
     setNotificaciones(prev => prev.map(n => n.id === id ? { ...n, leida: true } : n))
   }
 
   async function marcarTodas() {
-    await fetch('/api/v1/notificaciones/marcar-todas/', { method: 'POST' })
+    await fetchApi('/api/v1/notificaciones/marcar-todas/', { method: 'POST' })
     setNotificaciones(prev => prev.map(n => ({ ...n, leida: true })))
   }
 

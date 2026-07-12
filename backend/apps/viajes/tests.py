@@ -1259,3 +1259,166 @@ class GrupoAsignarAlumnosTests(HotelGrupoBaseTestCase):
         self.client.logout()
         r = self.client.post(self.url_asignar(self.grupo.id), data, format='json')
         self.assertEqual(r.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+# ─── Tests DocumentoRequerido (TASK-030) ───────────────────────────────
+
+class DocumentoRequeridoEndpointTests(APITestCase):
+    def setUp(self):
+        self.agencia = Agencia.objects.create(
+            nombre="Agencia Test", slug="agencia-test", email_contacto="a@test.com"
+        )
+        self.agente = Usuario.objects.create_user(
+            email="agente@test.com", password="pwd", rol=RolUsuario.AGENTE,
+            agencia=self.agencia, email_verificado=True
+        )
+        self.padre = Usuario.objects.create_user(
+            email="padre@test.com", password="pwd", rol=RolUsuario.PADRE,
+            email_verificado=True
+        )
+        self.viaje = Viaje.objects.create(
+            agencia=self.agencia,
+            nombre="Viaje Test",
+            destino="Destino",
+            fecha_salida=timezone.now().date() + timedelta(days=30),
+            fecha_regreso=timezone.now().date() + timedelta(days=35),
+            cupo_maximo=20,
+            precio_total=500.00,
+            estado=EstadoViaje.ACTIVO,
+        )
+
+    def _url_list(self, viaje_id):
+        return reverse('viaje-documentos-requeridos', kwargs={'viaje_id': viaje_id})
+
+    def _url_detail(self, viaje_id, documento_id):
+        return reverse('viaje-documento-requerido-detail', kwargs={'viaje_id': viaje_id, 'documento_id': documento_id})
+
+    def test_get_autenticado_ok(self):
+        """GET accesible por cualquier autenticado (incluyendo agente de su agencia)."""
+        self.client.force_authenticate(user=self.agente)
+        response = self.client.get(self._url_list(self.viaje.id))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsInstance(response.data, list)
+
+    def test_get_sin_auth_401(self):
+        response = self.client.get(self._url_list(self.viaje.id))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_post_solo_agente(self):
+        """POST solo permitido para agente."""
+        self.client.force_authenticate(user=self.padre)
+        response = self.client.post(self._url_list(self.viaje.id), {
+            'nombre': 'DNI', 'obligatorio': True, 'formatos_permitidos': 'pdf,jpg'
+        })
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_post_agente_crea_documento(self):
+        """Agente puede crear documento requerido."""
+        self.client.force_authenticate(user=self.agente)
+        response = self.client.post(self._url_list(self.viaje.id), {
+            'nombre': 'DNI Alumno',
+            'descripcion': 'Documento de identidad',
+            'obligatorio': True,
+            'formatos_permitidos': 'pdf,jpg,png'
+        })
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['nombre'], 'DNI Alumno')
+        self.assertTrue(response.data['obligatorio'])
+        self.assertIn('formatos_lista', response.data)
+        self.assertEqual(response.data['formatos_lista'], ['pdf', 'jpg', 'png'])
+
+    def test_patch_solo_agente(self):
+        """PATCH solo permitido para agente."""
+        # Crear documento como agente
+        self.client.force_authenticate(user=self.agente)
+        create_resp = self.client.post(self._url_list(self.viaje.id), {
+            'nombre': 'Original', 'obligatorio': True, 'formatos_permitidos': 'pdf'
+        })
+        doc_id = create_resp.data['id']
+
+        # Intentar PATCH como padre
+        self.client.force_authenticate(user=self.padre)
+        response = self.client.patch(self._url_detail(self.viaje.id, doc_id), {'nombre': 'Modificado'})
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_patch_agente_actualiza(self):
+        """Agente puede actualizar parcialmente."""
+        self.client.force_authenticate(user=self.agente)
+        create_resp = self.client.post(self._url_list(self.viaje.id), {
+            'nombre': 'Original', 'obligatorio': True, 'formatos_permitidos': 'pdf'
+        })
+        doc_id = create_resp.data['id']
+
+        response = self.client.patch(self._url_detail(self.viaje.id, doc_id), {
+            'nombre': 'Actualizado', 'obligatorio': False
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['nombre'], 'Actualizado')
+        self.assertFalse(response.data['obligatorio'])
+
+    def test_delete_solo_agente(self):
+        """DELETE solo permitido para agente."""
+        self.client.force_authenticate(user=self.agente)
+        create_resp = self.client.post(self._url_list(self.viaje.id), {
+            'nombre': 'Para Borrar', 'obligatorio': True, 'formatos_permitidos': 'pdf'
+        })
+        doc_id = create_resp.data['id']
+
+        # Padre no puede borrar
+        self.client.force_authenticate(user=self.padre)
+        response = self.client.delete(self._url_detail(self.viaje.id, doc_id))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        # Agente sí puede borrar
+        self.client.force_authenticate(user=self.agente)
+        response = self.client.delete(self._url_detail(self.viaje.id, doc_id))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_get_detail_autenticado(self):
+        """GET detail accesible por autenticado (agente de la misma agencia)."""
+        self.client.force_authenticate(user=self.agente)
+        create_resp = self.client.post(self._url_list(self.viaje.id), {
+            'nombre': 'DNI', 'obligatorio': True, 'formatos_permitidos': 'pdf'
+        })
+        doc_id = create_resp.data['id']
+
+        response = self.client.get(self._url_detail(self.viaje.id, doc_id))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['nombre'], 'DNI')
+
+    def test_viaje_ajeno_404(self):
+        """Acceso a documento de viaje de otra agencia da 404."""
+        otra_agencia = Agencia.objects.create(
+            nombre="Otra", slug="otra", email_contacto="otra@test.com"
+        )
+        agente_otro = Usuario.objects.create_user(
+            email="otro@test.com", password="pwd", rol=RolUsuario.AGENTE,
+            agencia=otra_agencia, email_verificado=True
+        )
+        viaje_ajeno = Viaje.objects.create(
+            agencia=otra_agencia, nombre="Ajeno", destino="X",
+            fecha_salida=timezone.now().date() + timedelta(days=10),
+            fecha_regreso=timezone.now().date() + timedelta(days=15),
+            cupo_maximo=10, precio_total=100, estado=EstadoViaje.ACTIVO
+        )
+
+        # Crear documento con agente ajeno
+        self.client.force_authenticate(user=agente_otro)
+        create_resp = self.client.post(self._url_list(viaje_ajeno.id), {
+            'nombre': 'Doc Ajeno', 'obligatorio': True, 'formatos_permitidos': 'pdf'
+        })
+        doc_id = create_resp.data['id']
+
+        # Nuestro agente intenta acceder
+        self.client.force_authenticate(user=self.agente)
+        response = self.client.get(self._url_detail(viaje_ajeno.id, doc_id))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_formatos_lista_serializado(self):
+        """formatos_permitidos se serializa como lista."""
+        self.client.force_authenticate(user=self.agente)
+        response = self.client.post(self._url_list(self.viaje.id), {
+            'nombre': 'Doc', 'obligatorio': True, 'formatos_permitidos': 'pdf, jpg, png'
+        })
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['formatos_lista'], ['pdf', 'jpg', 'png'])

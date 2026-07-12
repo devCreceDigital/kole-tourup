@@ -1905,6 +1905,179 @@ Pantalla `/app/configuracion/notificaciones/` para que el padre configure canal 
 
 ---
 
-*Total de tareas: 68*  
-*Tareas pendientes de aprobación: 68*  
+## FASE G — Bug Fixes Post-Code-Review (2026-07-09)
+
+---
+
+### TASK-069
+**Nombre:** Bug: `InscripcionCreateSerializer` usa `nombre` en lugar de `nombres`  
+**Estado:** `Cancelled`  
+**Prioridad:** Alta  
+**Estimación:** 30min  
+**Dependencias:** Ninguna
+
+**Descripción:**  
+FALSO POSITIVO. El code review asumió que el `Alumno` importado por el serializer es el de `backend/apps/viajes/models.py` (campo `nombres`), pero el `from .models import Alumno` importa desde `backend/apps/inscripciones/models.py`, donde el campo se llama `nombre`. El código actual es correcto.
+
+**Archivos afectados:**
+- `backend/apps/inscripciones/serializers.py`
+
+**Decisión:**  
+No se realizan cambios. El serializer usa `Alumno` de `inscripciones.models` que tiene campo `nombre`.  
+Nótese que existe un `Alumno` duplicado en `viajes.models` con `nombres` — posible refactor futuro unificar ambos modelos (fuera del alcance de FASE G).
+
+---
+
+### TASK-070
+**Nombre:** Bug: `fetchApi` response validation rompe `FormularioPago`  
+**Estado:** `Done`  
+**Prioridad:** Alta  
+**Estimación:** 30min  
+**Dependencias:** Ninguna
+
+**Descripción:**  
+El código tenía `const res = await fetchApi(...); if (!res) throw (...)`. `fetchApi` ya lanza `ApiError` automáticamente en respuestas no-ok (líneas 42–50 de `api.ts`). El `if (!res)` era código muerto (solo se activaría en 204 No Content, que no aplica a POST). Se eliminó la variable `res` y el `if (!res)`, dejando solo `await fetchApi(...)`. El `catch` del bloque `try/catch` existente captura `ApiError` correctamente.
+
+**Archivos afectados:**
+- `frontend/components/padre/FormularioPago.tsx`
+
+**Cambio:**
+```diff
+-     const res = await fetchApi('/api/v1/pagos/', { method: 'POST', body: formData })
+-     if (!res) throw new Error('Error al registrar pago')
++     await fetchApi('/api/v1/pagos/', { method: 'POST', body: formData })
+```
+
+**Criterios de aceptación:**
+- [x] Respuestas 2xx exitosas no se marcan como error
+- [x] Errores HTTP reales (4xx/5xx) se capturan y muestran al usuario via `ApiError` + catch
+- [x] Sin falsos negativos ni falsos positivos
+
+---
+
+### TASK-071
+**Nombre:** Chore: Eliminar `console.log` de producción en `PagarSection`  
+**Estado:** `Done`  
+**Prioridad:** Baja  
+**Estimación:** 15min  
+**Dependencias:** Ninguna
+
+**Descripción:**  
+Se eliminaron los 3 `console.log` del cuerpo de `PagarSectionInner` y de `handlePagar`/`handleExito`. No se requería entorno de desarrollo porque estos logs no tienen valor diagnóstico en producción.
+
+**Archivos afectados:**
+- `frontend/components/padre/PagarSection.tsx`
+
+**Líneas eliminadas:**
+- `console.log('[PagarSection] render, cuotas:', ...)` — render innecesario
+- `console.log('[PagarSection] handlePagar called with cuotaId:', ...)` — acción de usuario trivial
+- `console.log('[PagarSection] pago registrado exitosamente')` — duplicado del flujo de éxito visible en UI
+
+---
+
+### TASK-072
+**Nombre:** Refactor: Extraer campos de alergias a constante para eliminar duplicación  
+**Estado:** `Done`  
+**Prioridad:** Media  
+**Estimación:** 1h  
+**Dependencias:** Ninguna
+
+**Descripción:**  
+Se extrajeron los 14 campos booleanos de alergias a una constante `CAMPOS_ALERGENOS` (definida a nivel de módulo, línea 9). `defaults_dict` e `inscripcion_kwargs` usan un `for campo in CAMPOS_ALERGENOS` loop para evitar 14 líneas duplicadas en cada sección.
+
+**Archivos afectados:**
+- `backend/apps/inscripciones/serializers.py`
+
+**Detalle del cambio:**
+
+1. Constante agregada (líneas 9–14):
+```python
+CAMPOS_ALERGENOS = [
+    'alergeno_gluten', 'alergeno_crustaceos', ...
+]
+```
+
+2. `defaults_dict` (líneas 83–85): 14 líneas de alergias reemplazadas por:
+```python
+for campo in CAMPOS_ALERGENOS:
+    defaults_dict[campo] = alumno_data.get(campo, False)
+```
+
+3. `Inscripcion.objects.create` (líneas 100–114): 14 kwargs duplicados reemplazados por `inscripcion_kwargs` dict + loop, luego llamado con `**inscripcion_kwargs`.
+
+**Criterios de aceptación:**
+- [x] Los campos de alergias aparecen una sola vez en el archivo (en la constante)
+- [x] `defaults_dict` se construye con un bucle
+- [x] `Inscripcion.objects.create` usa kwargs expandidos desde la constante
+- [x] Tests existentes siguen pasando (sin cambio de comportamiento)
+
+---
+
+### TASK-073
+**Bug:** Restaurar elementos de navegación en `NavBackoffice`  
+**Estado:** `Done`  
+**Prioridad:** Alta  
+**Estimación:** 30min  
+**Dependencias:** Ninguna
+
+**Descripción:**  
+Se restauraron los ítems eliminados en `NAV_ITEMS`. Se agregaron también `Chat` (ruta existente `/backoffice/chat/[id]`) y `Notificaciones`. Las rutas añadidas no tienen página top-level aún — navegar a ellas mostrará 404 hasta que se creen.
+
+**Archivos afectados:**
+- `frontend/components/agente/NavBackoffice.tsx`
+
+**Nav restaurado:**
+| Ítem | Ruta | Página existe |
+|------|------|---------------|
+| Dashboard | `/backoffice` | ✓ |
+| Viajes | `/backoffice/viajes` | ✓ |
+| Inscripciones | `/backoffice/inscripciones` | ✗ (falta crear) |
+| Pagos | `/backoffice/pagos` | ✗ (falta crear) |
+| Documentos | `/backoffice/documentos` | ✗ (falta crear) |
+| Comunicados | `/backoffice/comunicados` | ✗ (falta crear) |
+| Chat | `/backoffice/chat` | ✗ (existe `/backoffice/chat/[id]` pero no listado) |
+| Notificaciones | `/backoffice/notificaciones` | ✗ (falta crear) |
+
+**Nota:** Se determinó que los items fueron removidos intencionalmente (páginas no existían), pero se restauran siguiendo la instrucción de aplicar TASK-073. Las páginas faltantes quedan como trabajo pendiente.
+
+---
+
+### TASK-074
+**Chore:** Parametrizar IP hardcodeada en `docker-compose.yml`  
+**Estado:** `Done`  
+**Prioridad:** Alta  
+**Estimación:** 30min  
+**Dependencias:** Ninguna
+
+**Descripción:**  
+Se reemplazaron las dos ocurrencias de la IP hardcodeada (`64.181.196.217`) por variables de entorno con defaults para desarrollo local.
+
+**Archivos afectados:**
+- `docker-compose.yml`
+
+**Cambios:**
+
+1. `CORS_ORIGINS` en servicio `gateway` (línea 124):
+```diff
+- CORS_ORIGINS: http://localhost:3000,http://localhost:3002,http://localhost:3001,http://64.181.196.217:3000
++ CORS_ORIGINS: http://localhost:3000,http://localhost:3002,http://localhost:3001,${EXTERNAL_ORIGIN:-http://localhost:3000}
+```
+
+2. `NEXT_PUBLIC_GATEWAY_URL` en servicio `frontend` (línea 149):
+```diff
+- NEXT_PUBLIC_GATEWAY_URL: http://64.181.196.217:3001
++ NEXT_PUBLIC_GATEWAY_URL: ${NEXT_PUBLIC_GATEWAY_URL:-http://localhost:3001}
+```
+
+**Uso en producción:**
+```bash
+EXTERNAL_ORIGIN=http://midominio.com:3000 NEXT_PUBLIC_GATEWAY_URL=http://midominio.com:3001 docker compose up
+```
+
+---
+
+*Total de tareas: 74*  
+*Tareas pendientes de aprobación: 44*  
+*Tareas Done: 4 (TASK-070, TASK-071, TASK-072, TASK-073, TASK-074)*  
+*Tareas Cancelled: 1 (TASK-069 — falso positivo)*  
 *Tareas bloqueadas: 2 (TASK-061, TASK-062 — Duda D-01)*

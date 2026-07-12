@@ -496,7 +496,7 @@ class ViajePublicoListView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        qs = Viaje.objects.filter(estado='publicado').select_related('agencia').order_by('fecha_salida')
+        qs = Viaje.objects.filter(estado='activo').select_related('agencia').order_by('fecha_salida')
         slug = self.request.query_params.get('slug')
         if slug:
             qs = qs.filter(slug=slug)
@@ -511,7 +511,7 @@ class ViajePublicoDetailView(generics.RetrieveAPIView):
     lookup_url_kwarg = 'slug'
 
     def get_queryset(self):
-        return Viaje.objects.filter(estado='publicado').select_related('agencia')
+        return Viaje.objects.filter(estado='activo').select_related('agencia')
 
     def get_object(self):
         lookup_value = self.kwargs.get(self.lookup_url_kwarg)

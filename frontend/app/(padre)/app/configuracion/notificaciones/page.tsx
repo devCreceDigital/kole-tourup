@@ -1,5 +1,6 @@
 ﻿'use client'
 import { useState, useEffect } from 'react'
+import { fetchApi } from '@/lib/api'
 
 interface Preferencias {
   canal_preferido: string
@@ -26,8 +27,7 @@ export default function ConfiguracionNotificacionesPage() {
   const [exito, setExito] = useState(false)
 
   useEffect(() => {
-    fetch('/api/v1/notificaciones/preferencias/')
-      .then(r => r.json())
+    fetchApi('/api/v1/notificaciones/preferencias/')
       .then(data => { setPrefs(data); setCargando(false) })
       .catch(() => setCargando(false))
   }, [])
@@ -35,7 +35,7 @@ export default function ConfiguracionNotificacionesPage() {
   async function handleGuardar() {
     setGuardando(true)
     setExito(false)
-    await fetch('/api/v1/notificaciones/preferencias/', {
+    await fetchApi('/api/v1/notificaciones/preferencias/', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(prefs)

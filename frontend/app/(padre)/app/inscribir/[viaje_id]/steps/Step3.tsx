@@ -3,14 +3,22 @@ interface Step3Props {
   onChange: (field: string, value: string | boolean) => void
 }
 
-// 6 alergias principales del mockup — mapeadas a los campos que espera el backend
 const ALERGIAS_UI = [
-  { label: 'Ninguna',      field: null },                       // manejo especial
-  { label: 'Gluten',       field: 'alergeno_gluten' },
-  { label: 'Lactosa',      field: 'alergeno_lacteos' },
-  { label: 'Frutos secos', field: 'alergeno_frutos de cascara' },
-  { label: 'Pescado',      field: 'alergeno_pescado' },
-  { label: 'Marisco',      field: 'alergeno_crustaceos' },
+  { label: 'Ninguna',       field: null },
+  { label: 'Gluten',        field: 'alergeno_gluten' },
+  { label: 'Crustáceos',    field: 'alergeno_crustaceos' },
+  { label: 'Huevos',        field: 'alergeno_huevos' },
+  { label: 'Pescado',       field: 'alergeno_pescado' },
+  { label: 'Cacahuetes',    field: 'alergeno_cacahuetes' },
+  { label: 'Soja',          field: 'alergeno_soja' },
+  { label: 'Lácteos',       field: 'alergeno_lacteos' },
+  { label: 'Frutos cáscara', field: 'alergeno_frutos_cascara' },
+  { label: 'Apio',          field: 'alergeno_apio' },
+  { label: 'Mostaza',       field: 'alergeno_mostaza' },
+  { label: 'Sésamo',        field: 'alergeno_sesamo' },
+  { label: 'Sulfitos',      field: 'alergeno_sulfitos' },
+  { label: 'Altramuces',    field: 'alergeno_altramuces' },
+  { label: 'Moluscos',      field: 'alergeno_moluscos' },
 ]
 
 export function Step3({ data, onChange }: Step3Props) {
