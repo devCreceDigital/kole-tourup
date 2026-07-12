@@ -458,3 +458,26 @@ class PasswordResetConfirmView(APIView):
         usuario.set_password(nueva_password)
         usuario.save()
         return Response({'detail': 'Contrasena actualizada correctamente.'})
+
+
+from rest_framework.permissions import IsAuthenticated
+
+
+class MeAPIView(APIView):
+    """
+    GET /api/v1/auth/me/
+
+    Devuelve los datos basicos del usuario autenticado.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        usuario = request.user
+        return Response({
+            'id': str(usuario.id),
+            'nombre': usuario.nombre,
+            'apellidos': usuario.apellidos,
+            'email': usuario.email,
+            'rol': usuario.rol,
+        })
+

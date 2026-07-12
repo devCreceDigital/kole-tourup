@@ -197,7 +197,7 @@ class EtapaItinerarioSerializer(serializers.ModelSerializer):
 class ActividadSerializer(serializers.ModelSerializer):
     class Meta:
         model = Actividad
-        fields = ['id', 'hora', 'titulo', 'descripcion', 'tipo', 'orden']
+        fields = ['id', 'hora', 'hora_llegada', 'titulo', 'descripcion', 'tipo', 'orden', 'numero_vuelo', 'aerolinea', 'origen', 'destino', 'terminal', 'puerta_embarque']
         # orden solo modificable vía bulk reordenar (invariante TASK-028)
         read_only_fields = ['id', 'orden']
 
@@ -239,7 +239,7 @@ class HotelSerializer(serializers.ModelSerializer):
     class Meta:
         model = Hotel
         fields = ['id', 'nombre', 'descripcion', 'tasa_turistica', 'fianza',
-                  'web_url', 'maps_url', 'imagen']
+                  'web_url', 'maps_url', 'imagen', 'telefono', 'latitud', 'longitud']
         read_only_fields = ['id']
 
 

@@ -187,6 +187,13 @@ class Actividad(models.Model):
         null=True,
         blank=True
     )
+    numero_vuelo = models.CharField(max_length=20, blank=True, default='')
+    aerolinea = models.CharField(max_length=100, blank=True, default='')
+    origen = models.CharField(max_length=100, blank=True, default='')
+    destino = models.CharField(max_length=100, blank=True, default='')
+    terminal = models.CharField(max_length=50, blank=True, default='')
+    puerta_embarque = models.CharField(max_length=20, blank=True, default='')
+    hora_llegada = models.TimeField(null=True, blank=True)
     orden = models.PositiveIntegerField(default=0)
 
     class Meta:
@@ -235,6 +242,9 @@ class Hotel(models.Model):
     fianza = models.DecimalField(
         max_digits=8, decimal_places=2, null=True, blank=True
     )
+    telefono = models.CharField(max_length=30, blank=True, default="")
+    latitud = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
+    longitud = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
     web_url = models.URLField(max_length=500, blank=True, default="")
     maps_url = models.URLField(max_length=500, blank=True, default="")
     slug = models.SlugField(max_length=100, unique=True, blank=True)

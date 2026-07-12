@@ -21,7 +21,31 @@ export class ApiError extends Error {
   }
 }
 
-export async function fetchApi(endpoint: string, options: RequestInit = {}) {
+let refreshEnCurso: Promise<boolean> | null = null;
+
+async function intentarRefrescarToken(): Promise<boolean> {
+  // Evita disparar multiples refresh en paralelo si varias llamadas fallan a la vez
+  if (refreshEnCurso) {
+    return refreshEnCurso;
+  }
+  refreshEnCurso = (async () => {
+    try {
+      const res = await fetch(`${GATEWAY_URL}/api/v1/auth/refresh/`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      return res.ok;
+    } catch {
+      return false;
+    } finally {
+      refreshEnCurso = null;
+    }
+  })();
+  return refreshEnCurso;
+}
+
+export async function fetchApi(endpoint: string, options: RequestInit = {}, _reintentado = false): Promise<any> {
   const url = `${GATEWAY_URL}${endpoint}`;
 
   const isFormData = options.body instanceof FormData;
@@ -38,6 +62,15 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
   };
 
   const response = await fetch(url, finalOptions);
+
+  // Si el access_token expiro (401) y aun no reintentamos, intentamos refrescar
+  // la sesion de forma transparente y reintentar la peticion original una vez.
+  if (response.status === 401 && !_reintentado && !endpoint.includes('/auth/refresh/') && !endpoint.includes('/auth/login/')) {
+    const refrescado = await intentarRefrescarToken();
+    if (refrescado) {
+      return fetchApi(endpoint, options, true);
+    }
+  }
 
   if (!response.ok) {
     let errorData: any = { error: 'Error inesperado del servidor' };

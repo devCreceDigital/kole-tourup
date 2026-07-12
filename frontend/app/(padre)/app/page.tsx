@@ -23,8 +23,29 @@ async function getInscripciones() {
   }
 }
 
+async function getMisAlumnos() {
+  const cookieStore = await cookies()
+  const token = cookieStore.get('access_token')?.value
+  const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_INTERNAL_URL || process.env.NEXT_PUBLIC_GATEWAY_URL
+  const headers: Record<string, string> = token ? { Cookie: `access_token=${token}` } : {}
+  try {
+    const res = await fetch(`${gatewayUrl}/api/v1/inscripciones/mis-alumnos/`, {
+      cache: 'no-store',
+      headers
+    })
+    if (!res.ok) return []
+    return await res.json()
+  } catch (error) {
+    console.error('Error fetching mis-alumnos:', error)
+    return []
+  }
+}
+
 export default async function DashboardPadrePage() {
-  const inscripciones = await getInscripciones()
+  const [inscripciones, misAlumnos] = await Promise.all([
+    getInscripciones(),
+    getMisAlumnos(),
+  ])
 
   const alertas = inscripciones.flatMap((ins: any) => {
     const a = []
@@ -57,6 +78,19 @@ export default async function DashboardPadrePage() {
         gradoNivel: `${ins.grado || ''} ${ins.nivel_educativo || ''}`.trim(),
         alergias: ins.alergias || [],
         fechaNacimiento: ins.alumno.fecha_nacimiento || null,
+      })
+    }
+  })
+  // Sumamos alumnos registrados de forma independiente (sin inscripcion aun)
+  misAlumnos.forEach((al: any) => {
+    if (!hijosMap.has(al.id)) {
+      hijosMap.set(al.id, {
+        id: al.id,
+        nombreCompleto: `${al.nombre} ${al.apellidos}`,
+        colegio: al.colegio || '',
+        gradoNivel: `${al.grado || ''} ${al.nivel_educativo || ''}`.trim(),
+        alergias: [],
+        fechaNacimiento: al.fecha_nacimiento || null,
       })
     }
   })
@@ -94,16 +128,33 @@ export default async function DashboardPadrePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
                 </svg>
               </div>
-              <h3 className="text-base font-bold text-gray-900 mb-1">No tienes viajes activos</h3>
-              <p className="text-gray-400 text-sm mb-6 max-w-xs mx-auto">
-                Si tu colegio organizó un viaje, búscalo para inscribir a tu hijo.
-              </p>
-              <a
-                href="/app/buscar-viaje"
-                className="inline-block px-6 py-2.5 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm"
-              >
-                Buscar viaje escolar
-              </a>
+              {hijosUnicos.length === 0 ? (
+                <>
+                  <h3 className="text-base font-bold text-gray-900 mb-1">Primero registra a tu hijo/a</h3>
+                  <p className="text-gray-400 text-sm mb-6 max-w-xs mx-auto">
+                    Antes de buscar un viaje, registra los datos de tu hijo/a. Podras reutilizarlos despues.
+                  </p>
+                  <a
+                    href="/app/hijos/nuevo"
+                    className="inline-block px-6 py-2.5 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm"
+                  >
+                    Registrar hijo/a
+                  </a>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-base font-bold text-gray-900 mb-1">No tienes viajes activos</h3>
+                  <p className="text-gray-400 text-sm mb-6 max-w-xs mx-auto">
+                    Si tu colegio organizó un viaje, búscalo para inscribir a tu hijo.
+                  </p>
+                  <a
+                    href="/app/buscar-viaje"
+                    className="inline-block px-6 py-2.5 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm"
+                  >
+                    Buscar viaje escolar
+                  </a>
+                </>
+              )}
             </div>
           ) : (
             <div className="space-y-5">

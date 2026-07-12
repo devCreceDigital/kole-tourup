@@ -1,4 +1,4 @@
-﻿from django.conf import settings
+from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils import timezone
@@ -96,3 +96,30 @@ class DocumentoValidarRechazarView(generics.GenericAPIView):
         )
         self._enviar_email_estado(doc)
         return Response(DocumentoEntregadoDetalleSerializer(doc).data)
+
+
+class DocumentoEntregadoDeleteView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        try:
+            doc = DocumentoEntregado.objects.select_related(
+                'inscripcion__padre_tutor__usuario'
+            ).get(pk=pk)
+        except DocumentoEntregado.DoesNotExist:
+            raise NotFound('Documento no encontrado.')
+
+        if request.user.rol == 'padre':
+            if doc.inscripcion.padre_tutor.usuario != request.user:
+                raise PermissionDenied()
+        elif request.user.rol not in ['agente']:
+            raise PermissionDenied()
+
+        if doc.estado != 'pendiente':
+            raise ValidationError(
+                {'estado': 'Solo se puede eliminar un documento que aun esta en revision.'}
+            )
+
+        doc.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+

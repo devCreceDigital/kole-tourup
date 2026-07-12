@@ -1,23 +1,9 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useParams } from 'next/navigation'
+import { fetchApi } from '@/lib/api'
 import { LayoutViajePadre } from '@/components/padre/LayoutViajePadre'
-import { cookies } from 'next/headers'
-
-async function getInscripcion(id: string) {
-  const cookieStore = await cookies()
-  const token = cookieStore.get('access_token')?.value
-  const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_INTERNAL_URL || process.env.NEXT_PUBLIC_GATEWAY_URL
-  const headers: Record<string, string> = token ? { Cookie: `access_token=${token}` } : {}
-
-  try {
-    const res = await fetch(`${gatewayUrl}/api/v1/inscripciones/${id}/`, {
-      cache: 'no-store',
-      headers,
-    })
-    if (!res.ok) return null
-    return await res.json()
-  } catch {
-    return null
-  }
-}
 
 function formatFecha(fechaIso: string | null) {
   if (!fechaIso) return '-'
@@ -34,9 +20,72 @@ function InfoRow({ label, value }: { label: string; value: string | number | nul
   )
 }
 
-export default async function InfoPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const inscripcion = await getInscripcion(id)
+function SeccionAcordeon({
+  titulo,
+  icono,
+  abierta,
+  onToggle,
+  children,
+}: {
+  titulo: string
+  icono: React.ReactNode
+  abierta: boolean
+  onToggle: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full p-5 flex items-center justify-between gap-2 hover:bg-gray-50 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          {icono}
+          <h2 className="font-bold text-gray-900 text-sm">{titulo}</h2>
+        </div>
+        <svg
+          className={`w-4 h-4 text-gray-400 transition-transform ${abierta ? 'rotate-180' : ''}`}
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {abierta && <div className="px-5 pb-2 border-t border-gray-100">{children}</div>}
+    </div>
+  )
+}
+
+export default function InfoPage() {
+  const params = useParams()
+  const id = params.id as string
+
+  const [inscripcion, setInscripcion] = useState<any>(null)
+  const [cargando, setCargando] = useState(true)
+  const [seccionAbierta, setSeccionAbierta] = useState<string | null>('alumno')
+
+  useEffect(() => {
+    async function cargar() {
+      setCargando(true)
+      try {
+        const data = await fetchApi(`/api/v1/inscripciones/${id}/`)
+        setInscripcion(data)
+      } catch (e) {
+        console.error('Error cargando info', e)
+      } finally {
+        setCargando(false)
+      }
+    }
+    cargar()
+  }, [id])
+
+  if (cargando) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-10 space-y-3">
+        {[1, 2, 3].map(i => <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />)}
+      </div>
+    )
+  }
 
   if (!inscripcion) {
     return (
@@ -49,84 +98,89 @@ export default async function InfoPage({ params }: { params: Promise<{ id: strin
   const alumno = inscripcion.alumno ?? {}
   const viaje = inscripcion.viaje ?? {}
 
+  const layoutProps = {
+    inscripcionId: id,
+    nombreViaje: viaje.nombre,
+    destino: viaje.destino,
+    estadoBadge: (inscripcion.estado === 'confirmado' ? 'confirmado' : 'pre_inscrito') as 'confirmado' | 'pre_inscrito',
+    nombreAlumno: `${alumno.nombre} ${alumno.apellidos}`,
+    imagenUrl: viaje.imagen_url ?? undefined,
+  }
+
+  function toggle(seccion: string) {
+    setSeccionAbierta(prev => (prev === seccion ? null : seccion))
+  }
+
   return (
-    <LayoutViajePadre
-      inscripcionId={id}
-      nombreViaje={viaje.nombre}
-      destino={viaje.destino}
-      estadoBadge={inscripcion.estado === 'confirmado' ? 'confirmado' : 'pre_inscrito'}
-      nombreAlumno={`${alumno.nombre} ${alumno.apellidos}`}
-      imagenUrl={viaje.imagen_url ?? undefined}
-    >
+    <LayoutViajePadre {...layoutProps}>
       <div className="space-y-4">
-        {/* Datos del alumno */}
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-gray-100 flex items-center gap-2">
+        <SeccionAcordeon
+          titulo="Datos del alumno"
+          abierta={seccionAbierta === 'alumno'}
+          onToggle={() => toggle('alumno')}
+          icono={
             <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
-            <h2 className="font-bold text-gray-900 text-sm">Datos del alumno</h2>
-          </div>
-          <div className="px-5">
-            <InfoRow label="Nombre completo" value={`${alumno.nombre} ${alumno.apellidos}`} />
-            <InfoRow label="Documento" value={alumno.numero_documento} />
-            <InfoRow label="Fecha de nacimiento" value={formatFecha(alumno.fecha_nacimiento)} />
-            <InfoRow label="Teléfono" value={alumno.telefono} />
-            <InfoRow label="Email" value={alumno.email} />
-          </div>
-        </div>
+          }
+        >
+          <InfoRow label="Nombre completo" value={`${alumno.nombre} ${alumno.apellidos}`} />
+          <InfoRow label="DNI" value={alumno.dni} />
+          <InfoRow label="Fecha de nacimiento" value={formatFecha(alumno.fecha_nacimiento)} />
+          <InfoRow label="Genero" value={alumno.genero} />
+          <InfoRow label="Colegio" value={alumno.colegio} />
+        </SeccionAcordeon>
 
-        {/* Datos de la inscripción */}
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-gray-100 flex items-center gap-2">
+        <SeccionAcordeon
+          titulo="Datos de la inscripción"
+          abierta={seccionAbierta === 'inscripcion'}
+          onToggle={() => toggle('inscripcion')}
+          icono={
             <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <h2 className="font-bold text-gray-900 text-sm">Datos de la inscripción</h2>
-          </div>
-          <div className="px-5">
-            <InfoRow label="Estado" value={inscripcion.estado} />
-            <InfoRow label="Precio acordado" value={inscripcion.precio_final ? `S/ ${inscripcion.precio_final}` : null} />
-            <InfoRow label="Colegio" value={inscripcion.colegio} />
-            <InfoRow label="Grado" value={[inscripcion.grado, inscripcion.nivel_educativo].filter(Boolean).join(' ')} />
-            <InfoRow label="Fecha de inscripción" value={formatFecha(inscripcion.fecha_inscripcion)} />
-          </div>
-        </div>
+          }
+        >
+          <InfoRow label="Estado" value={inscripcion.estado} />
+          <InfoRow label="Precio acordado" value={inscripcion.precio_final ? `S/ ${inscripcion.precio_final}` : null} />
+          <InfoRow label="Colegio" value={inscripcion.colegio} />
+          <InfoRow label="Grado" value={[inscripcion.grado, inscripcion.nivel_educativo].filter(Boolean).join(' ')} />
+          <InfoRow label="Fecha de inscripción" value={formatFecha(inscripcion.fecha_inscripcion)} />
+        </SeccionAcordeon>
 
-        {/* Datos del viaje */}
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-gray-100 flex items-center gap-2">
+        <SeccionAcordeon
+          titulo="Datos del viaje"
+          abierta={seccionAbierta === 'viaje'}
+          onToggle={() => toggle('viaje')}
+          icono={
             <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <h2 className="font-bold text-gray-900 text-sm">Datos del viaje</h2>
-          </div>
-          <div className="px-5">
-            <InfoRow label="Nombre" value={viaje.nombre} />
-            <InfoRow label="Destino" value={viaje.destino} />
-            <InfoRow label="Salida" value={formatFecha(viaje.fecha_salida)} />
-            <InfoRow label="Regreso" value={formatFecha(viaje.fecha_regreso)} />
-            <InfoRow label="Cupo máximo" value={viaje.cupo_maximo} />
-          </div>
-        </div>
+          }
+        >
+          <InfoRow label="Nombre" value={viaje.nombre} />
+          <InfoRow label="Destino" value={viaje.destino} />
+          <InfoRow label="Salida" value={formatFecha(viaje.fecha_salida)} />
+          <InfoRow label="Regreso" value={formatFecha(viaje.fecha_regreso)} />
+          <InfoRow label="Cupo máximo" value={viaje.cupo_maximo} />
+        </SeccionAcordeon>
 
-        {/* Contacto de emergencia */}
         {(alumno.telefono_emergencia || alumno.nombre_tutor_legal) && (
-          <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-            <div className="p-5 border-b border-gray-100 flex items-center gap-2">
+          <SeccionAcordeon
+            titulo="Contacto de emergencia"
+            abierta={seccionAbierta === 'emergencia'}
+            onToggle={() => toggle('emergencia')}
+            icono={
               <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
               </svg>
-              <h2 className="font-bold text-gray-900 text-sm">Contacto de emergencia</h2>
-            </div>
-            <div className="px-5">
-              <InfoRow label="Tutor legal" value={alumno.nombre_tutor_legal} />
-              <InfoRow label="Teléfono de emergencia" value={alumno.telefono_emergencia} />
-            </div>
-          </div>
+            }
+          >
+            <InfoRow label="Tutor legal" value={alumno.nombre_tutor_legal} />
+            <InfoRow label="Teléfono de emergencia" value={alumno.telefono_emergencia} />
+          </SeccionAcordeon>
         )}
 
-        {/* Notas / necesidades especiales */}
         {alumno.necesidades_especiales && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
             <div className="flex items-center gap-2 mb-2">

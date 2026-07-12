@@ -1,4 +1,4 @@
-﻿from datetime import date
+from datetime import date
 from django.db.models import Count, Sum
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -38,6 +38,7 @@ class AsignarMecenasView(generics.GenericAPIView):
             mecenas = Mecenas.objects.get(pk=mecenas_id)
         except Mecenas.DoesNotExist:
             raise NotFound('Mecenas no encontrado.')
+        serializer.validated_data.pop('inscripcion', None)
         mi = MecenasInscripcion.objects.create(mecenas=mecenas, inscripcion=inscripcion, **serializer.validated_data)
         return Response(MecenasInscripcionSerializer(mi).data, status=status.HTTP_201_CREATED)
 
