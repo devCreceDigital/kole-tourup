@@ -11,7 +11,7 @@
 | Nombre | Tottem Hub |
 | Cliente | Totem Travel — agencia de viajes escolares, Perú |
 | Propósito | Digitalizar el ciclo de vida completo de viajes grupales escolares |
-| Fase actual | Fase 1 — MVP mono-agencia (~70% backend, ~50% frontend) |
+| Fase actual | Fase 1 — MVP mono-agencia (~95% backend, ~95% frontend) |
 | KPI #1 | −70% tiempo validación de pagos y documentos |
 | KPI #2 | −40% morosidad en cuotas (recordatorios automáticos) |
 
@@ -52,7 +52,7 @@
 | 11 | Al crear un Viaje → se crea automáticamente un Itinerario vacío | ✅ Implementado |
 | 12 | JWT en cookies `httpOnly` en el frontend — **nunca en localStorage** | ✅ Implementado |
 | 13 | Toda consulta del agente **debe filtrar por `agencia_id`** | ✅ Implementado |
-| 14 | Las tareas Celery deben ser **idempotentes** | ⏳ Implementación parcial |
+| 14 | Las tareas Celery deben ser **idempotentes** | ✅ Implementado (cache key Redis) |
 
 ---
 
@@ -69,21 +69,22 @@
 8. Reutilizar refresh_token invalidado (no está en Redis allowlist)
 9. Reordenar actividades con PATCH individual — usar `/actividades/reordenar/`
 10. No registrar en `LogAuditoria` — usar signal, no el endpoint directamente
-11. **Usar `nombre` en lugar de `nombres` en `get_or_create`** — el modelo tiene `nombres`
 
 ### Frontend (Next.js)
-12. Guardar JWT en `localStorage`
-13. Añadir `'use client'` a componentes que solo muestran datos
-14. Usar `useEffect` para fetching — preferir Server Components
-15. Definir design tokens en `tailwind.config.js`
-16. Importar `motion` completo de Framer Motion
-17. Mezclar layouts de portal
-18. Mostrar alertas sin deep-link
-19. **Validar respuesta de `fetchApi` con `if (!res)` sin capturar `ApiError`**
-20. **Dejar `console.log` en producción**
-21. **Usar nombre de campo incorrecto en serializers**
+11. Guardar JWT en `localStorage`
+12. Añadir `'use client'` a componentes que solo muestran datos
+13. Usar `useEffect` para fetching — preferir Server Components
+14. Definir design tokens en `tailwind.config.js`
+15. Importar `motion` completo de Framer Motion
+16. Mezclar layouts de portal
+17. Mostrar alertas sin deep-link
 
 ### Gateway (Node.js puro)
-22. Instalar Express, Fastify u otro framework
-23. Poner lógica de negocio en el gateway
-24. No validar tamaño de archivo antes de enviar al backend
+18. Instalar Express, Fastify u otro framework
+19. Poner lógica de negocio en el gateway
+20. No validar tamaño de archivo antes de enviar al backend
+
+### Histórico (errores ya corregidos)
+- ~~Validar `fetchApi` con `if (!res)` sin capturar `ApiError`~~ — Corregido en TASK-070
+- ~~Dejar `console.log` en producción~~ — Corregido en TASK-071
+- ~~Usar `nombre` en lugar de `nombres` en `get_or_create`~~ — Corregido, los dos modelos Alumno sirven propósitos distintos (TD-009 falso positivo)

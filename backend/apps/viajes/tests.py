@@ -1422,3 +1422,162 @@ class DocumentoRequeridoEndpointTests(APITestCase):
         })
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['formatos_lista'], ['pdf', 'jpg', 'png'])
+
+
+class ViajeEstadoTransicionTests(APITestCase):
+    def setUp(self):
+        self.agencia = Agencia.objects.create(
+            nombre="Agencia Test", slug="agencia-test", email_contacto="a@a.com"
+        )
+        self.agente = Usuario.objects.create_user(
+            email="agente@test.com", password="pwd", rol=RolUsuario.AGENTE,
+            agencia=self.agencia, email_verificado=True
+        )
+        self.padre = Usuario.objects.create_user(
+            email="padre@test.com", password="pwd", rol=RolUsuario.PADRE,
+            email_verificado=True
+        )
+        self.today = timezone.now().date()
+
+    def _crear_viaje(self, estado=EstadoViaje.BORRADOR):
+        return Viaje.objects.create(
+            agencia=self.agencia, nombre="Viaje Test", destino="Destino",
+            fecha_salida=self.today, fecha_regreso=self.today + timedelta(days=5),
+            cupo_maximo=10, precio_total=100, estado=estado
+        )
+
+    def _url(self, viaje_id):
+        return reverse('viaje-cambiar-estado', kwargs={'pk': viaje_id})
+
+    # --- Transiciones válidas ---
+
+    def test_borrador_a_activo(self):
+        viaje = self._crear_viaje(EstadoViaje.BORRADOR)
+        self.client.force_authenticate(user=self.agente)
+        response = self.client.post(self._url(viaje.id), {'estado': 'activo'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        viaje.refresh_from_db()
+        self.assertEqual(viaje.estado, EstadoViaje.ACTIVO)
+
+    def test_activo_a_cerrado(self):
+        viaje = self._crear_viaje(EstadoViaje.ACTIVO)
+        self.client.force_authenticate(user=self.agente)
+        response = self.client.post(self._url(viaje.id), {'estado': 'cerrado'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        viaje.refresh_from_db()
+        self.assertEqual(viaje.estado, EstadoViaje.CERRADO)
+
+    def test_cerrado_a_archivado(self):
+        viaje = self._crear_viaje(EstadoViaje.CERRADO)
+        self.client.force_authenticate(user=self.agente)
+        response = self.client.post(self._url(viaje.id), {'estado': 'archivado'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        viaje.refresh_from_db()
+        self.assertEqual(viaje.estado, EstadoViaje.ARCHIVADO)
+
+    # --- Transiciones inválidas (backtracking) ---
+
+    def test_activo_no_vuelve_a_borrador(self):
+        viaje = self._crear_viaje(EstadoViaje.ACTIVO)
+        self.client.force_authenticate(user=self.agente)
+        response = self.client.post(self._url(viaje.id), {'estado': 'borrador'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        viaje.refresh_from_db()
+        self.assertEqual(viaje.estado, EstadoViaje.ACTIVO)
+
+    def test_cerrado_no_vuelve_a_activo(self):
+        viaje = self._crear_viaje(EstadoViaje.CERRADO)
+        self.client.force_authenticate(user=self.agente)
+        response = self.client.post(self._url(viaje.id), {'estado': 'activo'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        viaje.refresh_from_db()
+        self.assertEqual(viaje.estado, EstadoViaje.CERRADO)
+
+    def test_archivado_no_cambia(self):
+        viaje = self._crear_viaje(EstadoViaje.ARCHIVADO)
+        self.client.force_authenticate(user=self.agente)
+        response = self.client.post(self._url(viaje.id), {'estado': 'cerrado'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        viaje.refresh_from_db()
+        self.assertEqual(viaje.estado, EstadoViaje.ARCHIVADO)
+
+    def test_archivado_no_vuelve_a_activo(self):
+        viaje = self._crear_viaje(EstadoViaje.ARCHIVADO)
+        self.client.force_authenticate(user=self.agente)
+        response = self.client.post(self._url(viaje.id), {'estado': 'activo'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    # --- Transiciones salteadas ---
+
+    def test_borrador_no_salta_a_cerrado(self):
+        viaje = self._crear_viaje(EstadoViaje.BORRADOR)
+        self.client.force_authenticate(user=self.agente)
+        response = self.client.post(self._url(viaje.id), {'estado': 'cerrado'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_borrador_no_salta_a_archivado(self):
+        viaje = self._crear_viaje(EstadoViaje.BORRADOR)
+        self.client.force_authenticate(user=self.agente)
+        response = self.client.post(self._url(viaje.id), {'estado': 'archivado'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_activo_no_salta_a_archivado(self):
+        viaje = self._crear_viaje(EstadoViaje.ACTIVO)
+        self.client.force_authenticate(user=self.agente)
+        response = self.client.post(self._url(viaje.id), {'estado': 'archivado'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    # --- Permisos ---
+
+    def test_cambio_estado_sin_login_401(self):
+        viaje = self._crear_viaje(EstadoViaje.BORRADOR)
+        response = self.client.post(self._url(viaje.id), {'estado': 'activo'})
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_cambio_estado_padre_403(self):
+        viaje = self._crear_viaje(EstadoViaje.BORRADOR)
+        self.client.force_authenticate(user=self.padre)
+        response = self.client.post(self._url(viaje.id), {'estado': 'activo'})
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_cambio_estado_viaje_ajeno_404(self):
+        otra_agencia = Agencia.objects.create(
+            nombre="Otra", slug="otra", email_contacto="otra@test.com"
+        )
+        agente_otro = Usuario.objects.create_user(
+            email="otro@test.com", password="pwd", rol=RolUsuario.AGENTE,
+            agencia=otra_agencia, email_verificado=True
+        )
+        viaje_ajeno = Viaje.objects.create(
+            agencia=otra_agencia, nombre="Ajeno", destino="X",
+            fecha_salida=self.today, fecha_regreso=self.today + timedelta(days=5),
+            cupo_maximo=10, precio_total=100, estado=EstadoViaje.BORRADOR
+        )
+        self.client.force_authenticate(user=self.agente)
+        response = self.client.post(self._url(viaje_ajeno.id), {'estado': 'activo'})
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_estado_invalido_400(self):
+        viaje = self._crear_viaje(EstadoViaje.BORRADOR)
+        self.client.force_authenticate(user=self.agente)
+        response = self.client.post(self._url(viaje.id), {'estado': 'inexistente'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    # --- Modelo: método cambiar_estado directamente ---
+
+    def test_cambiar_estado_modelo_valido(self):
+        viaje = self._crear_viaje(EstadoViaje.BORRADOR)
+        viaje.cambiar_estado(EstadoViaje.ACTIVO, usuario=self.agente)
+        viaje.refresh_from_db()
+        self.assertEqual(viaje.estado, EstadoViaje.ACTIVO)
+
+    def test_cambiar_estado_modelo_invalido(self):
+        viaje = self._crear_viaje(EstadoViaje.ACTIVO)
+        with self.assertRaises(Exception):
+            viaje.cambiar_estado(EstadoViaje.BORRADOR)
+
+    def test_cambiar_estado_modelo_mismo_estado(self):
+        """Cambiar al mismo estado no debe fallar."""
+        viaje = self._crear_viaje(EstadoViaje.BORRADOR)
+        viaje.cambiar_estado(EstadoViaje.BORRADOR)
+        self.assertEqual(viaje.estado, EstadoViaje.BORRADOR)

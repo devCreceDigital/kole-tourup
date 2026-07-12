@@ -5,12 +5,14 @@ from rest_framework.exceptions import ValidationError as DRFValidationError, Not
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.http import Http404
+from django.db.models import Prefetch, Count
 from .models import Viaje, PlanPago, Alumno, Itinerario, EtapaItinerario, Actividad, Hotel, Grupo, DocumentoRequerido
 from .serializers import (
     ViajeSerializer, PlanPagoSerializer, AlumnoSerializer,
     EtapaItinerarioSerializer, ActividadSerializer,
     ItinerarioSerializer, ReordenamientoActividadSerializer,
     HotelSerializer, GrupoSerializer, AsignarAlumnosSerializer, DocumentoRequeridoSerializer,
+    ViajeCambioEstadoSerializer,
 )
 from .permissions import EsAgente
 
@@ -69,6 +71,30 @@ class ViajeRetrieveUpdateView(generics.RetrieveUpdateAPIView):
         return Viaje.objects.filter(
             agencia=self.request.user.agencia
         ).select_related('agencia')
+
+
+class ViajeCambiarEstadoView(generics.GenericAPIView):
+    serializer_class = ViajeCambioEstadoSerializer
+    permission_classes = [IsAuthenticated, EsAgente]
+
+    def get_queryset(self):
+        return Viaje.objects.filter(agencia=self.request.user.agencia)
+
+    def get_object(self):
+        return get_object_or_404(self.get_queryset(), pk=self.kwargs['pk'])
+
+    def post(self, request, *args, **kwargs):
+        viaje = self.get_object()
+        serializer = self.get_serializer(
+            data=request.data,
+            context={'viaje': viaje, 'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(
+            ViajeSerializer(viaje, context={'request': request}).data,
+            status=status.HTTP_200_OK
+        )
 
 
 class PlanPagoRetrieveUpdateCreateView(
@@ -511,7 +537,9 @@ class ViajePublicoDetailView(generics.RetrieveAPIView):
     lookup_url_kwarg = 'slug'
 
     def get_queryset(self):
-        return Viaje.objects.filter(estado='activo').select_related('agencia')
+        return Viaje.objects.filter(estado='activo').select_related('agencia').prefetch_related(
+            Prefetch('grupos', queryset=Grupo.objects.annotate(alumnos_count=Count('alumnos')))
+        )
 
     def get_object(self):
         lookup_value = self.kwargs.get(self.lookup_url_kwarg)

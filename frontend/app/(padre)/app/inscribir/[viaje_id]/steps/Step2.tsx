@@ -1,6 +1,7 @@
 interface Step2Props {
   data: Record<string, string>
   onChange: (field: string, value: string) => void
+  grupos?: Array<{ id: string; nombre: string; descripcion?: string; capacidad?: number; alumnos_count?: number }>
 }
 
 // "Provincia" es el renombre visual de "departamento" — la clave de estado sigue siendo 'departamento'
@@ -18,7 +19,7 @@ const NIVELES = [
   { value: 'bachillerato', label: 'Bachillerato' },
 ]
 
-export function Step2({ data, onChange }: Step2Props) {
+export function Step2({ data, onChange, grupos = [] }: Step2Props) {
   return (
     <div className="space-y-5">
       <div>
@@ -115,6 +116,38 @@ export function Step2({ data, onChange }: Step2Props) {
           className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0077B6] focus:border-[#0077B6] transition-colors"
         />
       </div>
+
+      {/* Grupo (opcional) */}
+      {grupos && grupos.length > 0 && (
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+            Grupo <span className="text-gray-400 text-xs font-normal">(opcional)</span>
+          </label>
+          <div className="relative">
+            <select
+              value={data.grupo_id ?? ''}
+              onChange={e => onChange('grupo_id', e.target.value)}
+              className="w-full appearance-none border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-[#0077B6] focus:border-[#0077B6] transition-colors"
+            >
+              <option value="">Sin grupo asignado</option>
+              {grupos.map(g => {
+                const disponibles = (g.capacidad ?? 99) - (g.alumnos_count ?? 0)
+                return (
+                  <option key={g.id} value={g.id} disabled={disponibles <= 0}>
+                    {g.nombre}{disponibles > 0 ? ` (${disponibles} plazas)` : ' (completo)'}
+                  </option>
+                )
+              })}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
+          <p className="text-xs text-gray-400 mt-1">Selecciona el grupo al que pertenece el alumno</p>
+        </div>
+      )}
     </div>
   )
 }

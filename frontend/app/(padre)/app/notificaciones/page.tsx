@@ -6,6 +6,7 @@ import { fetchApi } from '@/lib/api'
 export default function NotificacionesPage() {
   const [notificaciones, setNotificaciones] = useState<any[]>([])
   const [cargando, setCargando] = useState(true)
+  const [mensajeExito, setMensajeExito] = useState('')
 
   useEffect(() => {
     fetchApi('/api/v1/notificaciones/')
@@ -13,14 +14,23 @@ export default function NotificacionesPage() {
       .finally(() => setCargando(false))
   }, [])
 
+  useEffect(() => {
+    if (mensajeExito) {
+      const t = setTimeout(() => setMensajeExito(''), 3000)
+      return () => clearTimeout(t)
+    }
+  }, [mensajeExito])
+
   async function marcarLeida(id: string) {
     await fetchApi(`/api/v1/notificaciones/${id}/`, { method: 'PATCH' })
     setNotificaciones(prev => prev.map(n => n.id === id ? { ...n, leida: true } : n))
+    setMensajeExito('Notificación marcada como leída')
   }
 
   async function marcarTodas() {
     await fetchApi('/api/v1/notificaciones/marcar-todas/', { method: 'POST' })
     setNotificaciones(prev => prev.map(n => ({ ...n, leida: true })))
+    setMensajeExito('Todas las notificaciones marcadas como leídas')
   }
 
   const noLeidas = notificaciones.filter(n => !n.leida).length
@@ -32,6 +42,7 @@ export default function NotificacionesPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Notificaciones</h1>
             {noLeidas > 0 && <p className="text-sm text-blue-600 mt-0.5">{noLeidas} sin leer</p>}
+            {mensajeExito && <p className="text-sm text-green-600 mt-1 font-medium">{mensajeExito}</p>}
           </div>
           {noLeidas > 0 && (
             <button onClick={marcarTodas} className="text-sm text-gray-500 hover:text-gray-700 underline">

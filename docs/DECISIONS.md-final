@@ -1,48 +1,93 @@
-# DECISIONS.md-final — Registro de Decisiones Técnicas (Estado Real)
+# DECISIONS.md-final — Registro de Decisiones Técnicas
 
-Este archivo documenta decisiones donde la especificación era ambigua o contradictoria.
-Cada entrada incluye el problema, los documentos involucrados, las alternativas evaluadas
-y la decisión adoptada.
+> Documenta decisiones donde la especificación era ambigua o contradictoria.
+> Cada entrada incluye el problema, las alternativas evaluadas y la decisión adoptada.
+> Última actualización: 2026-07-12
 
 ---
 
 ## DEC-001 — Campo `relacion_alumno` en `PadreTutor`
-**Estado:** Aprobado e implementado ✅
 
-## DEC-002 — Login endpoint establece cookies httpOnly directamente
-**Estado:** Aprobado e implementado ✅
+**ID:** DEC-001 | **Estado:** Aprobado | **Fecha:** 2026-06-28
+**Afecta:** `apps/autenticacion/models.py` — `PadreTutor.relacion_alumno`
+
+**Problema:** `DATABASE.md` define `relacion_alumno` sin `blank=True`, pero ningún flujo captura este campo.
+
+**Decisión:** `blank=True`. Campo opcional en registro, captura diferida.
+
+---
+
+## DEC-002 — Login endpoint establece cookies httpOnly directamente (no el Gateway)
+
+**ID:** DEC-002 | **Estado:** Aprobado | **Fecha:** 2026-06-28
+**Afecta:** `apps/autenticacion/views.py` — `LoginAPIView`
+
+**Problema:** `ARCHITECTURE.md §DA-06` describe que el Gateway escribe cookies, pero TASK-010 requiere que el backend lo haga.
+
+**Decisión:** Backend establece cookies httpOnly directamente. Gateway solo lee la cookie y la convierte en header.
+
+---
 
 ## DEC-003 — Sin rotación de Refresh Token en cada /refresh/
-**Estado:** Aprobado e implementado ✅
+
+**ID:** DEC-003 | **Estado:** Aprobado | **Fecha:** 2026-06-28
+**Afecta:** `apps/autenticacion/views.py` — `RefreshAPIView`
+
+**Problema:** Rotar refresh token causa race conditions con múltiples pestañas.
+
+**Decisión:** Sin rotación. El refresh token se mantiene inalterado por 7 días. La rotación se reserva para operaciones de alta sensibilidad (cambio de password, email, etc.).
+
+---
 
 ## DEC-004 — Gateway auth middleware elimina Authorization del cliente si no hay cookie
-**Estado:** Aprobado e implementado ✅
+
+**ID:** DEC-004 | **Estado:** Aprobado | **Fecha:** 2026-06-28
+**Afecta:** `gateway/middleware/auth.js`
+
+**Problema:** El cliente podría enviar `Authorization` directamente, bypasseando la cookie httpOnly.
+
+**Decisión:** El Gateway elimina cualquier `Authorization` del cliente cuando no hay cookie `access_token`. La cookie httpOnly es la única fuente de verdad.
+
+---
 
 ## DEC-005 — Rate limiting fail-open cuando Redis no está disponible
-**Estado:** Aprobado e implementado ✅
+
+**ID:** DEC-005 | **Estado:** Aprobado | **Fecha:** 2026-06-28
+**Afecta:** `gateway/middleware/rateLimit.js`
+
+**Problema:** ¿Qué debe hacer el Gateway cuando Redis no responde?
+
+**Decisión:** Fail-open. Sin Redis, los requests pasan sin limitación. El sistema permanece disponible.
+
+---
 
 ## DEC-006 — Restricción de proxy inverso solo a rutas `/api/`
-**Estado:** Aprobado e implementado ✅
+
+**ID:** DEC-006 | **Estado:** Aprobado | **Fecha:** 2026-06-28
+**Afecta:** `gateway/server.js`
+
+**Problema:** Catch-all proxy enviaría tráfico no-API a Django.
+
+**Decisión:** Solo rutas que comiencen con `/api/` se reenvían al backend. Otras rutas reciben `404`.
+
+---
 
 ## DEC-007 — Opciones definidas para TipoActividad
-**Estado:** Aprobado e implementado ✅
+
+**ID:** DEC-007 | **Estado:** Aprobado | **Fecha:** 2026-06-28
+**Afecta:** `apps/viajes/models.py`
+
+**Decisión:** `vuelo`, `bus`, `hotel`, `comida`, `excursion`, `libre`, `otro`.
 
 ---
 
 ## DEC-008 — Modelo Alumno duplicado: `inscripciones.Alumno` vs `viajes.Alumno`
 
-**ID:** DEC-008  
-**Estado:** Pendiente de resolución  
-**Fecha:** 2026-07-09  
-**Afecta:** `backend/apps/viajes/models.py`, `backend/apps/inscripciones/models.py`
+**ID:** DEC-008 | **Estado:** Resuelta — Falso positivo | **Fecha:** 2026-07-09
+**Afecta:** `apps/viajes/models.py`, `apps/inscripciones/models.py`
 
-### Problema
-Existen dos modelos `Alumno`: uno en `apps.viajes` (modelo completo con `nombres`, `apellidos`, `numero_documento`, etc.) y otro en `apps.inscripciones` (con `nombre`, `apellidos`, `dni`, `alergeno_*`, etc.). `InscripcionCreateSerializer` usa `apps.inscripciones.Alumno` pero referencia campos de ambos modelos. El campo `nombre` del serializer no coincide con `nombres` del modelo.
+**Problema original:** Se reportó que `InscripcionCreateSerializer` usa `nombre` en lugar de `nombres`.
 
-### Decisión adoptada
-**Pendiente:** Se requiere consolidar en un solo modelo `Alumno` o migrar todos los campos a `apps.inscripciones.Alumno` y referenciar desde `apps.viajes` mediante herencia o import. Mientras tanto, verificar que cada `get_or_create` y `Serializer.Meta.fields` use exactamente el nombre del campo del modelo destino.
+**Resolución:** Falso positivo. El serializer importa desde `apps.inscripciones.models` (donde el campo es `nombre`), no desde `apps.viajes.models` (donde es `nombres`). El código es correcto. Los dos modelos `Alumno` coexisten funcionalmente, uno como catálogo de agencia y otro como perfil de inscripción.
 
-### Referencia
-- `backend/apps/inscripciones/serializers.py:64` — `'nombre'` debe ser `'nombres'`
-- `backend/apps/inscripciones/serializers.py:151` — `AlumnoResumenSerializer.Meta.fields` referencia `nombre`
-- TD-009 en `TECH_DEBT.md`
+**Deuda:** La existencia de dos modelos con nombres similares pero campos diferentes es fuente de confusión. Consolidar en Fase 2 (ver TD-018).

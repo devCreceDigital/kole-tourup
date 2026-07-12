@@ -36,7 +36,16 @@ export function InscribirForm({ initialAlumnos = [], isAuthenticated = false }: 
   const [data, setData] = useState<Record<string, string | boolean>>({})
   const [viaje, setViaje] = useState<any>(null)
   const [enviando, setEnviando] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(() => {
+    const errParam = searchParams.get('error')
+    if (errParam) return errParam
+    const savedError = typeof window !== 'undefined' ? localStorage.getItem(`inscripcion_error_${params.viaje_id}`) : null
+    if (savedError) {
+      localStorage.removeItem(`inscripcion_error_${params.viaje_id}`)
+      return savedError
+    }
+    return null
+  })
 
   const [showValidation, setShowValidation] = useState(false)
   const [validationType, setValidationType] = useState<'correct' | 'colegio_incorrecto' | 'nivel_incorrecto' | null>(null)
@@ -175,7 +184,7 @@ export function InscribirForm({ initialAlumnos = [], isAuthenticated = false }: 
       alergenosPayload[dbField] = !!data[dbField]
     })
 
-    const payload = {
+    const payload: Record<string, any> = {
       viaje_id,
       alumno: {
         nombre: data.nombre,
@@ -192,6 +201,9 @@ export function InscribirForm({ initialAlumnos = [], isAuthenticated = false }: 
         telefono_emergencia: data.telefono_emergencia ?? '',
         ...alergenosPayload
       }
+    }
+    if (data.grupo_id) {
+      payload.grupo_id = data.grupo_id
     }
 
     // Si no está autenticado, guardar en localStorage y redirigir a registro
@@ -279,7 +291,7 @@ export function InscribirForm({ initialAlumnos = [], isAuthenticated = false }: 
 
             <div className="mt-6">
               {paso === 1 && <Step1 data={data as Record<string, string>} onChange={handleChange} />}
-              {paso === 2 && <Step2 data={data as Record<string, string>} onChange={handleChange} />}
+              {paso === 2 && <Step2 data={data as Record<string, string>} onChange={handleChange} grupos={viaje?.grupos ?? []} />}
               {paso === 3 && <Step3 data={data} onChange={handleChange} />}
             </div>
 

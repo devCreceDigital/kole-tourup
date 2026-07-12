@@ -87,8 +87,13 @@ function RegisterForm() {
             localStorage.removeItem('pending_viaje_id')
             router.push(`/app/inscribir/${pendingViajeId}?success=true`)
             return
-          } catch (e) {
+          } catch (e: any) {
+            // Si falla, preservar el payload y redirigir al wizard con el error
             console.error('Failed to submit pending inscription', e)
+            const errorMsg = e?.data?.grupo_id || e?.message || 'Error al completar la inscripción. Intenta de nuevo.'
+            localStorage.setItem(`inscripcion_error_${pendingViajeId}`, errorMsg)
+            router.push(`/app/inscribir/${pendingViajeId}?error=${encodeURIComponent(errorMsg)}`)
+            return
           }
         }
         localStorage.removeItem('pending_viaje_id')

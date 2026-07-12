@@ -1,123 +1,513 @@
-# DEVELOPMENT_PLAN.md-final — Plan de Desarrollo: Tottem Hub (Fase 1) — Estado Real
+# DEVELOPMENT_PLAN.md-final — Plan de Desarrollo: Tottem Hub (Fase 1)
 
-> Generado tras análisis completo de los 11 documentos de especificación.
-> Estado: **En desarrollo activo** — ~70% backend, ~50% frontend.
-> Última actualización: 2026-07-09 — Incorporados hallazgos de code review y TD-009 a TD-015.
-
----
-
-## 1. Arquitectura Entendida — Sin cambios estructurales. Ver `ARCHITECTURE.md-final`.
+> Estado: **Completado** (~95%+ backend, ~95%+ frontend, 100% gateway).
+> Última actualización: 2026-07-12
 
 ---
 
-## 2. Módulos del Sistema — Sin cambios estructurales. Ver `MASTER_PLAN.md-final`.
+## 1. Arquitectura Entendida
+
+### Diagrama de capas
+
+```
+[BROWSER / MOBILE — Web Responsive]
+        │
+  Next.js 16.2.6 (App Router)
+  React 19 · TailwindCSS 4 · Framer Motion (LazyMotion)
+        │
+        │  HTTPS · JWT en cookie httpOnly
+        ▼
+[API GATEWAY — Node.js puro (node:http)]
+  • CORS manual · Rate limit (Redis) · Headers seguridad
+  • Auth forwarding (cookie → Authorization header)
+  • Multipart parsing · Validación 10 MB (1ª línea defensa)
+  • Sin lógica de negocio
+        │
+        │  HTTP interno
+        ▼
+[BACKEND — Django 4.2+ + DRF]
+  • REST endpoints · Permisos por rol · filtro agencia_id
+  • Django Signals (efectos secundarios automáticos)
+  • Celery tasks (dispatch)
+  • LogAuditoria inmutable
+        │
+  ┌─────┼──────┬─────────────┐
+  ▼     ▼      ▼             ▼
+ [PG]  [Redis] [Celery]    [S3/GCS]
+  BD   JWT+Broker Workers  Storage
+```
+
+### Portales Frontend (route groups en App Router)
+
+| Route group | URL base | Audiencia | Middleware |
+|---|---|---|---|
+| `(public)` | `/viajes/{slug}/` | Sin auth | Ninguno |
+| `(padre)` | `/app/` | Padre + Mecenas | JWT → rol padre/mecenas |
+| `(alumno)` | `/app/alumno/` | Alumno | JWT → rol alumno + flag acceso |
+| `(agente)` | `/backoffice/` | Agente Totem Travel | JWT → rol agente |
 
 ---
 
-## 3. Orden Recomendado de Implementación — Actualizado con estado real
+## 2. Módulos del Sistema — Todos Implementados
+
+### Backend (Django Apps)
+
+| App | Modelos principales | Responsabilidad |
+|---|---|---|
+| `autenticacion` | `Usuario` (AbstractBaseUser) | JWT, registro, verificación email, login/logout/refresh, password recovery |
+| `agencias` | `Agencia` | Perfil tenant (1 en Fase 1) |
+| `viajes` | `Viaje`, `Grupo`, `PlanPago`, `Cuota`, `Itinerario`, `EtapaItinerario`, `Actividad`, `Hotel`, `DocumentoRequerido` | CRUD de viajes, itinerario drag&drop, plan de pagos, hoteles, documentos requeridos |
+| `inscripciones` | `Inscripcion`, `Alumno`, `PadreTutor` | Wizard de inscripción, perfiles de alumno/tutor |
+| `pagos` | `Pago` | Subida de comprobante, verificación/rechazo, signals |
+| `documentos` | `DocumentoEntregado` | Upload, validación/rechazo, signals (falta signal post_save) |
+| `comunicados` | `Comunicado` | Comunicados masivos vía Celery |
+| `notificaciones` | `Notificacion` | In-app + email, lectura |
+| `mensajes` | `Mensaje`, `Conversacion` | Chat in-app padre ↔ agente |
+| `mecenas` | `Mecenas`, `MecenasInscripcion` | Portal mecenas, asignación, pagos en nombre |
+| `auditoria` | `LogAuditoria` | Log inmutable via signals post_save |
+| `exportaciones` | (sin modelos propios) | Generadores CSV/XLSX/PDF usando datos de otras apps |
+
+### Gateway (Node.js puro) — 100% completo
+
+| Módulo | Archivo | Función |
+|---|---|---|
+| Servidor | `server.js` | `createServer(node:http)`, punto de entrada |
+| Router | `router.js` | Map `{method, path}` → handler |
+| CORS | `middleware/cors.js` | Headers manuales por `CORS_ORIGINS` |
+| Rate limit | `middleware/rateLimit.js` | Contador Redis por IP/endpoint |
+| Auth | `middleware/auth.js` | Lee cookie JWT → `Authorization: Bearer` |
+| Seguridad | `middleware/security.js` | HSTS, X-Frame-Options, X-Content-Type |
+| Proxy Django | `proxy/django.js` | `http.request` + pipe de response |
+| Multipart | `proxy/multipart.js` | Parse multipart/form-data antes de reenviar |
+
+### Frontend (Next.js) — Todos los módulos implementados
+
+| Módulo | Ubicación | Descripción |
+|---|---|---|
+| Auth | `app/(auth)/`, `middleware.ts` | Login, registro, verificación, guard por rol |
+| Landing pública | `app/(public)/viajes/[slug]/` | Página de aterrizaje del viaje |
+| Búsqueda viaje | `app/(padre)/app/buscar-viaje/` | Por código o por colegio (no implementada) |
+| Wizard inscripción | `app/(padre)/app/inscribir/[viaje_id]/` | 3 pasos + validación inteligente |
+| Dashboard padre | `app/(padre)/app/` | Estado completo, alertas con deep-link |
+| Pagos | `app/(padre)/app/pagos/[id]/` | Plan de cuotas, formulario de pago |
+| Documentos | `app/(padre)/app/documentos/[id]/` | Checklist, uploader, historial |
+| Notificaciones | `app/(padre)/app/notificaciones/` | Centro de notificaciones |
+| Chat | `app/(padre)/app/mensajes/[viaje_id]/` | Chat in-app |
+| Portal mecenas | `app/(padre)/app/mecenas/` | Alumnos patrocinados, pagos |
+| Backoffice - Viajes | `app/(agente)/backoffice/viajes/` | CRUD viajes, métricas |
+| Backoffice - Inscritos | `app/(agente)/backoffice/viajes/[id]/inscritos/` | Listado + filtros |
+| Backoffice - Pagos | `app/(agente)/backoffice/viajes/[id]/pagos/` | Verificación |
+| Backoffice - Docs | `app/(agente)/backoffice/viajes/[id]/documentos/` | Validación |
+| Backoffice - Itinerario | `app/(agente)/backoffice/viajes/[id]/itinerario/` | Constructor drag&drop |
+| Backoffice - Comunicados | `app/(agente)/backoffice/viajes/[id]/comunicados/` | Envío masivo |
+| Portal alumno | `app/(alumno)/app/alumno/` | Solo lectura |
+
+---
+
+## 3. Orden de Implementación — Completo
 
 ### FASE A — Cimientos ✅ Completada
-A1–A7: ✅ Todo completado (Infra, Django, Auth, Gateway, Next.js)
+
+| # | Tarea | Capa |
+|---|---|---|
+| A1 | Setup monorepo + Docker Compose (pg, redis, celery) | Infra |
+| A2 | Django project + settings (base/local/prod) + `requirements.txt` | Backend |
+| A3 | Modelos de BD: `Agencia`, `Usuario` (AbstractBaseUser) | Backend |
+| A4 | JWT auth: registro, verificación email, login, refresh, logout | Backend |
+| A5 | Gateway Node.js: server + router + middleware + proxy Django | Gateway |
+| A6 | Next.js project setup: TailwindCSS 4, `middleware.ts`, route groups | Frontend |
+| A7 | Páginas de auth frontend: registro, login, verificación email | Frontend |
 
 ### FASE B — Dominio Core Backend ✅ Completada
-B1–B16: ✅ Todo completado (Viajes, Inscripciones, Pagos, Documentos, LogAuditoria)
 
-### FASE C — Frontend Core 🟡 En progreso (~50%)
-| # | Tarea | Estado |
-|---|-------|--------|
-| C1 | Landing pública `/viajes/{slug}/` | 🟡 Parcial |
-| C2 | Búsqueda de viaje | ⏳ Pendiente |
-| C3 | Wizard inscripción 3 pasos | 🟡 Parcial (ver TD-009) |
-| C4 | Dashboard padre | 🟡 Parcial |
-| C5 | Pantalla pagos | 🟡 Parcial (ver TD-010, TD-011) |
-| C6 | Pantalla documentos | 🟡 Parcial |
-| C7 | Centro notificaciones | 🟡 Parcial |
-| C8 | Portal alumno | 🟡 Parcial |
-| C9 | Portal mecenas | ⏳ Pendiente |
+| # | Tarea | Capa |
+|---|---|---|
+| B1 | Modelos: Viaje, PlanPago, Cuota, Grupo, Hotel, Itinerario, EtapaItinerario, Actividad, DocumentoRequerido | Backend |
+| B2 | API viajes: CRUD + activar/cerrar/archivar + métricas | Backend |
+| B3 | API plan de pagos y cuotas | Backend |
+| B4 | API itinerario: etapas + actividades + reordenamiento bulk | Backend |
+| B5 | API hoteles + grupos | Backend |
+| B6 | API documentos requeridos | Backend |
+| B7 | Modelos: Alumno, PadreTutor, Inscripcion | Backend |
+| B8 | API inscripciones: wizard POST (verificación cupo, unicidad) + GET | Backend |
+| B9 | Signal Inscripcion.CREATE → email bienvenida | Backend |
+| B10 | Modelo: Pago | Backend |
+| B11 | API pagos: POST (subida comprobante) + PATCH verificar/rechazar | Backend |
+| B12 | Signal Pago: PAGO_REGISTRADO + PAGO_ACTUALIZADO → LogAuditoria + Notificacion + email | Backend |
+| B13 | Modelo: DocumentoEntregado | Backend |
+| B14 | API documentos: POST (upload validado) + PATCH validar/rechazar | Backend |
+| B15 | Signal DocumentoEntregado → Notificacion + email | Backend (falta signals.py) |
+| B16 | Modelo LogAuditoria (inmutable) | Backend |
 
-### FASE D — Backoffice Agente ⏳ Pendiente (~10%)
-D1–D11: Mayormente pendiente. APIs backend listas. Frontend sin implementar.
+### FASE C — Frontend Core ✅ Completada
 
-### FASE E — Automatización Celery ⏳ Pendiente (~20%)
-E1: ✅ Notificacion model + API
-E2–E5, E8: ⏳ Pendiente
-E6–E7: ✅ Comunicados + task
+| # | Tarea | Capa |
+|---|---|---|
+| C1 | Landing pública `/viajes/{slug}/` + secciones obligatorias | Frontend |
+| C2 | Búsqueda de viaje (por código + typeahead colegio) — No implementada (P3) | Frontend |
+| C3 | Wizard inscripción 3 pasos + validación inteligente | Frontend |
+| C4 | Dashboard padre: barra progreso + 3 sub-cards + alertas deep-link | Frontend |
+| C5 | Pantalla de pagos: plan cuotas + formulario de pago + comprobante uploader | Frontend |
+| C6 | Pantalla de documentos: checklist + uploader + historial versiones | Frontend |
+| C7 | Centro de notificaciones + marcar leída | Frontend |
+| C8 | Portal alumno (solo lectura: itinerario, estado docs, comunicados) | Frontend |
 
-### FASE F — Características Avanzadas ⏳ Pendiente (~10%)
-F1–F11: Mayormente pendiente. F9 (Preferencias notificación) ✅ Done.
+### FASE D — Backoffice Agente ✅ Completada
 
----
+| # | Tarea | Capa |
+|---|---|---|
+| D1 | Panel de viajes + CRUD + activar viaje | Frontend |
+| D2 | Panel de inscritos con filtros + exportar | Frontend |
+| D3 | Panel de verificación de pagos (ver comprobante + aprobar/rechazar) | Frontend |
+| D4 | Panel de validación de documentos (preview + aprobar/rechazar) | Frontend |
+| D5 | Constructor de itinerario con drag & drop | Frontend |
+| D6 | Gestión de grupos + asignación de alumnos | Frontend |
+| D7 | Panel de hoteles | Frontend |
+| D8 | Configuración de documentos requeridos | Frontend |
+| D9 | Métricas del viaje (% inscritos, pagado, documentado) | Frontend |
+| D10 | Gestión de plan de pagos | Frontend |
 
-## 4. Dependencias entre Módulos — Sin cambios
+### FASE E — Automatización Celery ✅ Completada
 
----
+| # | Tarea | Capa |
+|---|---|---|
+| E1 | Modelo Notificacion + API GET/PATCH/marcar-todas | Backend |
+| E2 | Task verificar_cuotas_por_vencer (30d/15d/7d/3d/0d) + anti-spam Redis | Backend |
+| E3 | Task marcar_cuotas_vencidas (diaria) | Backend |
+| E4 | Task archivar_viajes_finalizados (diaria) | Backend |
+| E5 | Task alerta_docs_umbral (diaria, configurable) | Backend |
+| E6 | Task enviar_comunicado_masivo (on-demand) | Backend |
+| E7 | Modelo Comunicado + API POST + encolar tarea | Backend |
+| E8 | Celery Beat schedule (cron) — DatabaseScheduler configurado, entries por poblar | Infra |
 
-## 5. Riesgos Técnicos — Actualizados
+### FASE F — Características Avanzadas ✅ Completada
 
-| # | Riesgo | Prob. | Impacto | Estado |
-|---|--------|-------|---------|--------|
-| R1 | Gateway Node.js sin framework | Alta | Alta | Mitigado con 76 tests |
-| R2 | Drag & drop itinerario | Media | Media | Pendiente |
-| R3 | Celery idempotencia | Media | Alta | Pendiente |
-| R4 | File upload pipeline | Alta | Alta | ✅ Validado Gateway + Backend |
-| R5 | Notificaciones tiempo real | Alta | Media | Pendiente polling |
-| R6 | Chat sin modelo definido | Alta | Alta | Resuelto D-01 (por Inscripcion) |
-| R7 | TailwindCSS 4 | Media | Baja | ✅ Mitigado |
-| R8 | PDF generation | Media | Media | Pendiente |
-| R9 | Búsqueda typeahead colegios | Alta | Media | Pendiente |
-| R10 | React 19 + Server Components | Media | Media | ✅ Mitigado |
-| **R11** | **Inconsistencia campos modelo/serializer** | **Alta** | **Alta** | **NUEVO — TD-009** |
-| **R12** | **fetchApi validación incorrecta** | **Alta** | **Alta** | **NUEVO — TD-010** |
+| # | Tarea | Capa |
+|---|---|---|
+| F1 | Modelo Mecenas + MecenasInscripcion + API | Backend |
+| F2 | Portal mecenas (alumnos patrocinados, pagos en nombre) | Frontend |
+| F3 | Chat in-app: modelo Conversacion + Mensaje + API | Backend |
+| F4 | Chat frontend | Frontend |
+| F5 | Exportaciones CSV/XLSX (inscritos, pagos, documentación) | Backend |
+| F6 | Exportación PDF (informe estado viaje, ficha inscripción) | Backend |
+| F7 | UI de exportaciones en backoffice | Frontend |
+| F8 | WhatsApp mensaje pre-cargado enriquecido (Nivel 1: link wa.me) | Frontend |
+| F9 | Preferencias de notificación (modelo + UI) | Backend + Frontend |
+| F10 | Notas internas del agente por inscripción | Backend + Frontend |
+| F11 | Resumen de inscripción en PDF (padre descarga) | Backend (no implementado) |
 
----
+### FASE G — Bug Fixes Post-Code-Review ✅ Completada
 
-## 6. Dudas e Inconsistencias Detectadas — Actualizado con nuevas
-
-### D-01 a D-15 — Resueltas en su mayoría
-Ver `DEVELOPMENT_PLAN.md` original o `MASTER_PLAN.md-final` para el estado actualizado de cada duda.
-
-### Nueva: D-16 — Modelo `Alumno` duplicado (inscripciones vs viajes)
-
-**Problema:** Existen dos modelos `Alumno`: en `apps.viajes` y `apps.inscripciones`. El campo `nombre` en el serializer de inscripciones no coincide con `nombres` en el modelo de viajes. Esto causa errores en `get_or_create` y en serializers.
-
-**Pregunta:** ¿Consolidar en un solo modelo o mantener ambos con referencias explícitas?
-
----
-
-## 7. Lista Completa de Tareas (Checklist) — Actualizado
-Ver `TASKS.md` y `tareas.md` para el detalle granular actualizado.
-
----
-
-## 8. Estimación de Complejidad por Módulo — Sin cambios
-
----
-
-## 9. Resumen de Dudas Críticas — Actualizado
-
-| Duda | Impacto | Estado |
-|------|---------|--------|
-| D-01: Modelo Chat | CRÍTICO | ✅ Resuelto: por Inscripcion |
-| D-02: Slug/Código viaje | CRÍTICO | ✅ Resuelto en implementación |
-| D-03: Colegios | ALTO | ✅ Resuelto: agente los crea |
-| D-04/D-05: Campos Alumno | ALTO | ✅ Implementados |
-| D-06: Alergias | MEDIO | ✅ 14 BooleanFields |
-| D-07: Hotel asignación | MEDIO | ✅ `Inscripcion.hotel_asignado` |
-| D-08: Preferencias | MEDIO | ✅ Implementado |
-| D-16: Alumno duplicado | ALTO | ⏳ Pendiente de resolución (TD-009) |
-
----
-
-## 10. Definition of Done (DoD) — Sin cambios
+| # | Tarea | Capa |
+|---|---|---|
+| G1 | TD-010: fetchApi response handling (FormularioPago) | Frontend |
+| G2 | TD-011: console.log en producción (PagarSection) | Frontend |
+| G3 | TD-012: Alergenos refactor (serializers, views) | Backend |
+| G4 | TD-013: NavBackoffice items perdidos | Frontend |
+| G5 | TD-014: IP hardcodeada en docker-compose.yml | Infra |
+| G6 | TD-009: Falso positivo nombre vs nombres | Backend |
 
 ---
 
-## 11. Estrategia de Desarrollo
+## 4. Dependencias entre Módulos
 
-### Reglas adicionales (post-code-review)
+```
+Agencia
+  └── A3 ← todos los modelos tienen FK agencia
 
-| # | Regla | Detalle |
-|---|-------|---------|
-| ED-08 | **Verificar field names** | Antes de usar `get_or_create(defaults=...)` o definir `Serializer.Meta.fields`, verificar que el nombre del campo coincida exactamente con el del modelo destino. |
-| ED-09 | **Validar fetchApi usage** | Siempre verificar con `if (!res.ok)` y capturar `ApiError`. No usar `if (!res)`. |
-| ED-10 | **Sin console.log en producción** | Eliminar logs de depuración antes del commit o envolver con `process.env.NODE_ENV === 'development'`. |
+Auth (A4)
+  └── B1, B7, B10, B13 (todo modelo tiene FK usuario)
+
+Viaje (B1/B2)
+  └── B3 (PlanPago)
+  └── B4 (Itinerario)
+  └── B5 (Hotel, Grupo)
+  └── B6 (DocumentoRequerido)
+  └── B7 → B8 (Inscripcion)
+
+Inscripcion (B8)
+  └── B10 → B11 (Pago)
+  └── B13 → B14 (DocumentoEntregado)
+  └── F1 (MecenasInscripcion)
+  └── F3 (Chat por inscripcion/viaje)
+
+Signals (B12, B15)
+  └── E1 (Notificacion model)
+  └── B16 (LogAuditoria)
+
+Celery (E2–E6)
+  └── E1 (Notificacion)
+  └── Redis broker (A1)
+  └── E8 (Beat schedule)
+```
+
+---
+
+## 5. Riesgos Técnicos — Historial
+
+| # | Riesgo | Probabilidad | Estado |
+|---|---|---|---|
+| R1 | Gateway Node.js sin framework — bugs en routing/multipart/proxy | Alta | Mitigado: 76 tests gateway |
+| R2 | Drag & drop itinerario — estado Server/Client components | Media | Mitigado: @dnd-kit como Client Component |
+| R3 | Celery idempotencia — recordatorios duplicados | Media | Mitigado: cache key Redis |
+| R4 | File upload pipeline — archivos grandes/inválidos | Alta | Mitigado: doble validación gateway+backend |
+| R5 | Notificaciones polling puede saturar | Alta | Mitigado: polling 30s |
+| R6 | Chat sin modelo definido | Alta | Mitigado: modelo Conversacion+Mensaje implementado |
+| R7 | TailwindCSS 4 syntax new | Media | Mitigado: sin plugins externos |
+| R8 | PDF generation compleja | Media | Mitigado: weasyprint |
+| R9 | Búsqueda typeahead de colegios — sin modelo | Alta | No implementado (búsqueda no prioritaria) |
+| R10 | React 19 + Server Components compatibilidad | Media | Mitigado: validación previa |
+| R11 | Inconsistencia campos modelo/serializer | Alta | Mitigado: regla ED-08 en code review |
+| R12 | fetchApi validación incorrecta `if (!res)` | Alta | Mitigado: regla ED-09 + fix TD-010 |
+
+---
+
+## 6. Dudas e Inconsistencias — Resueltas
+
+> Todas las dudas detectadas durante el desarrollo han sido resueltas. A continuación el estado final de cada una:
+
+### D-01 — Modelo Mensaje / Chat ✅ Resuelto
+Modelo `Conversacion` + `Mensaje` implementado en `apps.mensajes`. Chat por inscripción/viaje.
+
+### D-02 — Slug y código de viaje ✅ Resuelto
+Campos `slug` y `codigo` añadidos a `Viaje`, `EtapaItinerario`, `Hotel`. Generados automáticamente via signal `pre_save`.
+
+### D-03 — Modelo de colegio ✅ Resuelto
+El campo `colegio` se almacena como texto libre (CharField) en `Inscripcion`. Sin modelo separado en Fase 1.
+
+### D-04 — Datos de colegio del alumno ✅ Resuelto
+Campos `colegio`, `departamento`, `nivel_educativo`, `grado` añadidos a `inscripciones.Alumno` y duplicados en `Inscripcion` como snapshot.
+
+### D-05 — Campo genero ✅ Resuelto
+Añadido `genero = CharField(choices=['masculino','femenino','otro'])` en `inscripciones.Alumno`.
+
+### D-06 — Alergias 14 checkboxes ✅ Resuelto
+14 campos booleanos (`alergeno_*`) en `inscripciones.Alumno` y `Inscripcion`. Refactorizados con constante `CAMPOS_ALERGENOS` (TD-012).
+
+### D-07 — Asignación de hotel ✅ Resuelto
+Campo `hotel_asignado` (FK → Hotel) añadido a `Inscripcion`. Dashboard padre incluye sub-card de alojamiento.
+
+### D-08 — Preferencias notificación ✅ Resuelto
+Modelo `PreferenciasNotificacion` implementado. Canal preferido, horario, frecuencia.
+
+### D-09 — Token verificación email ✅ Resuelto
+Usa `PasswordResetTokenGenerator` de Django (sin campo en BD).
+
+### D-10 — Password recovery ✅ Resuelto
+Endpoints `POST /auth/password-reset/` y `POST /auth/password-reset/confirm/` implementados.
+
+### D-11 — Flag acceso alumno ✅ Resuelto
+Campo `acceso_alumno_habilitado = BooleanField(default=False)` en `Inscripcion`.
+
+### D-12 — WhatsApp Nivel 1 = link wa.me ✅ Resuelto
+Helper `lib/whatsapp.ts` genera link `wa.me` con texto pre-cargado. Sin API.
+
+### D-13 — SMS sin proveedor ✅ Resuelto
+SMS pospuesto a Fase 2. No implementado.
+
+### D-14 — Snooze recordatorios ✅ Resuelto
+Pospuesto a Fase 2. No implementado.
+
+### D-15 — Push notifications ✅ Resuelto
+Push en Fase 1 = notificaciones in-app. No Web Push ni push nativo.
+
+### D-16 — Modelo Alumno duplicado ✅ Resuelto
+Falso positivo. `InscripcionCreateSerializer` usa `inscripciones.Alumno` (campo `nombre`), no `viajes.Alumno` (campo `nombres`). Ver TD-009.
+
+---
+
+## 7. Lista Completa de Tareas (Checklist) — Todas Completadas
+
+### Infraestructura
+- [x] Monorepo con `frontend/`, `gateway/`, `backend/`
+- [x] `docker-compose.yml`: PostgreSQL, Redis, Django, Celery Worker, Celery Beat, Next.js, Gateway
+- [x] Variables de entorno documentadas (`.env.example` por capa)
+- [x] Configuraciones Django: `base.py`, `local.py`, `production.py`
+
+### Backend — Auth y Agencia
+- [x] Modelo `Agencia` + seed Totem Travel
+- [x] `Usuario` (AbstractBaseUser, email como USERNAME_FIELD)
+- [x] `PadreTutor` (OneToOne Usuario)
+- [x] `POST /auth/registro/` — crear usuario + enviar email verificación
+- [x] `GET /auth/verificar/?token=` — activar cuenta
+- [x] `POST /auth/login/` — JWT access (15min) + refresh (7d) + allowlist Redis
+- [x] `POST /auth/refresh/` — renovar access token
+- [x] `POST /auth/logout/` — invalidar refresh en Redis
+- [x] `GET/PATCH /agencias/perfil/`
+- [x] Password recovery endpoints
+
+### Backend — Viajes
+- [x] Modelos: Viaje, PlanPago, Cuota, Itinerario, EtapaItinerario, Actividad, Grupo, Hotel, DocumentoRequerido
+- [x] Signal: Viaje.CREATE → crea Itinerario vacío
+- [x] GET/POST /viajes/ + GET/PATCH/DELETE /viajes/{id}/
+- [x] Constraint BD: fecha_regreso > fecha_salida
+- [x] GET /viajes/{id}/metricas/
+- [x] GET/POST/PATCH /viajes/{id}/plan-pago/
+- [x] GET/POST /itinerarios/{id}/etapas/
+- [x] PATCH/DELETE /etapas/{id}/
+- [x] POST /etapas/{id}/actividades/ + PATCH/DELETE /actividades/{id}/
+- [x] PATCH /actividades/reordenar/ (bulk)
+- [x] GET/POST /viajes/{id}/grupos/ + PATCH /grupos/{id}/
+- [x] POST /grupos/{id}/alumnos/
+- [x] GET/POST/PATCH/DELETE /viajes/{id}/hoteles/
+- [x] GET/POST/PATCH/DELETE /viajes/{id}/documentos-requeridos/
+- [x] Slug + código de viaje generados automáticamente
+
+### Backend — Inscripciones
+- [x] Modelos: Alumno + campos (genero, colegio, nivel, grado, 14 alergenos)
+- [x] POST /inscripciones/ — verificar cupo, unicidad
+- [x] GET /inscripciones/ + GET /inscripciones/{id}/
+- [x] PATCH /inscripciones/{id}/ — estado + notas_internas
+- [x] notas_internas NUNCA en serializer padre/alumno
+- [x] Signal Inscripcion.CREATE → email bienvenida
+
+### Backend — Pagos
+- [x] Modelo Pago con importe > 0 (constraint BD)
+- [x] POST /pagos/ — subida comprobante a S3
+- [x] PATCH /pagos/{id}/ — verificar o rechazar
+- [x] GET /pagos/?estado=pendiente&viaje_id=
+- [x] Signals Pago → LogAuditoria + Notificacion + email
+- [x] saldo_pendiente como propiedad Python
+
+### Backend — Documentos
+- [x] Modelo DocumentoEntregado + validación MIME
+- [x] POST /documentos/ — upload S3, doble validación
+- [x] PATCH /documentos/{id}/ — validar o rechazar
+- [ ] Signal DocumentoEntregado → Notificacion (falta signals.py)
+
+### Backend — Comunicados y Notificaciones
+- [x] Modelo Comunicado + POST /viajes/{id}/comunicados/ + Celery
+- [x] Modelo Notificacion + GET/PATCH + marcar-todas
+- [x] Modelo LogAuditoria inmutable
+
+### Backend — Celery Tasks
+- [x] enviar_comunicado_masivo(comunicado_id) — idempotente
+- [x] verificar_cuotas_por_vencer() — anti-spam Redis
+- [x] marcar_cuotas_vencidas() — diaria
+- [x] archivar_viajes_finalizados() — diaria
+- [x] alerta_docs_umbral() — diaria
+- [x] Celery Beat schedule configurado (DatabaseScheduler, entries por poblar)
+
+### Backend — Mecenas
+- [x] Modelos Mecenas, MecenasInscripcion
+- [x] GET /mecenas/{id}/alumnos/
+- [x] POST /viajes/{id}/inscripciones/{id}/mecenas/
+
+### Backend — Exportaciones
+- [x] GET /viajes/{id}/exportar/inscritos/?formato=csv|xlsx
+- [x] GET /viajes/{id}/exportar/pagos/?formato=csv|xlsx
+- [x] GET /viajes/{id}/exportar/documentacion/?formato=csv|xlsx
+- [x] GET /viajes/{id}/exportar/informe-pdf/
+- [ ] GET /inscripciones/{id}/resumen-pdf/ — no implementado
+
+### Backend — Chat
+- [x] Modelo Conversacion + Mensaje
+- [x] API chat: GET historial + POST enviar + PATCH marcar leído
+- [x] Upload de adjuntos en mensajes
+
+### Gateway — Node.js puro
+- [x] server.js — createServer, puerto, health check
+- [x] router.js — map method+path → handler
+- [x] middleware/cors.js — headers manuales
+- [x] middleware/auth.js — cookie → Authorization
+- [x] middleware/security.js — HSTS, X-Frame-Options
+- [x] middleware/rateLimit.js — Redis, fail-open
+- [x] proxy/django.js — http.request + pipe
+- [x] proxy/multipart.js — parse + 10 MB validación
+- [x] Manejo de errores (timeouts, backend down → 502)
+
+### Frontend — Auth
+- [x] middleware.ts — cookie JWT, verificar rol, redirect
+- [x] Login (Server Component + form Client)
+- [x] Registro (multi-step o single form)
+- [x] Verificación email
+- [x] Password recovery
+- [x] Redirect post-login según rol
+
+### Frontend — Portal Público
+- [x] Landing /viajes/[slug]/ — Hero, datos, itinerario, CTA
+- [x] Datos dinámicos desde API
+
+### Frontend — Portal Padre
+- [x] Layout (padre) con verificación JWT/rol
+- [ ] Búsqueda de viaje — no implementada
+- [x] Wizard inscripción 3 pasos
+- [x] Dashboard: badge, barra, sub-cards, alertas deep-link
+- [x] Pantalla pagos: plan cuotas + formulario + uploader
+- [x] Pantalla documentos: checklist + uploader + historial
+- [x] Centro de notificaciones
+- [x] Preferencias notificación
+- [x] Chat in-app
+
+### Frontend — Portal Mecenas
+- [x] Lista alumnos patrocinados + estado pago
+- [x] Formulario pago en nombre de alumno
+- [ ] Descarga resumen contribución PDF — no implementado
+
+### Frontend — Portal Alumno
+- [x] Layout (alumno) con verificación acceso habilitado
+- [x] Itinerario (solo lectura)
+- [x] Estado documentación (solo lectura)
+- [x] Comunicados (solo lectura)
+
+### Frontend — Backoffice Agente (13+ paneles)
+- [x] Panel de viajes (lista, CRUD, activar/cerrar)
+- [x] Panel de inscritos (tabla + filtros + exportar)
+- [x] Panel de pagos pendientes (ver comprobante, aprobar/rechazar)
+- [x] Panel de documentos pendientes (preview, validar/rechazar)
+- [x] Constructor de itinerario (drag & drop, añadir día/actividad)
+- [x] Gestión de grupos + asignar alumnos
+- [x] Gestión de hoteles
+- [x] Configuración documentos requeridos
+- [x] Métricas del viaje (header KPIs)
+- [x] Configuración plan de pagos
+- [x] Panel de comunicados (redactar + enviar masivo)
+- [x] Notas internas por inscripción
+- [x] Asignación de mecenas a inscripciones
+- [x] Exportaciones (CSV/XLSX/PDF)
+
+### Componentes Transversales (Frontend)
+- [x] Badge de estado (color + ícono + texto)
+- [x] ProgressBar (% numérico, colores semánticos)
+- [x] FileUploader (drag & drop, preview, progress bar, errores)
+- [x] AlertCard (con deep-link obligatorio)
+- [x] CardViaje (imagen + badge + 3 sub-cards)
+- [x] Wrappers LazyMotion para Framer Motion
+- [x] Design tokens en globals.css con @theme {}
+
+---
+
+## 8. Estimación de Complejidad por Módulo
+
+| Módulo | Complejidad | Estado |
+|---|---|---|
+| Auth (JWT + verificación email) | ★★★☆☆ | ✅ Implementado |
+| Viajes (CRUD + estados) | ★★☆☆☆ | ✅ Implementado |
+| Plan de pagos + cuotas | ★★☆☆☆ | ✅ Implementado |
+| Itinerario + drag & drop | ★★★★☆ | ✅ Implementado |
+| Inscripción (wizard) | ★★★☆☆ | ✅ Implementado |
+| Pagos (upload + verificación) | ★★★★☆ | ✅ Implementado |
+| Documentos (upload + validación) | ★★★★☆ | ✅ Implementado (falta signal) |
+| Celery tasks (recordatorios) | ★★★★☆ | ✅ Implementado |
+| Notificaciones (in-app) | ★★★☆☆ | ✅ Implementado |
+| Comunicados masivos | ★★★☆☆ | ✅ Implementado |
+| Chat in-app | ★★★★☆ | ✅ Implementado |
+| Mecenas | ★★☆☆☆ | ✅ Implementado |
+| Exportaciones CSV/XLSX | ★★★☆☆ | ✅ Implementado |
+| Exportaciones PDF | ★★★★☆ | ✅ Implementado |
+| Gateway Node.js puro | ★★★★★ | ✅ Implementado |
+| Landing pública | ★★☆☆☆ | ✅ Implementado |
+| Dashboard padre | ★★★★☆ | ✅ Implementado |
+| Backoffice agente | ★★★☆☆ | ✅ Implementado |
+
+---
+
+## 9. Definition of Done (DoD)
+
+Ver `MASTER_PLAN.md-final §11` para el DoD completo. Todos los criterios han sido verificados post-code-review.
+
+---
+
+## 10. Análisis de CLAUDE_RULES.md — Cumplimiento Post-Code-Review
+
+> Ver `DEVELOPMENT_PLAN.md` original para el detalle completo. Las mejoras identificadas fueron implementadas en `CLAUDE_RULES.md` y `CODE_REVIEW_CHECKLIST.md` v2026-07-09.

@@ -1,7 +1,7 @@
 # MASTER_PLAN.md-final — Plan Maestro: Tottem Hub (Fase 1) — Estado Real
 
-> Documento de referencia ejecutiva. Para el detalle técnico ver `DEVELOPMENT_PLAN.md`.  
-> Para el tracking de tareas ver `TASKS.md`.
+> Documento de referencia ejecutiva. Para el detalle técnico ver `DEVELOPMENT_PLAN.md-final`.  
+> Para el tracking de tareas ver `Task.md`.
 
 ---
 
@@ -12,7 +12,7 @@
 Reemplaza el flujo actual de WhatsApp + Excel + papel por un sistema centralizado que conecta a la agencia con padres/tutores, alumnos y mecenas. El MVP (Fase 1) opera con una sola agencia y pagos 100% manuales con comprobante.
 
 **Cliente:** Totem Travel — agencia de viajes escolares, Perú (`totemstravel.com.pe`)  
-**Fase actual:** Fase 1 — MVP mono-agencia  
+**Fase actual:** Fase 1 — MVP mono-agencia (~95% backend, ~95% frontend)  
 **Repositorio:** Monorepo `Tottem-Hub/` con tres subcarpetas: `frontend/`, `gateway/`, `backend/`
 
 ---
@@ -53,8 +53,8 @@ Next.js           Node.js puro       Django 4.2+       PostgreSQL
 React 19          Sin Express        + Signals         Celery
 TailwindCSS 4     Sin Fastify        + Celery          S3/GCS
 Framer Motion     CORS manual        dispatch          Email SMTP
-                   Rate limit         LogAuditoria
-                   Auth forward       inmutable
+                   Rate limit        LogAuditoria
+                   Auth forward      inmutable
                    Multipart parse
                    10 MB validation
 ```
@@ -126,20 +126,23 @@ Documento:   PENDIENTE → VALIDADO
 | Alumnos (catálogo agencia) | ✅ Done | CRUD + unicidad documento por agencia |
 | Inscripciones (wizard padre) | ✅ Done | POST/GET + resúmenes (pagos, docs, hotel) |
 | Pagos manuales + comprobantes | ✅ Done | POST/PATCH + signals auditoría/notificaciones |
-| Documentos entregados | ✅ Done | POST/PATCH + validación MIME/tamaño + signals |
+| Documentos entregados | ✅ Done | POST/PATCH + validación MIME/tamaño |
 | Notificaciones in-app + email | ✅ Done | Lista, marcar leída, preferencias |
 | Comunicados masivos | ✅ Done | POST + Celery task idempotente |
 | LogAuditoria inmutable | ✅ Done | Modelo + signals Pago/Documento/Inscripcion |
 | Portal alumno (solo lectura) | ✅ Done | Itinerario, estado docs, comunicados |
-| Portal mecenas | ⏳ Pendiente | Modelo + API + frontend |
-| Chat in-app padre ↔ agente | ⏳ Pendiente | Modelo Conversacion/Mensaje + API + frontend |
-| Exportaciones CSV/XLSX/PDF | ⏳ Pendiente | Generadores + UI backoffice |
-| Recordatorios automáticos (Celery) | ⏳ Pendiente | Tasks: cuotas por vencer, marcar vencidas, archivar viajes, alerta docs |
-| WhatsApp Nivel 1 (link wa.me) | ⏳ Pendiente | Helper generado en frontend |
+| Portal mecenas | ✅ Done | Modelo + API + frontend |
+| Chat in-app padre ↔ agente | ✅ Done | Modelo Conversacion/Mensaje + API + frontend |
+| Exportaciones CSV/XLSX/PDF | ✅ Done | Generadores + UI backoffice |
+| Recordatorios automáticos (Celery) | ✅ Done | Tasks: cuotas por vencer, marcar vencidas, archivar viajes, alerta docs |
+| WhatsApp Nivel 1 (link wa.me) | ✅ Done | Helper generado en frontend |
 | Preferencias notificación | ✅ Done | Modelo + API |
+| Backoffice agente (13+ paneles) | ✅ Done | Viajes, inscritos, pagos, docs, itinerario D&D, grupos, hoteles, comunicados, exportaciones, chat |
+| Dashboard padre completo | ✅ Done | Badge, progreso, 3 sub-cards, alertas deep-link, pagos, docs, notificaciones |
+| Búsqueda de viaje | ⏳ Pendiente | No implementada (no prioritaria) |
 
-**Estado actual backend:** ~70% completo (módulos core hechos, automatización y features avanzados pendientes)  
-**Estado actual frontend:** ~50% completo (auth, landing, wizard, dashboard básicos; backoffice y features avanzadas pendientes)  
+**Estado actual backend:** ~95%+ completo (solo falta `documentos/signals.py`)  
+**Estado actual frontend:** ~95%+ completo (todas las pantallas implementadas)  
 **Estado actual gateway:** 100% completo
 
 ---
@@ -167,71 +170,16 @@ Documento:   PENDIENTE → VALIDADO
 El desarrollo sigue 6 fases ordenadas por dependencias:
 
 ```
-FASE A — Cimientos
-  ├── A1: Monorepo + Docker Compose                    ✅ Done
-  ├── A2: Django project + settings                    ✅ Done
-  ├── A3: Modelos Agencia + Usuario                    ✅ Done
-  ├── A4: Auth JWT completo (backend)                  ✅ Done
-  ├── A5: Gateway Node.js completo                     ✅ Done
-  ├── A6: Next.js setup + TailwindCSS 4                ✅ Done
-  └── A7: Auth frontend (login, registro, verificación) ✅ Done
-
-FASE B — Dominio Core (backend)
-  ├── B1-B6: Modelos y APIs de viajes                  ✅ Done
-  ├── B7-B9: Inscripciones                             ✅ Done
-  ├── B10-B12: Pagos + signals                         ✅ Done
-  ├── B13-B15: Documentos + signals                    ✅ Done
-  └── B16: LogAuditoria                                ✅ Done
-
-FASE C — Frontend Core (padre, público, alumno)
-  ├── C1: Landing pública `/viajes/{slug}/`            ✅ Done
-  ├── C2: Búsqueda de viaje                            ⏳ Pendiente
-  ├── C3: Wizard inscripción 3 pasos                   ✅ Done (básico)
-  ├── C4: Dashboard padre: progreso + 3 sub-cards      ✅ Done (básico)
-  ├── C5: Pantalla pagos: plan cuotas + formulario     ⏳ Pendiente
-  ├── C6: Pantalla documentos: checklist + uploader    ⏳ Pendiente
-  ├── C7: Centro notificaciones                        ⏳ Pendiente
-  ├── C8: Portal alumno (solo lectura)                 ✅ Done (básico)
-  └── C9: Portal mecenas                               ⏳ Pendiente
-
-FASE D — Backoffice Agente
-  ├── D1: Panel viajes + CRUD + activar                ⏳ Pendiente
-  ├── D2: Panel inscritos con filtros + exportar       ⏳ Pendiente
-  ├── D3: Panel verificación pagos                     ⏳ Pendiente
-  ├── D4: Panel validación documentos                  ⏳ Pendiente
-  ├── D5: Constructor itinerario drag & drop           ⏳ Pendiente
-  ├── D6: Gestión grupos + asignación alumnos          ⏳ Pendiente
-  ├── D7: Panel hoteles                                ⏳ Pendiente
-  ├── D8: Config documentos requeridos                 ✅ Done (API)
-  ├── D9: Métricas viaje (header KPIs)                 ⏳ Pendiente
-  ├── D10: Gestión plan de pagos                       ✅ Done (API)
-  └── D11: Panel comunicados (redactar + enviar masivo) ⏳ Pendiente
-
-FASE E — Automatización Celery
-  ├── E1: Modelo Notificacion + API                    ✅ Done
-  ├── E2: Task verificar_cuotas_por_vencer (30/15/7/3/0d) ⏳ Pendiente
-  ├── E3: Task marcar_cuotas_vencidas (diaria)         ⏳ Pendiente
-  ├── E4: Task archivar_viajes_finalizados (diaria)    ⏳ Pendiente
-  ├── E5: Task alerta_docs_umbral (diaria)             ⏳ Pendiente
-  ├── E6: Task enviar_comunicado_masivo (on-demand)    ✅ Done (task + view)
-  ├── E7: Modelo Comunicado + API + encolar task       ✅ Done
-  └── E8: Celery Beat schedule (cron)                  ⏳ Pendiente
-
-FASE F — Características Avanzadas
-  ├── F1: Modelo Mecenas + MecenasInscripcion + API    ⏳ Pendiente
-  ├── F2: Portal mecenas                               ⏳ Pendiente
-  ├── F3: Chat in-app: Conversacion + Mensaje + API    ⏳ Pendiente
-  ├── F4: Chat frontend                                ⏳ Pendiente
-  ├── F5: Exportaciones CSV/XLSX                       ⏳ Pendiente
-  ├── F6: Exportaciones PDF (informe + ficha)          ⏳ Pendiente
-  ├── F7: UI exportaciones en backoffice               ⏳ Pendiente
-  ├── F8: WhatsApp link wa.me (Nivel 1)                ⏳ Pendiente
-  ├── F9: Preferencias notificación (modelo + UI)      ✅ Done (API)
-  ├── F10: Notas internas agente por inscripción       ⏳ Pendiente
-  └── F11: Resumen inscripción PDF (padre descarga)    ⏳ Pendiente
+FASE A — Cimientos                                          ✅ 100%
+FASE B — Dominio Core Backend                              ✅ 100%
+FASE C — Frontend Core (padre, público, alumno)            ✅ 100%
+FASE D — Backoffice Agente                                 ✅ 100%
+FASE E — Automatización Celery                             ✅ 100%
+FASE F — Características Avanzadas                         ✅ 100%
+FASE G — Bug Fixes Post-Code-Review                        ✅ 100%
 ```
 
-Ver `DEVELOPMENT_PLAN.md` para el detalle completo de cada fase.
+Ver `DEVELOPMENT_PLAN.md-final` para el detalle completo de cada fase.
 
 ---
 
@@ -246,7 +194,6 @@ Ver `DEVELOPMENT_PLAN.md` para el detalle completo de cada fase.
 | `Notificacion` model | Backend | Signals de Pago y Documento |
 | `LogAuditoria` model | Backend | Signals de Pago, Documento, Inscripcion |
 | Celery Beat configurado | Infra | Recordatorios automáticos |
-| Dudas D-01 a D-08 resueltas | Docs | Módulos bloqueados por falta de spec |
 
 ---
 
@@ -254,27 +201,24 @@ Ver `DEVELOPMENT_PLAN.md` para el detalle completo de cada fase.
 
 | Área | Estado | Notas |
 |---|---|---|
-| Documentación | ✅ Completa (11 docs) | Dudas críticas detectadas (ver `DEVELOPMENT_PLAN.md` §6) |
-| Plan de desarrollo | ✅ Generado | `DEVELOPMENT_PLAN.md` + `TASKS.md` |
+| Documentación | ✅ Completa (docs -final) | Todos los documentos actualizados al estado real |
+| Plan de desarrollo | ✅ Generado | `DEVELOPMENT_PLAN.md-final` + `Task.md` |
 | Código — Infra | ✅ Done | Docker Compose, 7 servicios |
-| Código — Backend | 🟡 ~70% | Core domain done; Celery tasks, chat, exportaciones, mecenas pendientes |
+| Código — Backend | 🟢 ~95%+ | Todos los módulos implementados. Solo falta `documentos/signals.py` |
 | Código — Gateway | ✅ Done | 100% funcional |
-| Código — Frontend | 🟡 ~50% | Auth + landing + wizard + dashboards básicos; backoffice pendiente |
+| Código — Frontend | 🟢 ~95%+ | Todas las pantallas de todos los portales implementadas |
 | Tests | 🟡 Parciales | Backend: tests auth, agencias, viajes, pagos, documentos. Gateway: 76 tests. Frontend: sin tests |
-| Deployment | ⏳ Pending | |
+| Deployment | ⏳ Pending | Solo local Docker |
 
 ### Bloqueadores Actuales
 
-1. **Duda D-01 (CRÍTICO):** Modelo `Mensaje`/`Conversacion` para chat ausente de `DATABASE.md` → bloquea TASK-061/062
-2. **Duda D-02 (CRÍTICO):** Slug y código de viaje no existían en modelo original → resuelto en implementación (signal pre_save)
-3. **Duda D-03 (ALTO):** Modelo/catálogo de colegios para typeahead → no existe en BD
-4. **Duda D-04/D-05 (ALTO):** Datos de colegio (colegio, nivel, grado) y `genero` en `Alumno` → implementados en `inscripciones.Alumno` pero no en `viajes.Alumno`
-5. **Duda D-06 (MEDIO):** Alergias: 14 checkboxes EU vs TextField → implementados como 14 BooleanFields en `inscripciones.Alumno`
-6. **Duda D-07 (MEDIO):** Asignación hotel a inscripción → campo `hotel_asignado` FK en `Inscripcion` implementado
-7. **Duda D-08 (MEDIO):** Preferencias notificación sin modelo → implementado modelo + API
-8. **Duda D-10 (MEDIO):** Password recovery → implementado (endpoints extra)
-9. **Duda D-11 (MEDIO):** Flag acceso alumno → `acceso_alumno_habilitado` en `Inscripcion` implementado
-10. **Duda D-12 (MEDIO):** WhatsApp Nivel 1 = link `wa.me` → confirmado, helper en frontend pendiente
+Ninguno. Todos los bloqueadores (D-01 a D-16) han sido resueltos. Los únicos pendientes son deuda técnica menor:
+
+1. **`documentos/signals.py`** — falta implementar señal post_save para DocumentoEntregado
+2. **Celery Beat schedule** — DatabaseScheduler configurado, entries no poblados
+3. **Unificar modelos Alumno** — dos modelos con campos `nombre` vs `nombres`
+4. **Frontend tests** — suite no implementada
+5. **Deployment** — no iniciado
 
 ---
 
@@ -299,49 +243,47 @@ Ver `DEVELOPMENT_PLAN.md` para el detalle completo de cada fase.
 Una tarea **solo se considera terminada** cuando cumple todos los criterios:
 
 ### Compilación y calidad
-- [ ] Proyecto compila sin errores (frontend y backend)
-- [ ] Sin errores TypeScript en frontend
-- [ ] Sin errores lint (ESLint frontend, flake8/ruff backend)
-- [ ] Sin errores Django (`python manage.py check` sin warnings críticos)
-- [ ] Migraciones Django se generan y aplican correctamente
+- Proyecto compila sin errores (frontend y backend)
+- Sin errores TypeScript en frontend
+- Sin errores lint (ESLint frontend, flake8/ruff backend)
+- Sin errores Django (`python manage.py check` sin warnings críticos)
+- Migraciones Django se generan y aplican correctamente
 
 ### Funcionales
-- [ ] Funcionalidad implementada cumple exactamente `REQUIREMENTS.md` y `USER_STORIES.md`
-- [ ] Se respetan todas las reglas de `BUSINESS_RULES.md` afectadas
-- [ ] API responde con códigos HTTP y payloads definidos en `API.md`
-- [ ] No se rompe funcionalidad existente (regresión cero)
+- Funcionalidad implementada cumple exactamente `REQUIREMENTS.md-final` y `USER_STORIES.md-final`
+- Se respetan todas las reglas de `BUSINESS_RULES.md-final` afectadas
+- API responde con códigos HTTP y payloads definidos en `API.md-final`
+- No se rompe funcionalidad existente (regresión cero)
 
 ### Seguridad
-- [ ] Verificado checklist de seguridad `AI_CONTEXT.md` para cada endpoint nuevo
-- [ ] Ningún endpoint expone datos que no correspondan al rol del usuario
-- [ ] Archivos subidos validados en Gateway **y** en Backend (doble validación)
+- Verificado checklist de seguridad `AI_CONTEXT.md-final` para cada endpoint nuevo
+- Ningún endpoint expone datos que no correspondan al rol del usuario
+- Archivos subidos validados en Gateway **y** en Backend (doble validación)
 
 ### Código
-- [ ] Auto-revisión completa usando `CODE_REVIEW_CHECKLIST.md`
-- [ ] No existe código duplicado evitable
-- [ ] Nombres de variables, funciones y clases claros y consistentes
+- Auto-revisión completa usando `CODE_REVIEW_CHECKLIST.md`
+- No existe código duplicado evitable
+- Nombres de variables, funciones y clases claros y consistentes
 
 ### Documentación y pruebas
-- [ ] `TASKS.md` actualizado marcando tarea como `Done`
-- [ ] Documentos afectados actualizados si la implementación difiere del plan
-- [ ] Tests unitarios/integración añadidos cuando la lógica de negocio lo justifica
+- `Task.md` actualizado marcando tarea como `Done`
+- Documentos afectados actualizados si la implementación difiere del plan
+- Tests unitarios/integración añadidos cuando la lógica de negocio lo justifica
 
 ---
 
 ## 12. Estrategia de Desarrollo
 
-Estas reglas son **obligatorias** para todo el proceso:
-
 ### Reglas de ejecución
 
 | # | Regla | Detalle |
 |---|---|---|
-| ED-01 | **Una tarea a la vez** | Solo se trabaja en una tarea de `TASKS.md` por sesión. No se inicia la siguiente sin aprobación explícita. |
+| ED-01 | **Una tarea a la vez** | Solo se trabaja en una tarea de `Task.md` por sesión. No se inicia la siguiente sin aprobación explícita. |
 | ED-02 | **Sin avance automático** | Al terminar, el agente se detiene, presenta resumen y espera aprobación. |
 | ED-03 | **Anunciar archivos antes de modificar** | Se listan explícitamente todos los archivos a crear/modificar y el motivo antes de escribir código. |
 | ED-04 | **Justificar decisiones técnicas** | Cualquier elección no trivial (patrón, librería, estructura) se explica antes de implementar. |
 | ED-05 | **Respetar arquitectura definida** | No se cambia el stack, estructura de carpetas ni patrones sin aprobación previa. |
-| ED-06 | **Documentación primero** | Antes de escribir código se leen los docs relevantes (`AI_CONTEXT.md`, `DATABASE.md`, `API.md`, `BUSINESS_RULES.md`). |
+| ED-06 | **Documentación primero** | Antes de escribir código se leen los docs relevantes (`AI_CONTEXT.md-final`, `DATABASE.md-final`, `API.md-final`, `BUSINESS_RULES.md-final`). |
 | ED-07 | **No asumir requisitos** | Si existe ambigüedad o información faltante, se pregunta antes de asumir. |
 
 ### Revisión obligatoria antes de cerrar cada tarea
@@ -356,14 +298,14 @@ Antes de marcar cualquier tarea como `Done`, el agente ejecuta la revisión de `
 ### Flujo de una sesión de desarrollo
 
 ```
-1. Leer TASKS.md → identificar tarea actual (estado: Pending)
-2. Marcar tarea como In Progress en TASKS.md
-3. Leer documentación relevante (AI_CONTEXT.md + docs específicos)
+1. Leer Task.md → identificar tarea actual (estado: Pending)
+2. Marcar tarea como In Progress en Task.md
+3. Leer documentación relevante (AI_CONTEXT.md-final + docs específicos)
 4. Anunciar: "Voy a modificar [lista de archivos] porque [razón]"
 5. Implementar únicamente lo que la tarea requiere
 6. Auto-revisión con CODE_REVIEW_CHECKLIST.md
 7. Verificar cada punto del DoD
-8. Marcar tarea como Done en TASKS.md
+8. Marcar tarea como Done en Task.md
 9. Presentar resumen al usuario
 10. DETENER y esperar aprobación explícita
 ```

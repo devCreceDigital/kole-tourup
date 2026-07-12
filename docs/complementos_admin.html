@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Gestión de Complementos — Admin</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #1f2937; line-height: 1.6; }
+  h1 { color: #1e40af; border-bottom: 2px solid #dbeafe; padding-bottom: 8px; }
+  h2 { color: #1e3a5f; margin-top: 32px; }
+  h3 { color: #374151; }
+  code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  pre { background: #f3f4f6; padding: 12px 16px; border-radius: 6px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+  th, td { border: 1px solid #e5e7eb; padding: 8px 12px; text-align: left; }
+  th { background: #f9fafb; font-weight: 600; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-weight: 600; }
+  .tag-seguro { background: #dbeafe; color: #1e40af; }
+  .tag-menu { background: #fce4ec; color: #9a1f3b; }
+  .tag-actividad { background: #e0f2fe; color: #075985; }
+  .tag-extra { background: #f3e8ff; color: #6b21a8; }
+  .box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin: 16px 0; }
+</style>
+</head>
+<body>
+
+<h1>Gestión de Complementos</h1>
+<p>Los complementos son <strong>adicionales opcionales</strong> que la agencia ofrece por viaje, fuera del precio base.</p>
+
+<div class="box">
+  <strong>Ejemplos:</strong> Seguro de cancelación (S/35), Menú celíaco (S/15), Excursión al lago (S/40), Kit de viaje (S/25).
+</div>
+
+<h2>Tipos de complemento</h2>
+
+<table>
+  <tr>
+    <th>Tipo</th>
+    <th>Qué incluye</th>
+    <th>Etiqueta</th>
+  </tr>
+  <tr>
+    <td><code>seguro</code></td>
+    <td>Seguros de viaje, cancelación, accidentes, equipaje</td>
+    <td><span class="tag tag-seguro">SEGURO</span></td>
+  </tr>
+  <tr>
+    <td><code>menu</code></td>
+    <td>Menús especiales: celíaco, vegetariano, alergias</td>
+    <td><span class="tag tag-menu">MENÚ</span></td>
+  </tr>
+  <tr>
+    <td><code>actividad_opcional</code></td>
+    <td>Excursión extra, taller, visita no incluida en el precio base</td>
+    <td><span class="tag tag-actividad">ACTIVIDAD</span></td>
+  </tr>
+  <tr>
+    <td><code>extra</code></td>
+    <td>Camiseta del viaje, fotos, recuerdo, kit de viaje</td>
+    <td><span class="tag tag-extra">EXTRA</span></td>
+  </tr>
+</table>
+
+<h2>Modelos</h2>
+
+<h3>1. Complemento — Catálogo maestro</h3>
+<pre>
+Complemento
+├── nombre       — ej. "Seguro Cancelación", "Menú Celíaco"
+├── tipo         — seguro | menu | actividad_opcional | extra
+├── descripcion  — texto explicativo para el padre
+└── activo       — si está disponible globalmente
+</pre>
+<p>Se administra en: <strong>Admin > Viajes > Complementos</strong></p>
+
+<h3>2. ComplementoViaje — Puente con precio</h3>
+<pre>
+ComplementoViaje
+├── viaje         — FK → Viaje
+├── complemento   — FK → Complemento
+├── precio        — ej. S/35.00
+└── activo        — si está disponible para este viaje
+</pre>
+<p>Se administra como <strong>inline dentro del Viaje</strong> (sección "Complementos por viaje") o directamente en <strong>Admin > Viajes > Complementos por viaje</strong>.</p>
+
+<h3>3. ComplementoContratado — Lo que contrató cada familia</h3>
+<pre>
+ComplementoContratado
+├── inscripcion        — FK → Inscripcion
+├── complemento_viaje  — FK → ComplementoViaje
+└── cantidad           — ej. 2
+</pre>
+<p>Visible como inline de <strong>solo lectura</strong> dentro de cada Inscripción.</p>
+
+<h2>Flujo completo</h2>
+
+<ol>
+  <li><strong>Crear el catálogo</strong> — Admin > Viajes > Complementos: crear "Seguro Básico", "Menú Vegano", etc.</li>
+  <li><strong>Asignar a un viaje</strong> — Editar el Viaje, sección "Complementos por viaje": elegir complemento y fijar precio</li>
+  <li><strong>El padre contrata</strong> — Durante la inscripción (frontend), los complementos activos aparecen como opcionales</li>
+  <li><strong>Consultar en admin</strong> — En la Inscripción, inline "Complementos contratados" muestra lo elegido por cada familia</li>
+  <li><strong>Exportar</strong> — Los complementos contratados se incluyen en los reportes para proveedores (hotel, restaurante)</li>
+</ol>
+
+<h2>Ubicación en el admin</h2>
+
+<table>
+  <tr><th>Sección</th><th>Modelo</th><th>Acción</th></tr>
+  <tr><td>Viajes > Complementos</td><td>Complemento</td><td>CRUD del catálogo maestro</td></tr>
+  <tr><td>Viajes > Complementos por viaje</td><td>ComplementoViaje</td><td>Asigna precio y activa/desactiva por viaje</td></tr>
+  <tr><td>Viajes > Complementos contratados</td><td>ComplementoContratado</td><td>Consulta lo contratado por cada familia</td></tr>
+  <tr><td>Edición de Viaje</td><td>ComplementoViaje (inline)</td><td>Gestiona complementos del viaje</td></tr>
+  <tr><td>Edición de Inscripción</td><td>ComplementoContratado (inline)</td><td>Visualiza lo contratado</td></tr>
+</table>
+
+</body>
+</html>

@@ -11,6 +11,7 @@ interface Hijo {
 
 interface HijosRegistradosProps {
   hijos: Hijo[]
+  inscripcionesPorHijo?: Record<string, { viajeNombre: string; inscripcionId: string } | null>
 }
 
 function formatFechaNacimiento(fecha?: string) {
@@ -19,7 +20,7 @@ function formatFechaNacimiento(fecha?: string) {
   return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-export function HijosRegistrados({ hijos }: HijosRegistradosProps) {
+export function HijosRegistrados({ hijos, inscripcionesPorHijo = {} }: HijosRegistradosProps) {
   return (
     <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
       {/* Header */}
@@ -45,6 +46,7 @@ export function HijosRegistrados({ hijos }: HijosRegistradosProps) {
           {hijos.map((hijo, index) => {
             const sinAlergias = !hijo.alergias || hijo.alergias.length === 0
             const fechaFormateada = formatFechaNacimiento(hijo.fechaNacimiento)
+            const hijoInscripcion = inscripcionesPorHijo[hijo.id] || null
 
             return (
               <li key={hijo.id || index} className="px-5 py-4">
@@ -90,6 +92,12 @@ export function HijosRegistrados({ hijos }: HijosRegistradosProps) {
                     <button className="text-xs font-medium text-gray-600 px-3 py-1.5 border border-gray-200 bg-white rounded-md hover:bg-gray-50 transition-colors">
                       Dar acceso
                     </button>
+                    <Link
+                      href={hijoInscripcion ? `/app/inscripciones/${hijoInscripcion.inscripcionId}` : '/app/buscar-viaje'}
+                      className="text-xs font-medium text-white px-3 py-1.5 bg-primary rounded-md hover:bg-primary/90 transition-colors"
+                    >
+                      Nuevo Viaje
+                    </Link>
                   </div>
                 </div>
 
@@ -100,6 +108,14 @@ export function HijosRegistrados({ hijos }: HijosRegistradosProps) {
                       <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
                     Alergias: Sin especificar
+                  </p>
+                )}
+                {hijoInscripcion && (
+                  <p className="mt-1.5 text-xs text-primary font-medium flex items-center gap-1 ml-12">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                    {hijoInscripcion.viajeNombre}
                   </p>
                 )}
               </li>

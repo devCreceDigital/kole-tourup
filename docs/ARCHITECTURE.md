@@ -1,4 +1,9 @@
-# ARCHITECTURE.md — Decisiones de Arquitectura
+# ARCHITECTURE.md — Decisiones de Arquitectura (Actualizado)
+
+> **Última actualización:** 2026-07-09  
+> **Estado:** Refleja la implementación real en el repositorio `Tottem-Hub/`
+
+---
 
 ## Visión General
 
@@ -22,28 +27,29 @@ Arquitectura de tres capas con separación explícita entre frontend, API gatewa
 │  └────────┬─────────┘  └──────────┬──────────┘  └──────┬────────┘  │
 └───────────┼────────────────────────┼───────────────────┼────────────┘
             └────────────────────────┼───────────────────┘
-                                     │ HTTPS · JWT (cookie httpOnly)
-┌────────────────────────────────────▼────────────────────────────────┐
+                                     │ HTTPS · JWT en cookie httpOnly
+                                     ▼
+┌─────────────────────────────────────────────────────────────────────┐
 │                     API GATEWAY — Node.js puro                      │
 │              node:http · node:https  (sin Express/Fastify)          │
 │                                                                     │
 │  • Routing hacia backend Django                                     │
 │  • CORS (headers manuales por origen)                               │
-│  • Rate limiting (por IP + por endpoint)                            │
-│  • Headers de seguridad (HSTS, X-Frame-Options, etc.)               │
+│  • Rate limiting (por IP + por endpoint, contadores en Redis)       │
+│  • Headers de seguridad (HSTS, X-Frame-Options, X-Content-Type...)  │
 │  • Auth forwarding (cookie → Authorization: Bearer)                 │
-│  • Multipart upload parsing antes de reenviar                       │
-│  • Validación tamaño de archivo (10 MB — primera línea de defensa)  │
+│  • Multipart parsing + Validación 10 MB (primera línea defensa)     │
 │  • Health check: GET /health → 200                                  │
 │                                                                     │
 │  ⚠ Sin lógica de negocio. Todo el dominio vive en Django.           │
 └────────────────────────────────────┬────────────────────────────────┘
                                      │ HTTP interno
-┌────────────────────────────────────▼────────────────────────────────┐
+                                     ▼
+┌─────────────────────────────────────────────────────────────────────┐
 │                    BACKEND — Django 4.2+ + DRF                      │
 │                                                                     │
 │  Endpoints REST · Permisos por rol · Django Signals                 │
-│  Celery task dispatch · LogAuditoria · Multi-tenant filter          │
+│  Celery task dispatch · LogAuditoria inmutable · Multi-tenant filter│
 └────┬───────────────────┬──────────────────────────┬─────────────────┘
      │                   │                          │
 ┌────▼──────┐   ┌────────▼──────────┐   ┌──────────▼──────────────┐
@@ -57,12 +63,12 @@ Arquitectura de tres capas con separación explícita entre frontend, API gatewa
                                         │ • alerta_docs_umbral    │
                                         └────────────┬────────────┘
                                                      │
-                                          ┌──────────▼──────────┐
-                                          │  Servicios externos │
-                                          │  Email SMTP / SES   │
-                                          │  S3 / GCS (storage) │
-                                          │  WhatsApp (futuro)  │
-                                          └─────────────────────┘
+                                           ┌─────────▼──────────┐
+                                           │  Servicios externos │
+                                           │  Email SMTP / SES   │
+                                           │  S3 / GCS (storage) │
+                                           │  WhatsApp (futuro)  │
+                                           └─────────────────────┘
 ```
 
 ---
@@ -74,14 +80,14 @@ Arquitectura de tres capas con separación explícita entre frontend, API gatewa
 | Frontend | Next.js | 16.2.6 | App Router obligatorio |
 | Frontend | React | 19 | Server Components por defecto |
 | Frontend | TailwindCSS | 4 | `@theme {}` en CSS, no `tailwind.config.js` |
-| Frontend | Framer Motion | latest | Solo para UI — nunca lógica de negocio |
-| Gateway | Node.js (`node:http/https`) | LTS | Sin Express, Fastify ni ningún framework |
+| Frontend | Framer Motion | latest | Solo UI — nunca lógica de negocio |
+| Gateway | Node.js (`node:http/https`) | LTS | Sin Express, Fastify, Koa, Hapi |
 | Backend | Django | 4.2+ | DRF para API REST |
-| Base de datos | PostgreSQL | — | UUID PKs, índices explícitos, constraints |
-| Cache / Broker | Redis | — | Tokens JWT allowlist + Celery broker |
+| Backend | PostgreSQL | — | UUID PKs, índices explícitos, constraints |
+| Cache / Broker | Redis | — | Allowlist JWT + Celery broker |
 | Tareas async | Celery | — | Beat para cron + workers para tasks |
-| Storage | S3 / GCS | configurable | Backend intercambiable vía `FileField` |
-| Auth | JWT | — | access 15 min · refresh 7 días en Redis |
+| Storage | S3 / GCS | configurable | `FileField` con backend intercambiable |
+| Auth | JWT | — | access 15 min · refresh 7 días · cookies httpOnly |
 
 ---
 
@@ -102,7 +108,7 @@ frontend/app/
 │   ├── layout.tsx       # Verifica rol: agente
 │   └── backoffice/
 └── (alumno)/            # Solo lectura
-    ├── layout.tsx       # Verifica rol: alumno + acceso habilitado
+    ├── layout.tsx       # Verifica rol: alumno + flag acceso
     └── app/alumno/
 ```
 
@@ -163,12 +169,12 @@ import { motion } from 'framer-motion'
 
 ### DA-05 — API Gateway Node.js sin frameworks
 
-El gateway es un servidor HTTP minimalista. Estructura:
+Estructura:
 
 ```
 gateway/
 ├── server.js          # createServer(node:http) → punto de entrada
-├── router.js          # Map path+method → handler function
+├── router.js          # Map {method, path} → handler function
 ├── middleware/
 │   ├── cors.js        # Headers CORS manuales por origin
 │   ├── rateLimit.js   # Contador en Redis por IP
@@ -176,7 +182,7 @@ gateway/
 │   └── security.js    # HSTS, X-Frame-Options, X-Content-Type-Options
 ├── proxy/
 │   ├── django.js      # http.request al backend + pipe de response
-│   └── multipart.js   # Parseo multipart/form-data antes de reenviar
+│   └── multipart.js   # Parse multipart/form-data antes de reenviar
 └── config.js          # Variables de entorno centralizadas
 ```
 
@@ -189,10 +195,11 @@ gateway/
 ```
 LOGIN FLOW:
 1. Frontend → POST /auth/login/ → Gateway → Django
-2. Django responde con {access_token, refresh_token, rol}
-3. Gateway escribe: Set-Cookie: access_token=...; HttpOnly; Secure; SameSite=Strict
-4. Frontend recibe cookie automáticamente (no accesible desde JS)
-5. Cada request siguiente: Gateway lee cookie, agrega Authorization: Bearer al forward
+2. Django responde con {rol, agencia_id} + Set-Cookie:
+   access_token  — HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=900
+   refresh_token — HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth/; Max-Age=604800
+3. Frontend recibe cookie automáticamente (no accesible desde JS)
+4. Cada request siguiente: Gateway lee cookie, agrega Authorization: Bearer al forward
 ```
 
 ---
@@ -215,7 +222,7 @@ Viaje.objects.all()  # ❌ INCORRECTO
 
 ### DA-08 — Signals Django para efectos secundarios
 
-Los signals garantizan que los efectos secundarios ocurran aunque el código del endpoint no los llame explícitamente:
+Los signals garantizan que los efectos ocurran aunque el endpoint no los llame explícitamente:
 
 ```python
 # apps/pagos/signals.py
@@ -258,7 +265,7 @@ def enviar_recordatorio_pago(self, cuota_id, tutor_id, trigger_dias):
 | HTTPS | Infra | TLS terminado en el gateway |
 | CORS | Gateway | Headers manuales, `CORS_ORIGINS` por env |
 | Rate limiting | Gateway | Por IP + por endpoint, contadores en Redis |
-| Headers de seguridad | Gateway | HSTS, X-Frame-Options, X-Content-Type-Options |
+| Headers de seguridad | Gateway | HSTS, X-Frame-Options, X-Content-Type-Options, X-XSS-Protection |
 | JWT almacenado | Frontend | Cookie `httpOnly; Secure; SameSite=Strict` |
 | JWT validado | Backend | DRF — `IsAuthenticated` + verificación de firma |
 | Expiración tokens | Backend | access 15 min; refresh 7 días en allowlist Redis |
@@ -276,27 +283,28 @@ def enviar_recordatorio_pago(self, cuota_id, tutor_id, trigger_dias):
 
 ### Frontend (`frontend/.env.local`)
 ```env
-NEXT_PUBLIC_GATEWAY_URL=https://api.minkagroup.digital
-NEXT_PUBLIC_APP_URL=https://minkagroup.digital
+NEXT_PUBLIC_GATEWAY_URL=https://api.tottemhub.com
+NEXT_PUBLIC_APP_URL=https://tottemhub.com
 ```
 
 ### Gateway (`gateway/.env`)
 ```env
 PORT=3001
 BACKEND_URL=http://backend:8000
-CORS_ORIGINS=https://minkagroup.digital,https://www.minkagroup.digital
+CORS_ORIGINS=https://tottemhub.com,https://www.tottemhub.com
 RATE_LIMIT_WINDOW_MS=60000
 RATE_LIMIT_MAX=100
 MAX_FILE_SIZE_BYTES=10485760
 REDIS_URL=redis://redis:6379
+PROXY_TIMEOUT_MS=30000
 ```
 
 ### Backend (`backend/.env`)
 ```env
-DATABASE_URL=postgresql://user:pass@db:5432/minka
+DATABASE_URL=postgresql://user:pass@db:5432/tottemhub
 REDIS_URL=redis://redis:6379
 DEFAULT_FILE_STORAGE=storages.backends.s3boto3.S3Boto3Storage
-AWS_STORAGE_BUCKET_NAME=minka-files
+AWS_STORAGE_BUCKET_NAME=tottemhub-files
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
 JWT_SECRET_KEY=...
@@ -311,57 +319,118 @@ DOC_INCOMPLETE_ALERT_THRESHOLD=30
 
 ---
 
-## Estructura del Repositorio
+## Estructura del Repositorio (REAL)
 
 ```
-minka-group/
+Tottem-Hub/
 ├── frontend/                        # Next.js 16.2.6
 │   ├── app/
-│   │   ├── (public)/viajes/[slug]/  # Landing pública del viaje
-│   │   ├── (padre)/app/             # Portal padre/tutor/mecenas
+│   │   ├── (public)/viajes/[slug]/  # Landing pública
+│   │   ├── (padre)/app/             # Portal padre/mecenas
 │   │   ├── (agente)/backoffice/     # Backoffice agente
-│   │   └── (alumno)/app/alumno/     # Portal alumno (solo lectura)
+│   │   ├── (alumno)/app/alumno/     # Portal alumno (solo lectura)
+│   │   ├── (auth)/                  # Login, registro, verificación
+│   │   ├── globals.css              # @theme {} tokens TailwindCSS 4
+│   │   ├── layout.tsx
+│   │   └── page.tsx
 │   ├── components/
-│   │   ├── ui/                      # Componentes base Tailwind
-│   │   ├── motion/                  # Wrappers LazyMotion
-│   │   └── forms/                   # Wizards, uploaders
+│   │   ├── ui/                      # Badge, ProgressBar, CardViaje, etc.
+│   │   ├── motion/                  # LazyWrapper (Framer Motion)
+│   │   ├── forms/                   # FileUploader, WizardProgress
+│   │   ├── padre/                   # InscripcionCard, AlertasPendientes...
+│   │   ├── agente/                  # TablaInscritos, PanelValidacion...
+│   │   ├── mecenas/                 # ListaAlumnosPatrocinados...
+│   │   ├── public/                  # HeroSection, ItinerarioResumen
+│   │   └── chat/                    # ChatInscripcion
 │   ├── lib/
-│   │   ├── api.ts                   # Fetch al gateway
-│   │   └── auth.ts                  # Helpers JWT/cookie
-│   └── middleware.ts                # Auth guard por portal
+│   │   ├── api.ts                   # fetchApi + ApiError
+│   │   ├── auth.ts                  # decodeJwtPayload
+│   │   └── whatsapp.ts              # generarLinkWhatsApp helpers
+│   ├── middleware.ts                # Auth guard por portal
+│   ├── next.config.js
+│   ├── postcss.config.mjs
+│   ├── tsconfig.json
+│   ├── .eslintrc.json
+│   ├── package.json
+│   ├── Dockerfile
+│   └── .dockerignore
 │
-├── gateway/                         # Node.js puro
-│   ├── server.js
-│   ├── router.js
+├── gateway/                         # Node.js puro (sin frameworks)
+│   ├── server.js                    # createServer, health check
+│   ├── router.js                    # Map {method, path} → handler
+│   ├── config.js                    # Env vars centralizadas
 │   ├── middleware/
-│   │   ├── cors.js
-│   │   ├── rateLimit.js
-│   │   ├── auth.js
-│   │   └── security.js
-│   └── proxy/
-│       ├── django.js
-│       └── multipart.js
+│   │   ├── cors.js                  # CORS manual + preflight
+│   │   ├── rateLimit.js             # Redis fixed-window counter
+│   │   ├── auth.js                  # Cookie → Authorization header
+│   │   └── security.js              # HSTS, X-Frame-Options, etc.
+│   ├── proxy/
+│   │   ├── django.js                # http.request + pipe response
+│   │   └── multipart.js             # Parse multipart, valida 10MB
+│   ├── tests/                       # 76 tests (router, server, cors, auth, security, rateLimit, multipart, django)
+│   ├── package.json
+│   ├── Dockerfile
+│   └── .dockerignore
 │
-└── backend/                         # Django 4.2+
-    ├── config/
-    │   └── settings/
-    │       ├── base.py
-    │       ├── local.py
-    │       └── production.py
-    ├── apps/
-    │   ├── autenticacion/   # Usuario custom, JWT, registro, verificación
-    │   ├── agencias/        # Agencia, perfil
-    │   ├── viajes/          # Viaje, Grupo, PlanPago, Cuota, Itinerario, Hotel
-    │   ├── inscripciones/   # Inscripcion, Alumno, PadreTutor
-    │   ├── pagos/           # Pago
-    │   ├── documentos/      # DocumentoRequerido, DocumentoEntregado
-    │   ├── comunicados/     # Comunicado
-    │   ├── notificaciones/  # Notificacion
-    │   ├── mecenas/         # Mecenas, MecenasInscripcion
-    │   ├── auditoria/       # LogAuditoria
-    │   └── exportaciones/   # Generadores Excel/CSV/PDF
-    ├── celery.py
-    └── tasks/               # Tareas Celery por módulo
+├── backend/                         # Django 4.2+ + DRF
+│   ├── config/
+│   │   ├── settings/
+│   │   │   ├── base.py              # Settings comunes
+│   │   │   ├── local.py             # Desarrollo local
+│   │   │   └── production.py        # Producción
+│   │   ├── urls.py                  # URLConf principal
+│   │   ├── celery.py                # Celery app
+│   │   ├── wsgi.py / asgi.py
+│   │   └── __init__.py
+│   ├── apps/
+│   │   ├── autenticacion/           # Usuario custom, JWT, registro, login, verificación, password reset
+│   │   ├── agencias/                # Agencia + perfil (GET/PATCH /perfil/)
+│   │   ├── viajes/                  # Viaje, PlanPago, Cuota, Itinerario, Etapa, Actividad, Hotel, Grupo, DocumentoRequerido, Alumno (catálogo)
+│   │   ├── inscripciones/           # Inscripcion, Alumno (perfil inscripción), MisAlumnos
+│   │   ├── pagos/                   # Pago (modelo + vistas upload/verificar)
+│   │   ├── documentos/              # DocumentoEntregado (upload/validar)
+│   │   ├── comunicados/             # Comunicado + Celery task masivo
+│   │   ├── notificaciones/          # Notificacion + preferencias
+│   │   ├── mecenas/                 # (PENDIENTE) Mecenas, MecenasInscripcion
+│   │   ├── auditoria/               # (PENDIENTE) LogAuditoria inmutable
+│   │   ├── exportaciones/           # (PENDIENTE) Generadores CSV/XLSX/PDF
+│   │   ├── chat/                    # (PENDIENTE) Conversacion, Mensaje
+│   │   ├── colegios/                # (BÁSICO) Catálogo colegios
+│   │   └── tareas/                  # Tasks de mantenimiento
+│   ├── templates/
+│   │   ├── emails/                  # HTML emails (verificación, bienvenida, pago, comunicado)
+│   │   └── pdf/                     # Templates PDF (ficha, informe)
+│   ├── fixtures/
+│   │   └── agencia_totem.json       # Seed Totem Travel
+│   ├── manage.py
+│   ├── requirements.txt
+│   ├── Dockerfile
+│   └── .dockerignore
+│
+├── docker-compose.yml               # 7 servicios: postgres, redis, backend, celery_worker, celery_beat, gateway, frontend
+├── .gitignore
+├── README.md
+│
+└── docs/                            # Documentación del proyecto
+    ├── DATABASE.md                  # Esquema BD actualizado
+    ├── API.md                       # Endpoints reales implementados
+    ├── MASTER_PLAN.md               # Plan maestro estado real
+    ├── PROJECT_OVERVIEW.md          # Visión general estado real
+    ├── ARCHITECTURE.md              # Este archivo
+    ├── DEVELOPMENT_PLAN.md          # Plan detallado por fases
+    ├── TASKS.md                     # Tracking tareas (estados Done/Pending)
+    ├── PENDING.txt                  # Lista tareas pendientes
+    ├── REQUIREMENTS.md              # Requerimientos funcionales/no funcionales
+    ├── USER_STORIES.md              # Historias de usuario
+    ├── USER_FLOWS.md                # Flujos de usuario
+    ├── BUSINESS_RULES.md            # Reglas de negocio (invariantes)
+    ├── DECISIONS.md                 # Registro decisiones técnicas (DEC-001 a DEC-007)
+    ├── TECH_DEBT.md                 # Deuda técnica (TD-001 a TD-008)
+    ├── AI_CONTEXT.md                # Contexto para agentes IA
+    ├── UI_UX.md                     # Especificaciones UI/UX
+    ├── CODE_REVIEW_CHECKLIST.md     # Checklist revisión código
+    ├── CLAUDE_RULES.md              # Reglas para agente IA
+    └── README.md                    # Índice de docs
 ```
 
 ---
@@ -371,7 +440,45 @@ minka-group/
 | Métrica | Target | Implementación |
 |---------|--------|----------------|
 | Dashboard del padre | ≤ 3 seg | Server Components + índices PostgreSQL |
-| API listados | ≤ 500 ms | Índices + select_related + prefetch_related |
+| API listados | ≤ 500 ms | Índices + `select_related` + `prefetch_related` |
 | Emails masivos | No bloquea UI | Celery async |
 | Bundle JS | Mínimo | Server Components + LazyMotion |
-| `saldo_pendiente` | No en BD | Propiedad Python — computada, no almacenada |
+| `saldo_pendiente` | No en BD | Propiedad Python — computada en tiempo real |
+
+---
+
+## Convenciones de Código
+
+### Backend (Django)
+- `models.py`: constraints de BD + `TextChoices` para enums
+- `views.py`: `GenericAPIView` + mixins, permisos explícitos
+- `serializers.py`: validación de entrada, `read_only_fields` para campos internos
+- `signals.py`: efectos secundarios obligatorios (auditoría, notificaciones)
+- `tests.py`: un test por caso de aceptación documentado
+
+### Gateway (Node.js)
+- `node:http` / `node:https` únicamente
+- Sin `console.log` en producción
+- Tests con `node --test` (built-in, sin dependencias)
+- Mock de Redis inyectable para tests
+
+### Frontend (Next.js)
+- Server Components por defecto
+- `'use client'` solo cuando es estrictamente necesario
+- Design tokens en `globals.css` con `@theme {}`
+- Componentes base en `components/ui/`
+- Helpers de fetch en `lib/api.ts`
+- Sin `useEffect` para data fetching
+
+---
+
+## Testing Strategy
+
+| Capa | Framework | Cobertura objetivo |
+|------|-----------|-------------------|
+| Backend | pytest + DRF test client | Auth, agencias, viajes, inscripciones |
+| Gateway | `node --test` (built-in) | Router, middlewares, proxy, multipart |
+| Frontend | Jest + React Testing Library | Componentes UI, hooks, utils |
+| E2E | Playwright (futuro) | Flujos críticos: login → wizard → dashboard |
+
+**Nota:** Tests de auth backend (TASK-008 a TASK-011) documentan casos en notas pero **no existen archivos de test persistidos** — ver `TECH_DEBT.md` TD-001.

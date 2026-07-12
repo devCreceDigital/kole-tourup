@@ -53,6 +53,7 @@ class AlumnoInputSerializer(serializers.Serializer):
 
 class InscripcionCreateSerializer(serializers.Serializer):
     viaje_id = serializers.UUIDField()
+    grupo_id = serializers.UUIDField(required=False, allow_null=True)
     alumno = AlumnoInputSerializer()
 
     def validate_viaje_id(self, value):
@@ -73,6 +74,7 @@ class InscripcionCreateSerializer(serializers.Serializer):
     def create(self, validated_data):
         viaje = validated_data['viaje_id']
         alumno_data = validated_data['alumno']
+        grupo_id = validated_data.get('grupo_id')
         padre_tutor = self.context['padre_tutor']
         
         defaults_dict = {
@@ -100,6 +102,25 @@ class InscripcionCreateSerializer(serializers.Serializer):
             for key, val in defaults_dict.items():
                 setattr(alumno, key, val)
             alumno.save()
+
+        # Asignar grupo si se especificó
+        if grupo_id:
+            from apps.viajes.models import Grupo
+            try:
+                grupo = Grupo.objects.get(id=grupo_id, viaje=viaje)
+            except Grupo.DoesNotExist:
+                raise serializers.ValidationError({'grupo_id': 'Grupo no encontrado para este viaje.'})
+
+            # Validar capacidad del grupo
+            if grupo.capacidad is not None:
+                inscritos_en_grupo = Alumno.objects.filter(grupo=grupo).count()
+                if inscritos_en_grupo >= grupo.capacidad:
+                    raise serializers.ValidationError({
+                        'grupo_id': f'El grupo "{grupo.nombre}" está completo ({grupo.capacidad} plazas).'
+                    })
+
+            alumno.grupo = grupo
+            alumno.save(update_fields=['grupo'])
             
         alumno.tutores.add(padre_tutor)
         if viaje.inscripciones.filter(alumno=alumno).exists():

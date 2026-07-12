@@ -49,6 +49,34 @@ export default async function ViajePublicoPage({ params }: { params: Promise<{ s
         </div>
       </section>
 
+      {/* Grupos / Colegios */}
+      {viaje.grupos?.length > 0 && (
+        <section className="py-12 px-6 max-w-4xl mx-auto">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Grupos participantes</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {viaje.grupos.map((g: any) => {
+              const cupoGrupo = g.capacidad ?? viaje.cupo_maximo
+              const inscritosGrupo = g.alumnos_count ?? 0
+              const disponibleGrupo = Math.max(0, cupoGrupo - inscritosGrupo)
+              const pct = cupoGrupo > 0 ? Math.round((inscritosGrupo / cupoGrupo) * 100) : 0
+              return (
+                <div key={g.id} className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between mb-3">
+                    <h3 className="font-bold text-gray-900">{g.nombre}</h3>
+                    <span className="text-xs bg-blue-100 text-blue-800 font-semibold px-2 py-1 rounded-full">{disponibleGrupo} plazas</span>
+                  </div>
+                  {g.descripcion && <p className="text-sm text-gray-500 mb-3">{g.descripcion}</p>}
+                  <div className="w-full bg-gray-100 rounded-full h-2 mb-1">
+                    <div className="h-2 rounded-full bg-blue-600 transition-all" style={{ width: `${Math.max(pct, 2)}%` }} />
+                  </div>
+                  <p className="text-xs text-gray-400">{inscritosGrupo} de {cupoGrupo} inscritos</p>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
       {etapas.length > 0 && <ItinerarioResumen etapas={etapas} />}
 
       <section className="py-16 px-6 bg-blue-800 text-white text-center">

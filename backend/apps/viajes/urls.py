@@ -6,6 +6,7 @@ from .views import (
     DocumentoRequeridoRetrieveUpdateDestroyView,
     ViajeListCreateView,
     ViajeRetrieveUpdateView,
+    ViajeCambiarEstadoView,
     PlanPagoRetrieveUpdateCreateView,
     ItinerarioRetrieveView,
     EtapaListCreateView,
@@ -24,6 +25,7 @@ from .views import (
 urlpatterns = [
     path('', ViajeListCreateView.as_view(), name='viaje-list-create'),
     path('<uuid:pk>/', ViajeRetrieveUpdateView.as_view(), name='viaje-detail'),
+    path('<uuid:pk>/cambiar-estado/', ViajeCambiarEstadoView.as_view(), name='viaje-cambiar-estado'),
     path('<uuid:viaje_id>/plan-pago/', PlanPagoRetrieveUpdateCreateView.as_view(), name='viaje-plan-pago'),  # noqa: E501
 
     # Itinerario (TASK-028)

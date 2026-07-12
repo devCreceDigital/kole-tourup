@@ -2,68 +2,335 @@
 
 > Formato: `Como [actor], quiero [acción] para [beneficio].`
 > Criterios de aceptación incluidos en las historias críticas.
-> Última actualización: 2026-07-09
+> Última actualización: 2026-07-12
 
 ---
 
 ## Módulo: Autenticación
 
 ### US-AUTH-01 — Registro de cuenta ✅ Done
+**Como** padre/tutor,  
+**quiero** registrarme con mi email y contraseña  
+**para** acceder al portal de mi hijo de forma segura.
+
+**Criterios de aceptación:**
+- El sistema verifica que el email no esté registrado antes de crear la cuenta
+- Se envía un email con enlace de activación
+- La cuenta queda inactiva hasta que el padre haga clic en el enlace
+- El enlace de activación expira en 24 horas
+
+---
+
 ### US-AUTH-02 — Login ✅ Done
+**Como** cualquier usuario registrado,  
+**quiero** iniciar sesión con mi email y contraseña  
+**para** acceder a mi panel según mi rol.
+
+**Criterios de aceptación:**
+- Si las credenciales son inválidas → mensaje "Email o contraseña incorrectos"
+- Si la cuenta no está verificada → mensaje "Verifica tu email primero"
+- Si el login es exitoso → redirect al dashboard correspondiente al rol
+- El token de sesión se guarda en cookie `httpOnly`
+
+---
+
 ### US-AUTH-03 — Recuperación de contraseña ✅ Done
+**Como** usuario registrado,  
+**quiero** recuperar el acceso si olvidé mi contraseña  
+**para** no perder el acceso a mi cuenta.
 
 ---
 
 ## Módulo: Viajes (Agente)
 
 ### US-V-01 — Crear viaje ✅ Done
+**Como** agente de viajes,  
+**quiero** crear un viaje con nombre, destino, fechas, cupo, precio e imagen  
+**para** publicarlo y permitir que las familias se inscriban.
+
+**Criterios de aceptación:**
+- El viaje nace en estado `borrador` (invisible para familias)
+- La `fecha_regreso` debe ser posterior a `fecha_salida` — error si no se cumple
+- Al crear el viaje, el sistema genera automáticamente un itinerario vacío
+- El agente puede previsualizar el viaje antes de publicarlo
+
+---
+
 ### US-V-02 — Configurar plan de pagos ✅ Done
+**Como** agente de viajes,  
+**quiero** definir el plan de cuotas del viaje con fechas e importes  
+**para** que las familias sepan exactamente cuándo y cuánto pagar.
+
+**Criterios de aceptación:**
+- Se puede definir N cuotas con número, descripción, importe y fecha de vencimiento
+- Cada cuota con importe > 0
+- El plan puede editarse mientras no haya pagos verificados
+
+---
+
 ### US-V-03 — Construir itinerario ✅ Done
+**Como** agente de viajes,  
+**quiero** crear el itinerario día a día con actividades y horarios  
+**para** que las familias conozcan el programa completo del viaje.
+
+**Criterios de aceptación:**
+- Puedo añadir etapas por día (Día 1, Día 2, etc.)
+- Cada etapa puede tener múltiples actividades con tipo, hora y descripción
+- Puedo reordenar actividades con drag & drop
+- El reordenamiento se guarda en bloque (no petición individual por actividad)
+
+---
+
 ### US-V-04 — Activar viaje ✅ Done
-### US-V-05 — Panel de métricas ⏳ Pending
+**Como** agente de viajes,  
+**quiero** publicar el viaje cuando esté listo  
+**para** que las familias puedan verlo e inscribirse.
+
+**Criterios de aceptación:**
+- Al activar, el viaje es visible en el portal público
+- No es posible volver al estado `borrador` una vez activado
+- El agente recibe confirmación de que el viaje está publicado
+
+---
+
+### US-V-05 — Panel de métricas ✅ Done
+**Como** agente de viajes,  
+**quiero** ver en tiempo real el % de inscritos, % pagado y % documentado de cada viaje  
+**para** tener visibilidad del estado operativo sin revisar inscripción por inscripción.
 
 ---
 
 ## Módulo: Inscripción (Padre)
 
-### US-INS-01 — Descubrir el viaje 🟡 Parcial (landing pública con datos dinámicos pendiente)
-### US-INS-02 — Wizard de inscripción 🟡 Parcial
-**Nota:** El campo `nombre` del alumno en el serializer difiere del modelo (`nombres`). Ver TD-009.
-### US-INS-03 — Buscar el viaje correcto ⏳ Pending
-### US-INS-04 — Dashboard de inscripción 🟡 Parcial
+### US-INS-01 — Descubrir el viaje ✅ Done
+**Como** padre/tutor,  
+**quiero** llegar a la landing pública del viaje desde un enlace compartido por la agencia  
+**para** ver toda la información antes de decidir inscribir a mi hijo.
+
+**Criterios de aceptación:**
+- La landing muestra: destino, fechas, itinerario resumido, precio desde, plazas disponibles
+- Hay un CTA claro "Inscribir a mi hij@"
+- La licencia de la agencia es visible para generar confianza
+
+---
+
+### US-INS-02 — Wizard de inscripción ✅ Done
+**Como** padre/tutor,  
+**quiero** inscribir a mi hijo en 3 pasos claros  
+**para** no sentirme abrumado con un formulario extenso.
+
+**Criterios de aceptación:**
+- Paso 1: Datos básicos del alumno (nombre, apellidos, DNI, fecha nacimiento, género)
+- Paso 2: Centro educativo (provincia, colegio, nivel, clase)
+- Paso 3: Salud y T&C (alergias de 14 alérgenos EU, teléfono opcional, aceptación T&C)
+- Barra de progreso visible en todo momento
+- Puedo volver al paso anterior sin perder datos
+- El sistema valida que el alumno corresponde al nivel/colegio del viaje
+
+---
+
+### US-INS-03 — Buscar el viaje correcto ⏳ No implementado
+**Como** padre/tutor,  
+**quiero** encontrar el viaje de mi hijo por código o por nombre de colegio  
+**para** asegurarme de inscribirlo en el viaje correcto.
+
+**Criterios de aceptación:**
+- Opción 1: campo de código de viaje directo
+- Opción 2: provincia → colegio (typeahead dinámico) → destino
+- Si no hay viajes para ese colegio → mensaje claro con alternativas de contacto
+
+---
+
+### US-INS-04 — Dashboard de inscripción ✅ Done
+**Como** padre/tutor,  
+**quiero** ver de un vistazo qué falta para confirmar la plaza de mi hijo  
+**para** actuar de inmediato sin tener que navegar por diferentes secciones.
+
+**Criterios de aceptación:**
+- Muestra barra de progreso global (%)
+- 3 sub-cards: Pagos (X/N cuotas), Documentos (X/N aprobados), Alojamiento (estado)
+- Badge de estado: Lista de espera / Pre-inscrito / Confirmado / En camino
+- Cada alerta tiene deep-link directo a la acción → no texto genérico
+- CTAs directos: [Ir a Pagos] [Subir Docs] [Ver viaje completo]
 
 ---
 
 ## Módulo: Pagos
 
-### US-PAG-01 — Registrar pago 🟡 Parcial
-### US-PAG-02 — Ver plan de pagos 🟡 Parcial
+### US-PAG-01 — Registrar pago ✅ Done
+**Como** padre/tutor,  
+**quiero** registrar un pago con comprobante adjunto  
+**para** que el agente lo verifique y se descuente de mi deuda pendiente.
+
+**Criterios de aceptación:**
+- Selecciono la cuota a la que aplica el pago
+- Ingreso importe, fecha y método de pago
+- Adjunto el comprobante (PDF o JPG, máx. 10 MB)
+- Tras enviar, el pago queda en estado "Pendiente de revisión"
+- Recibo confirmación visual y el agente recibe una notificación
+
+---
+
+### US-PAG-02 — Ver plan de pagos ✅ Done
+**Como** padre/tutor,  
+**quiero** ver el calendario completo de cuotas con su estado  
+**para** planificar mis pagos sin sorpresas.
+
+**Criterios de aceptación:**
+- Cada cuota muestra: número, descripción, importe, fecha vencimiento, estado
+- Estados: Pendiente / Pagado / Vencido / En revisión
+- El saldo pendiente total se calcula automáticamente
+- Si hay cuota vencida → alerta roja visible
+
+---
+
 ### US-PAG-03 — Verificar pago (Agente) ✅ Done
-### US-PAG-04 — Recordatorios automáticos ⏳ Pending
+**Como** agente de viajes,  
+**quiero** revisar y aprobar o rechazar los pagos subidos por las familias  
+**para** mantener los saldos actualizados con precisión.
+
+**Criterios de aceptación:**
+- Puedo ver el comprobante adjunto antes de decidir
+- Al aprobar: el pago se descuenta del saldo → notificación al padre
+- Al rechazar: ingreso un motivo → el padre recibe notificación con el motivo
+- La acción queda registrada en el log de auditoría
+
+---
+
+### US-PAG-04 — Recordatorios automáticos ✅ Done
+**Como** padre/tutor,  
+**quiero** recibir recordatorios automáticos antes de que venza una cuota  
+**para** no olvidar pagos y no perder la plaza de mi hijo.
+
+**Criterios de aceptación:**
+- Recordatorios a 30, 15, 7, 3 días y el día del vencimiento
+- Cada recordatorio incluye el importe, la fecha y un link directo a la pantalla de pago
+- No recibo recordatorios si ya pagué la cuota
+- Puedo configurar mi canal preferido (email / WhatsApp / solo in-app)
 
 ---
 
 ## Módulo: Documentación
 
-### US-DOC-01 — Ver checklist de documentos ⏳ Pending
-### US-DOC-02 — Subir documento 🟡 Parcial
+### US-DOC-01 — Ver checklist de documentos ✅ Done
+**Como** padre/tutor,  
+**quiero** ver qué documentos debo subir y cuál es el estado de cada uno  
+**para** saber exactamente qué me falta.
+
+**Criterios de aceptación:**
+- Lista clara con estado por documento: Pendiente / En revisión / Aprobado / Rechazado
+- Barra de progreso: X/N documentos aprobados
+- Si un documento fue rechazado → muestra el motivo del agente y botón "Volver a subir"
+- Fecha límite visible por cada documento
+
+---
+
+### US-DOC-02 — Subir documento ✅ Done
+**Como** padre/tutor,  
+**quiero** subir un archivo para cubrir un documento requerido  
+**para** que el agente lo valide y no quede incompleta mi inscripción.
+
+**Criterios de aceptación:**
+- Formatos aceptados: PDF, JPG, PNG (visibles antes de seleccionar archivo)
+- Tamaño máximo 10 MB — error claro si se excede
+- Tras subir, el documento queda en "En revisión" inmediatamente
+- Puedo subir nuevas versiones si el anterior fue rechazado
+
+---
+
 ### US-DOC-03 — Validar documento (Agente) ✅ Done
+**Como** agente de viajes,  
+**quiero** revisar y aprobar o rechazar documentos de las familias  
+**para** asegurar que todos los viajeros cumplen los requisitos legales.
+
+**Criterios de aceptación:**
+- Puedo ver un preview del documento antes de decidir
+- Al aprobar → notificación al padre "Tu [tipo de doc] fue aprobado"
+- Al rechazar → ingreso motivo → notificación al padre con el motivo
+- Panel de documentos pendientes filtrable por viaje
 
 ---
 
 ## Módulo: Comunicación
 
 ### US-COM-01 — Enviar comunicado masivo (Agente) ✅ Done
-### US-COM-02 — Chat in-app ⏳ Pending
+**Como** agente de viajes,  
+**quiero** enviar un comunicado a todas las familias de un viaje  
+**para** informar sobre cambios de programa, puntos de encuentro u otra información importante.
+
+**Criterios de aceptación:**
+- El comunicado llega a todos los tutores con inscripción activa en el viaje
+- El envío de emails se procesa en background (no bloquea al agente)
+- El agente ve el estado "Enviado" cuando Celery confirma el envío
+- Las familias reciben notificación in-app + email
 
 ---
 
-## Módulo: Mecenas — Todos ⏳ Pending
+### US-COM-02 — Chat in-app ✅ Done
+**Como** padre/tutor,  
+**quiero** escribirle directamente al agente desde la plataforma  
+**para** resolver dudas sobre mi inscripción sin salir del sistema.
+
+**Criterios de aceptación:**
+- El chat muestra siempre el contexto: viaje + alumno
+- Historial persistente de la conversación
+- Puedo adjuntar archivos (documentos, fotos)
+- Veo estados del mensaje: enviado ✓ / leído ✓✓
+- Recibo notificación push cuando el agente responde
+- Quick replies disponibles: "¿Por qué fue rechazado mi documento?", "¿Cómo pago por transferencia?", etc.
+
+---
+
+## Módulo: Mecenas
+
+### US-MEC-01 — Portal del mecenas ✅ Done
+**Como** mecenas,  
+**quiero** ver el estado de los alumnos que patrocino y registrar pagos en su nombre  
+**para** cumplir con mi compromiso de sponsorship sin intermediarios.
+
+**Criterios de aceptación:**
+- Lista de alumnos patrocinados con estado de pago por cada uno
+- Puedo registrar pagos directamente con comprobante
+- Recibo notificaciones cuando se acerca el vencimiento de una cuota
+- Puedo descargar un resumen de mi contribución total en PDF
 
 ---
 
 ## Módulo: Backoffice (Agente)
 
-### US-BO-01 — Listado de inscritos ⏳ Pending
-### US-BO-02 — Exportaciones ⏳ Pending
-### US-BO-03 — Notas internas ⏳ Pending
+### US-BO-01 — Listado de inscritos ✅ Done
+**Como** agente de viajes,  
+**quiero** ver todos los inscritos de un viaje con su estado de pago y documentación  
+**para** identificar rápidamente quién requiere seguimiento.
+
+**Criterios de aceptación:**
+- Filtros por: estado de inscripción, estado de pago, estado de documentación, grupo
+- Cada fila muestra: alumno, tutor, estado inscripción, % pagado, % documentado
+- Acceso rápido a la ficha de cada inscripción
+- Exportable en Excel/CSV con un clic
+
+---
+
+### US-BO-02 — Exportaciones ✅ Done
+**Como** agente de viajes,  
+**quiero** exportar listados de inscritos, pagos y documentación en Excel o PDF  
+**para** compartir información con terceros o imprimir para el viaje.
+
+**Criterios de aceptación:**
+- Exportación de inscritos: CSV y XLSX
+- Exportación de pagos: CSV y XLSX
+- Exportación de documentación: CSV y XLSX
+- Informe de estado del viaje: PDF con métricas, listados y resumen
+- Ficha individual de inscripción: PDF descargable por padre o agente
+
+---
+
+### US-BO-03 — Notas internas ✅ Done
+**Como** agente de viajes,  
+**quiero** agregar notas internas a una inscripción  
+**para** registrar información operativa que no debe ver el padre.
+
+**Criterios de aceptación:**
+- Las notas son visibles solo para el agente
+- No aparecen en ningún serializer del padre/alumno
+- Se pueden actualizar sin restricción

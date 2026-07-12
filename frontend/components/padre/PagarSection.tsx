@@ -138,6 +138,7 @@ function PagarSectionInner({ inscripcionId, cuotas, primeraCuotaPendiente }: Pag
           </button>
           <button
             type="button"
+            onClick={() => window.location.href = `/app/chat/${inscripcionId}`}
             className="flex-1 sm:flex-none border border-gray-200 text-gray-700 text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 cursor-pointer"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

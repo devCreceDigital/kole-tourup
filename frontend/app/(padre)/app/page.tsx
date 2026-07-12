@@ -96,6 +96,14 @@ export default async function DashboardPadrePage() {
   })
   const hijosUnicos = Array.from(hijosMap.values())
 
+  const inscripcionesPorHijo: Record<string, { viajeNombre: string; inscripcionId: string } | null> = {}
+  inscripciones.forEach((ins: any) => {
+    inscripcionesPorHijo[ins.alumno.id] = {
+      viajeNombre: ins.viaje.nombre,
+      inscripcionId: ins.id,
+    }
+  })
+
   return (
     <div className="min-h-screen bg-gray-50 pb-8">
       <div className="max-w-3xl mx-auto pt-6 px-4 space-y-6">
@@ -106,12 +114,15 @@ export default async function DashboardPadrePage() {
               Bienvenid@
             </h1>
           </div>
-          <button className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 bg-white border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 shadow-sm transition-colors">
+          <a
+            href={inscripciones.length > 0 ? `/app/chat/${inscripciones[0].id}` : '#'}
+            className={`flex items-center gap-1.5 text-xs font-semibold bg-white border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 shadow-sm transition-colors ${inscripciones.length === 0 ? 'text-gray-300 pointer-events-none' : 'text-gray-500'}`}
+          >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             Ayuda
-          </button>
+          </a>
         </div>
 
         <AlertasPendientes alertas={alertas} />
@@ -165,7 +176,7 @@ export default async function DashboardPadrePage() {
           )}
         </div>
 
-        <HijosRegistrados hijos={hijosUnicos} />
+        <HijosRegistrados hijos={hijosUnicos} inscripcionesPorHijo={inscripcionesPorHijo} />
 
       </div>
     </div>

@@ -1,13 +1,31 @@
 from django.db import transaction, IntegrityError
 from rest_framework import serializers
 from .models import (
-    Viaje, Cuota, PlanPago, Alumno, Itinerario, EtapaItinerario, Actividad, Hotel, Grupo, DocumentoRequerido
+    Viaje, Cuota, PlanPago, Alumno, Itinerario, EtapaItinerario, Actividad, Hotel, Grupo, DocumentoRequerido, EstadoViaje,
+    ComplementoViaje, ComplementoContratado,
 )
+from apps.colegios.models import Colegio
 from datetime import date
+
+
+class ColegioRefSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Colegio
+        fields = ['id', 'nombre', 'departamento', 'provincia', 'distrito']
+
+
+class GrupoPublicoSerializer(serializers.ModelSerializer):
+    alumnos_count = serializers.IntegerField(read_only=True, default=0)
+
+    class Meta:
+        model = Grupo
+        fields = ['id', 'nombre', 'descripcion', 'capacidad', 'alumnos_count']
 
 
 class ViajeSerializer(serializers.ModelSerializer):
     inscripciones_count = serializers.SerializerMethodField()
+    colegio_ref = ColegioRefSerializer(read_only=True)
+    grupos = GrupoPublicoSerializer(many=True, read_only=True)
 
     class Meta:
         model = Viaje
@@ -15,30 +33,14 @@ class ViajeSerializer(serializers.ModelSerializer):
             'id', 'agencia', 'nombre', 'destino', 'fecha_salida',
             'fecha_regreso', 'descripcion', 'cupo_maximo',
             'precio_total', 'estado', 'imagen', 'duracion_dias',
-            'slug', 'codigo', 'colegio', 'nivel_educativo', 'grado',
-            'inscripciones_count',
+            'slug', 'codigo', 'colegio', 'colegio_ref', 'nivel_educativo', 'grado',
+            'inscripciones_count', 'grupos',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'agencia', 'estado', 'created_at', 'updated_at']  # noqa: E501
 
     def get_inscripciones_count(self, obj):
         return obj.inscripciones.count()
-
-    def validate(self, data):
-        """
-        Validación a nivel de serializador.
-        Previene 500 (IntegrityError) en BD validando las fechas
-        de forma anticipada. Considera updates parciales (PATCH).
-        """
-        fecha_salida = data.get('fecha_salida', self.instance.fecha_salida if self.instance else None)  # noqa: E501
-        fecha_regreso = data.get('fecha_regreso', self.instance.fecha_regreso if self.instance else None)  # noqa: E501
-
-        if fecha_salida and fecha_regreso:
-            if fecha_regreso <= fecha_salida:
-                raise serializers.ValidationError({
-                    "fecha_regreso": "La fecha de regreso debe ser posterior a la de salida."  # noqa: E501
-                })
-        return data
 
 
 class CuotaSerializer(serializers.ModelSerializer):
@@ -261,6 +263,27 @@ class AsignarAlumnosSerializer(serializers.Serializer):
         if len(ids) != len(set(ids)):
             raise serializers.ValidationError("Se enviaron IDs de alumnos duplicados.")
         return value
+
+
+class ViajeCambioEstadoSerializer(serializers.Serializer):
+    estado = serializers.ChoiceField(choices=EstadoViaje.choices)
+
+    def validate_estado(self, value):
+        viaje = self.context['viaje']
+        permitidos = Viaje.TRANSICIONES_VALIDAS.get(viaje.estado, [])
+        if value not in permitidos:
+            raise serializers.ValidationError(
+                f"No se puede cambiar de '{viaje.estado}' a '{value}'."
+            )
+        return value
+
+    def save(self, **kwargs):
+        viaje = self.context['viaje']
+        nuevo_estado = self.validated_data['estado']
+        usuario = self.context['request'].user
+        ip = self.context['request'].META.get('REMOTE_ADDR')
+        viaje.cambiar_estado(nuevo_estado, usuario=usuario, ip=ip)
+        return viaje
 
 
 class DocumentoRequeridoSerializer(serializers.ModelSerializer):

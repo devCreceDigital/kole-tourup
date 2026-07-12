@@ -1,6 +1,7 @@
-# USER_FLOWS.md — Flujos de Secuencia
+# USER_FLOWS.md — Flujos de Secuencia (Estado Real)
 
-Notación: Mermaid `sequenceDiagram`. Renderizable en GitHub, Notion, y cualquier editor compatible.
+> Notación: Mermaid `sequenceDiagram`. Renderizable en GitHub, Notion, y cualquier editor compatible.
+> Última actualización: 2026-07-09 — Se actualizaron los flujos para reflejar el uso de `fetchApi`, cookies `httpOnly` y Gateway.
 
 ---
 
@@ -18,18 +19,18 @@ sequenceDiagram
     UI->>API: POST /auth/registro/ {email, password, nombre, apellidos, rol}
     API->>DB: Verifica que email no exista
     DB-->>API: Email disponible
-    API->>DB: Crea Usuario (activo=False, email_verificado=False)
+    API->>DB: Crea Usuario (email_verificado=False)
     API->>EMAIL: Envía email con token de verificación
     EMAIL-->>PT: Email con enlace de activación
-    API-->>UI: 201 Created {mensaje: "Revisa tu email"}
+    API-->>UI: 201 Created
     UI-->>PT: Pantalla de confirmación
 
     PT->>UI: Clic en enlace de activación
     UI->>API: GET /auth/verificar/?token=<TOKEN>
-    API->>DB: Valida token y actualiza email_verificado=True, activo=True
+    API->>DB: Valida token y actualiza email_verificado=True
     DB-->>API: OK
-    API-->>UI: Redirect a /login con mensaje de éxito
-    UI-->>PT: Pantalla de login
+    API-->>UI: 200 OK
+    UI-->>PT: Redirect a /login
 ```
 
 ---
@@ -40,35 +41,40 @@ sequenceDiagram
 sequenceDiagram
     actor U as Usuario (cualquier rol)
     participant UI as Frontend
+    participant GW as Gateway (Node.js)
     participant API as Django API
     participant DB as Base de Datos
     participant CACHE as Redis Cache
 
     U->>UI: Ingresa email y contraseña
-    UI->>API: POST /auth/login/ {email, password}
+    UI->>GW: POST /auth/login/ {email, password}
+    GW->>API: Reenvía al backend
     API->>DB: Busca usuario por email
     DB-->>API: Usuario encontrado
     API->>API: Verifica password_hash con bcrypt
 
     alt Credenciales inválidas
-        API-->>UI: 401 Unauthorized
+        API-->>GW: 401 Unauthorized
+        GW-->>UI: 401
         UI-->>U: "Email o contraseña incorrectos"
     else Cuenta no verificada
-        API-->>UI: 403 Forbidden
+        API-->>GW: 403 Forbidden
+        GW-->>UI: 403
         UI-->>U: "Verifica tu email primero"
     else Credenciales válidas
         API->>API: Genera JWT access_token (15min) + refresh_token (7d)
         API->>DB: Actualiza ultimo_login
         API->>CACHE: Almacena refresh_token en allowlist
-        API-->>UI: 200 OK {access_token, refresh_token, rol, agencia_id}
-        UI->>UI: Guarda tokens en memoria/localStorage
+        API-->>GW: 200 + Set-Cookie (access_token, refresh_token) httpOnly
+        GW-->>UI: Reenvía response con cookies
+        UI->>UI: Cookies almacenadas automáticamente (httpOnly)
         UI-->>U: Redirect a dashboard según rol
     end
 ```
 
 ---
 
-## FLOW 03 — Creación de Viaje (Agente)
+## FLOW 03 — Creación de Viaje (Agente) — Sin cambios
 
 ```mermaid
 sequenceDiagram
@@ -113,44 +119,35 @@ sequenceDiagram
 
 ---
 
-## FLOW 04 — Inscripción de Alumno (Padre/Tutor)
+## FLOW 04 — Inscripción de Alumno (Wizard 3 pasos)
 
 ```mermaid
 sequenceDiagram
     actor PT as Padre/Tutor
     participant UI as Frontend
+    participant GW as Gateway
     participant API as Django API
     participant DB as Base de Datos
-    participant EMAIL as Servicio Email
 
-    PT->>UI: Navega a viaje disponible
-    UI->>API: GET /viajes/{viaje_id}/
-    API->>DB: Carga viaje + plan de pagos
-    DB-->>API: Datos del viaje
-    API-->>UI: Detalle del viaje con cuotas y documentos requeridos
-    UI-->>PT: Pantalla de detalle del viaje
+    PT->>UI: Completa Paso 1 (datos alumno)
+    PT->>UI: Completa Paso 2 (colegio)
+    PT->>UI: Completa Paso 3 (alergias + T&C) + Confirma
 
-    PT->>UI: Clic en "Inscribir alumno"
-    UI-->>PT: Wizard de datos del alumno (3 pasos)
+    UI->>GW: POST /inscripciones/ (via fetchApi + credentials: include)
+    GW->>API: POST /api/v1/inscripciones/ {viaje_id, alumno{...}}
 
-    PT->>UI: Completa datos del alumno
-    UI->>API: POST /inscripciones/ {viaje_id, alumno:{...}, padre_tutor_id}
-    API->>DB: Verifica cupo disponible en el viaje
+    API->>DB: Verifica cupo disponible
+    API->>DB: Verifica alumno no inscrito en este viaje
+    API->>DB: get_or_create Alumno (por dni) + update campos
+    API->>DB: Crea Inscripcion (estado='pre_inscrito', precio_final=viaje.precio_total)
+    API->>API: Signal post_save → email bienvenida
 
-    alt Sin cupo
-        API-->>UI: 409 Conflict "Sin plazas disponibles"
-        UI-->>PT: Mensaje de error
-    else Con cupo
-        API->>DB: Crea o recupera Alumno
-        API->>DB: Verifica unicidad (alumno, viaje)
-        API->>DB: Crea Inscripcion {estado: pendiente, precio_final: viaje.precio_total}
-        DB-->>API: inscripcion_id
-        API->>EMAIL: Envía confirmación de inscripción al tutor
-        EMAIL-->>PT: Email de bienvenida con resumen
-        API-->>UI: 201 Created {inscripcion_id, saldo_pendiente}
-        UI-->>PT: Dashboard de inscripción con plan de pagos
-    end
+    API-->>GW: 201 Created {inscripcion_id, estado}
+    GW-->>UI: Response
+    UI-->>PT: Confirmación + redirect a dashboard
 ```
+
+**NOTA:** El campo `nombre` en el serializer debe ser `nombres` para coincidir con el modelo `Alumno`. Ver TD-009.
 
 ---
 
@@ -160,28 +157,27 @@ sequenceDiagram
 sequenceDiagram
     actor PT as Padre/Tutor
     participant UI as Frontend
+    participant GW as Gateway
     participant API as Django API
-    participant STORAGE as Cloud Storage
     participant DB as Base de Datos
-    participant EMAIL as Servicio Email
+    participant STORAGE as S3/GCS
 
-    PT->>UI: Accede a "Registrar pago" en su inscripción
-    UI->>API: GET /inscripciones/{id}/pagos/
-    API->>DB: Carga cuotas pendientes
-    DB-->>API: Lista de cuotas
-    API-->>UI: Formulario de pago con cuotas disponibles
-
-    PT->>UI: Selecciona cuota, ingresa importe, fecha, método y sube comprobante
-    UI->>API: POST /pagos/ {inscripcion_id, cuota_id, importe, fecha, metodo, comprobante}
-    API->>STORAGE: Sube comprobante
-    STORAGE-->>API: comprobante_url
-    API->>DB: Crea Pago {estado: pendiente, registrado_por: tutor}
-    DB-->>API: pago_id
-    API->>DB: Signal post_save → LogAuditoria PAGO_REGISTRADO
-    API->>EMAIL: Notifica al agente de nuevo pago pendiente de verificación
-    EMAIL-->>AV: "Nuevo pago pendiente de revisión"
-    API-->>UI: 201 Created {pago_id, estado: "pendiente"}
-    UI-->>PT: "Pago enviado. En revisión por el agente."
+    PT->>UI: Selecciona cuota, ingresa importe, adjunta comprobante
+    UI->>GW: POST /pagos/ (multipart via fetchApi)
+    GW->>GW: Valida tamaño ≤ 10 MB
+    alt > 10 MB
+        GW-->>UI: 413 Payload Too Large
+        UI-->>PT: "El archivo excede el tamaño máximo"
+    else ≤ 10 MB
+        GW->>API: Reenvía multipart
+        API->>API: Valida formato (MIME + extensión)
+        API->>STORAGE: Sube comprobante
+        API->>DB: Crea Pago (estado='pendiente')
+        API->>API: Signal post_save → LogAuditoria + email agente
+        API-->>GW: 201 Created
+        GW-->>UI: Response
+        UI-->>PT: "Pago registrado — pendiente de verificación"
+    end
 ```
 
 ---
@@ -190,49 +186,34 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    actor AV as Agente de Viajes
+    actor AV as Agente
     participant UI as Frontend
+    participant GW as Gateway
     participant API as Django API
     participant DB as Base de Datos
-    participant SIGNAL as Django Signals
-    participant EMAIL as Servicio Email
 
-    AV->>UI: Panel de pagos pendientes
-    UI->>API: GET /pagos/?estado=pendiente&viaje_id={id}
-    API->>DB: Filtra pagos pendientes del viaje
-    DB-->>API: Lista de pagos con comprobantes
-    API-->>UI: Tabla de pagos pendientes
+    AV->>UI: Ve lista de pagos pendientes
+    AV->>UI: Revisa comprobante y decide: verificar o rechazar
+    UI->>GW: PATCH /pagos/{id}/ {estado, notas} (via fetchApi)
+    GW->>API: PATCH /api/v1/pagos/{id}/
 
-    AV->>UI: Visualiza comprobante y decide
-
-    alt Aprobar pago
-        AV->>UI: Clic "Verificar"
-        UI->>API: PATCH /pagos/{pago_id}/ {estado: "verificado"}
-        API->>DB: Actualiza Pago.estado = verificado
-        API->>SIGNAL: Dispara post_save
-        SIGNAL->>DB: Crea LogAuditoria PAGO_ACTUALIZADO
-        SIGNAL->>DB: Crea Notificacion {tipo: recordatorio} para tutor
-        SIGNAL->>EMAIL: Email de confirmación al tutor
-        EMAIL-->>PT: "Tu pago de X ha sido verificado"
-        API-->>UI: 200 OK
-        UI-->>AV: Pago marcado como verificado
-
-    else Rechazar pago
-        AV->>UI: Clic "Rechazar" + ingresa motivo
-        UI->>API: PATCH /pagos/{pago_id}/ {estado: "rechazado", notas: "motivo"}
-        API->>DB: Actualiza estado + notas
-        API->>SIGNAL: Dispara post_save
-        SIGNAL->>DB: Crea Notificacion {tipo: pago_vencido} para tutor
-        SIGNAL->>EMAIL: Email de rechazo con motivo
-        EMAIL-->>PT: "Tu pago fue rechazado: [motivo]"
-        API-->>UI: 200 OK
-        UI-->>AV: Pago marcado como rechazado
+    alt Verificar
+        API->>DB: pago.estado = 'verificado'
+        API->>API: Signal → LogAuditoria + Notificacion + email tutor
+        API-->>GW: 200 OK
+    else Rechazar
+        API->>DB: pago.estado = 'rechazado', pago.notas = motivo
+        API->>API: Signal → LogAuditoria + Notificacion con motivo + email
+        API-->>GW: 200 OK
     end
+
+    GW-->>UI: Response
+    UI-->>AV: Confirmación visual
 ```
 
 ---
 
-## FLOW 07 — Subida y Validación de Documentos
+## FLOW 07 — Subida y Validación de Documentos (Análogo a FLOW 05/06 — Gateway valida tamaño + formato, Django valida MIME + extensión)
 
 ```mermaid
 sequenceDiagram

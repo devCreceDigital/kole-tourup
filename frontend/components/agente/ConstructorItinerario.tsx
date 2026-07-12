@@ -44,7 +44,7 @@ export function ConstructorItinerario({ etapasIniciales, viajeId }: ConstructorI
     const nuevasActividades = arrayMove(etapa.actividades, oldIndex, newIndex).map((a, i) => ({ ...a, orden: i + 1 }))
     setEtapas(prev => prev.map(e => e.id === etapaSeleccionada ? { ...e, actividades: nuevasActividades } : e))
     setGuardando(true)
-    await fetch(`${process.env.NEXT_PUBLIC_GATEWAY_URL}/api/v1/viajes/${viajeId}/actividades/reordenar/`, {
+    await fetch(`${process.env.NEXT_PUBLIC_GATEWAY_URL}/api/v1/viajes/${viajeId}/etapas/${etapa.id}/actividades/reordenar/`, {
       method: 'PATCH',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -55,11 +55,11 @@ export function ConstructorItinerario({ etapasIniciales, viajeId }: ConstructorI
 
   async function agregarActividad(etapaId: string) {
     if (!nuevaActividad.trim()) return
-    const res = await fetch(`${process.env.NEXT_PUBLIC_GATEWAY_URL}/api/v1/viajes/${viajeId}/actividades/`, {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_GATEWAY_URL}/api/v1/viajes/${viajeId}/etapas/${etapaId}/actividades/`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ etapa: etapaId, titulo: nuevaActividad, orden: 99 })
+      body: JSON.stringify({ titulo: nuevaActividad })
     })
     if (res.ok) {
       const act = await res.json()
@@ -69,7 +69,7 @@ export function ConstructorItinerario({ etapasIniciales, viajeId }: ConstructorI
   }
 
   async function eliminarActividad(etapaId: string, actId: string) {
-    await fetch(`${process.env.NEXT_PUBLIC_GATEWAY_URL}/api/v1/viajes/${viajeId}/actividades/${actId}/`, { method: 'DELETE', credentials: 'include' })
+    await fetch(`${process.env.NEXT_PUBLIC_GATEWAY_URL}/api/v1/viajes/${viajeId}/etapas/${etapaId}/actividades/${actId}/`, { method: 'DELETE', credentials: 'include' })
     setEtapas(prev => prev.map(e => e.id === etapaId ? { ...e, actividades: e.actividades.filter(a => a.id !== actId) } : e))
   }
 

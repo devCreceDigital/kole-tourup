@@ -2,6 +2,7 @@ import uuid
 from django.db import models
 from django.db.models import F, Q
 from django.utils.translation import gettext_lazy as _
+from apps.colegios.models import Colegio
 
 
 class EstadoViaje(models.TextChoices):
@@ -41,6 +42,12 @@ class Viaje(models.Model):
         default=EstadoViaje.BORRADOR
     )
     colegio = models.CharField(max_length=200, blank=True, default="")
+    colegio_ref = models.ForeignKey(
+        Colegio,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="viajes"
+    )
     nivel_educativo = models.CharField(max_length=50, blank=True, default="")
     grado = models.CharField(max_length=50, blank=True, default="")
     slug = models.SlugField(max_length=100, unique=True, blank=True)
@@ -66,6 +73,40 @@ class Viaje(models.Model):
             )
         ]
         ordering = ["-fecha_salida"]
+
+    TRANSICIONES_VALIDAS = {
+        EstadoViaje.BORRADOR: [EstadoViaje.ACTIVO],
+        EstadoViaje.ACTIVO: [EstadoViaje.CERRADO],
+        EstadoViaje.CERRADO: [EstadoViaje.ARCHIVADO],
+        EstadoViaje.ARCHIVADO: [],
+    }
+
+    def cambiar_estado(self, nuevo_estado, usuario=None, ip=None):
+        if self.estado == nuevo_estado:
+            return
+        permitidos = self.TRANSICIONES_VALIDAS.get(self.estado, [])
+        if nuevo_estado not in permitidos:
+            from django.core.exceptions import ValidationError
+            raise ValidationError(
+                f"No se puede cambiar de '{self.estado}' a '{nuevo_estado}'. "
+                f"Transiciones válidas: {', '.join(f'{k} → {v}' for k, v in self.TRANSICIONES_VALIDAS.items() if v)}"
+            )
+        estado_anterior = self.estado
+        self.estado = nuevo_estado
+        self.save(update_fields=['estado', 'updated_at'])
+        self._auditar_cambio_estado(estado_anterior, nuevo_estado, usuario, ip)
+
+    def _auditar_cambio_estado(self, estado_anterior, nuevo_estado, usuario, ip):
+        from apps.auditoria.models import LogAuditoria
+        LogAuditoria.objects.create(
+            usuario=usuario,
+            accion='VIAJE_CAMBIO_ESTADO',
+            modelo='Viaje',
+            objeto_id=self.id,
+            valor_anterior={'estado': estado_anterior},
+            valor_nuevo={'estado': nuevo_estado},
+            ip=ip,
+        )
 
     def __str__(self):
         return f"{self.nombre} ({self.destino})"
@@ -333,6 +374,76 @@ class DocumentoRequerido(models.Model):
     def __str__(self):
         return f"{self.nombre} ({self.viaje.nombre})"
 
+
+class Complemento(models.Model):
+    class TipoComplemento(models.TextChoices):
+        SEGURO = 'seguro', 'Seguro'
+        MENU = 'menu', 'Menú especial'
+        ACTIVIDAD_OPCIONAL = 'actividad_opcional', 'Actividad opcional'
+        EXTRA = 'extra', 'Extra'
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    nombre = models.CharField(max_length=200)
+    tipo = models.CharField(
+        max_length=30,
+        choices=TipoComplemento.choices,
+    )
+    descripcion = models.TextField(blank=True, default="")
+    activo = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['nombre']
+        verbose_name = 'Complemento'
+        verbose_name_plural = 'Complementos'
+
+    def __str__(self):
+        return f"{self.nombre} ({self.get_tipo_display()})"
+
+
+class ComplementoViaje(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    viaje = models.ForeignKey(
+        Viaje,
+        on_delete=models.CASCADE,
+        related_name="complementos"
+    )
+    complemento = models.ForeignKey(
+        Complemento,
+        on_delete=models.CASCADE,
+    )
+    precio = models.DecimalField(max_digits=8, decimal_places=2)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = [('viaje', 'complemento')]
+        verbose_name = 'Complemento por viaje'
+        verbose_name_plural = 'Complementos por viaje'
+
+    def __str__(self):
+        return f"{self.complemento.nombre} — S/{self.precio}"
+
+
+class ComplementoContratado(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    inscripcion = models.ForeignKey(
+        'inscripciones.Inscripcion',
+        on_delete=models.CASCADE,
+        related_name="complementos_contratados"
+    )
+    complemento_viaje = models.ForeignKey(
+        ComplementoViaje,
+        on_delete=models.CASCADE,
+    )
+    cantidad = models.PositiveIntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Complemento contratado'
+        verbose_name_plural = 'Complementos contratados'
+
+    def __str__(self):
+        return f"{self.complemento_viaje.complemento.nombre} x{self.cantidad}"
 
 
 from django.db.models.signals import pre_save

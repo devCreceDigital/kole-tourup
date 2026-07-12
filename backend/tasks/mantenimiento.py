@@ -46,11 +46,19 @@ def archivar_viajes_finalizados(self):
     from apps.viajes.models import Viaje
     dias = getattr(settings, 'DOCS_ARCHIVE_DAYS_AFTER_RETURN', 7)
     fecha_limite = date.today() - timedelta(days=dias)
-    actualizados = Viaje.objects.filter(
-        fecha_regreso__lte=fecha_limite,
+    hoy = date.today()
+
+    cerrados = Viaje.objects.filter(
+        fecha_regreso__lt=hoy,
         estado='activo'
+    ).update(estado='cerrado')
+
+    archivados = Viaje.objects.filter(
+        fecha_regreso__lte=fecha_limite,
+        estado='cerrado'
     ).update(estado='archivado')
-    return 'OK: ' + str(actualizados) + ' viajes archivados'
+
+    return f'OK: {cerrados} cerrados, {archivados} archivados'
 
 @shared_task(bind=True, max_retries=3)
 def alerta_docs_umbral(self):

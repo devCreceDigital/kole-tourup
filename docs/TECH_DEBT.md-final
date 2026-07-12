@@ -1,0 +1,174 @@
+# TECH_DEBT.md-final — Registro de Deuda Técnica (Estado Real)
+
+> Última actualización: 2026-07-12
+>
+> **Estados:** `Activa` | `En revisión` | `Resuelta`
+> **Prioridades:** `Alta` | `Media` | `Baja`
+
+---
+
+## Deuda Técnica Activa
+
+### TD-001 — Sin archivos de test automatizados para auth (TASK-008 a TASK-011)
+
+**ID:** TD-001 | **Estado:** Activa | **Prioridad:** Alta
+**Detectado en:** TASK-012 (2026-06-28)
+
+**Descripción:** Las tareas TASK-008 a TASK-011 documentan tests en sus notas ("7 tests — todos pasan", etc.), pero no existen archivos `.py` de tests en el repositorio para `apps.autenticacion`.
+
+**Impacto:** Cobertura de CI nula en el flujo crítico de login/registro/JWT.
+
+**Tarea sugerida:** Crear `backend/apps/autenticacion/tests/` con test_registro.py, test_verificacion.py, test_login.py, test_refresh_logout.py.
+
+---
+
+### TD-002 — JWTAuthentication no lee cookies (requiere Gateway)
+
+**ID:** TD-002 | **Estado:** Parcialmente Resuelta | **Prioridad:** Media
+**Detectado en:** TASK-012 (2026-06-28)
+
+**Descripción:** El `DEFAULT_AUTHENTICATION_CLASSES` usa `JWTAuthentication` que lee del header. Con TASK-015 el Gateway convierte la cookie en header. La deuda restante es en desarrollo local sin Gateway activo.
+
+**Impacto:** Los tests no ejercen el camino real de autenticación (cookie → Gateway → header → Django).
+
+**Tarea sugerida:** Implementar `CookieJWTAuthentication(JWTAuthentication)` como fallback.
+
+---
+
+### TD-003 — Archivos de logo huérfanos al actualizar con PATCH
+
+**ID:** TD-003 | **Estado:** Activa | **Prioridad:** Baja
+**Detectado en:** TASK-012 (2026-06-28)
+
+**Descripción:** Cuando se hace PATCH de `logo`, el archivo anterior queda en storage sin referencia.
+
+**Tarea sugerida:** Signal `pre_save` en `Agencia` que elimine el logo anterior.
+
+---
+
+### TD-004 — Errores E501 en migración autogenerada
+
+**ID:** TD-004 | **Estado:** Activa | **Prioridad:** Baja
+**Detectado en:** TASK-012 (2026-06-28)
+
+**Descripción:** Flake8 reporta 7 errores E501 en migraciones autogeneradas.
+
+**Tarea sugerida:** Añadir `per-file-ignores = migrations/*:E501` al `.flake8`.
+
+---
+
+### TD-005 — Sin linter configurado en el Gateway
+
+**ID:** TD-005 | **Estado:** Activa | **Prioridad:** Media
+**Detectado en:** TASK-013 (2026-06-28)
+
+**Descripción:** El módulo `gateway/` no tiene ESLint ni Biome configurados.
+
+**Tarea sugerida:** Añadir ESLint con `eslint:recommended` y script `"lint": "eslint ."`.
+
+---
+
+### TD-006 — Tests de auth no verifican el ciclo completo cookie→Django
+
+**ID:** TD-006 | **Estado:** Activa | **Prioridad:** Baja
+**Detectado en:** TASK-015 (2026-06-28)
+
+**Tarea sugerida:** Añadir suite de tests E2E (Docker Compose) que verifique flujo completo.
+
+---
+
+### TD-007 — Fragmentación de Routing en Viajes (Alumnos)
+
+**ID:** TD-007 | **Estado:** Activa | **Prioridad:** Media
+**Detectado en:** TASK-028 (2026-06-28)
+
+**Descripción:** `alumnos_urls.py` rompe uniformidad REST al crear sub-router paralelo en vez de anidarlo bajo `/viajes/`.
+
+---
+
+### TD-008 — Relación M2M prematura (Alumnos-Grupos) y falta de prefetch
+
+**ID:** TD-008 | **Estado:** Activa | **Prioridad:** Baja
+**Detectado en:** TASK-028 (2026-06-28)
+
+**Descripción:** M2M entre Alumno y Grupo introducida anticipadamente. Falta `prefetch_related('grupos')`.
+
+---
+
+### TD-012 — Repetición masiva de campos de alergias (14 campos × múltiples lugares)
+
+**ID:** TD-012 | **Estado:** Parcialmente Resuelta | **Prioridad:** Media
+**Detectado en:** Code Review (2026-07-09)
+
+**Progreso:**
+- ✅ Constante `CAMPOS_ALERGENOS` creada en serializers.py
+- ✅ Serializers y views refactorizados a bucles
+- ⏳ Modelos `Alumno` e `Inscripcion`: 14 campos BooleanField en models.py sin refactorizar
+
+---
+
+### TD-015 — Filtro de viaje público cambiado de `'publicado'` a `'activo'`
+
+**ID:** TD-015 | **Estado:** Activa | **Prioridad:** Media
+**Detectado en:** Code Review (2026-07-09)
+
+**Descripción:** Los endpoints públicos cambiaron de filtrar por `estado='publicado'` a `estado='activo'`. Correcto en sí mismo pero no documentado en su momento (ya documentado en docs -final).
+
+---
+
+### TD-016 — `documentos/signals.py` no implementado
+
+**ID:** TD-016 | **Estado:** Activa | **Prioridad:** Alta
+**Detectado en:** Análisis de código (2026-07-12)
+
+**Descripción:** El archivo `documentos/signals.py` no existe. Las señales post_save para `DocumentoEntregado` (validado/rechazado → Notificacion) no están implementadas.
+
+**Impacto:** Al validar o rechazar un documento, el padre no recibe notificación automática.
+
+---
+
+### TD-017 — Celery Beat DatabaseScheduler sin entries poblados
+
+**ID:** TD-017 | **Estado:** Activa | **Prioridad:** Media
+**Detectado en:** Análisis de código (2026-07-12)
+
+**Descripción:** Celery Beat está configurado con DatabaseScheduler pero los entries programados (recordatorios, vencimientos, archivado) no están poblados en BD.
+
+---
+
+### TD-018 — Dos modelos Alumno (viajes vs inscripciones)
+
+**ID:** TD-018 | **Estado:** Activa | **Prioridad:** Media
+**Detectado en:** Análisis de código (2026-07-12)
+
+**Descripción:** `apps.viajes.Alumno` (catálogo agencia, campo `nombres`) y `apps.inscripciones.Alumno` (perfil inscripción, campo `nombre`). Funcional pero fuente de confusión.
+
+---
+
+### TD-019 — Sin tests frontend
+
+**ID:** TD-019 | **Estado:** Activa | **Prioridad:** Media
+**Detectado en:** Análisis de código (2026-07-12)
+
+**Descripción:** No existe suite de tests para el frontend Next.js.
+
+---
+
+### TD-020 — Deployment no iniciado
+
+**ID:** TD-020 | **Estado:** Activa | **Prioridad:** Alta
+**Detectado en:** Análisis de código (2026-07-12)
+
+**Descripción:** Solo entorno local Docker. Sin deployment a producción configurado.
+
+---
+
+## Deuda Técnica Resuelta
+
+| ID | Descripción | Resolución |
+|----|-------------|------------|
+| TD-009 | `InscripcionCreateSerializer` usa `nombre` en lugar de `nombres` | Falso positivo. El serializer usa el modelo correcto (`inscripciones.Alumno`) que tiene `nombre`. |
+| TD-010 | `fetchApi` response handling inconsistente con `FormularioPago` | Eliminada variable `res` y comprobación `if (!res)`. |
+| TD-011 | `console.log` de depuración en producción (`PagarSection`) | Eliminados los tres `console.log`. |
+| TD-013 | `NavBackoffice` perdió elementos de navegación | Restaurados los 8 ítems de navegación. |
+| TD-014 | IP hardcodeada en `docker-compose.yml` | Reemplazada por variables de entorno con defaults localhost. |

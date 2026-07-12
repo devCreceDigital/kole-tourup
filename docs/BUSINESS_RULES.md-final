@@ -1,30 +1,53 @@
 # BUSINESS_RULES.md-final — Reglas de Negocio (Estado Real)
 
 > Estas reglas son invariantes del dominio. Ningún agente IA, desarrollador ni configuración puede violarlas. Están respaldadas por constraints de base de datos, signals de Django y validaciones de API.
-> Última actualización: 2026-07-09 — Se agregaron reglas de fetchApi y model field consistency.
+> Última actualización: 2026-07-12
 
 ---
 
 ## 1. Globales del Sistema
 
-| ID | Regla | Estado |
-|----|-------|--------|
-| BR-G-01 | **Fase 1:** Una sola agencia operativa: Totem Travel (`slug = 'totem'`) | ✅ |
-| BR-G-02 | Toda consulta de datos debe filtrarse por `agencia_id` del usuario autenticado | ✅ |
-| BR-G-03 | No hay pasarela de pago automática. Pagos manuales: padre sube comprobante → agente verifica | ✅ |
-| BR-G-04 | UUID v4 como PK en todas las tablas, sin excepción | ✅ |
-| BR-G-05 | `fetchApi` nunca debe validarse con `if (!res)` — usar `if (!res.ok)` y capturar `ApiError` | ✅ Nueva |
-| BR-G-06 | Los nombres de campos en serializers/`get_or_create` deben coincidir exactamente con el modelo | ✅ Nueva |
+| ID | Regla |
+|----|-------|
+| BR-G-01 | **Fase 1:** Una sola agencia operativa: Totem Travel (`slug = 'totem'`). |
+| BR-G-02 | Toda consulta de datos debe filtrarse por `agencia_id` del usuario autenticado. |
+| BR-G-03 | No hay pasarela de pago automática. Los pagos son manuales: el padre sube comprobante → el agente verifica. |
+| BR-G-04 | UUID v4 como PK en todas las tablas, sin excepción. |
+| BR-G-05 | Los nombres de campos en serializers/`get_or_create` deben coincidir exactamente con el modelo. (Histórico: `if (!res)` ya no se usa — ver TD-010) |
 
 ---
 
-## 2. Autenticación y Usuarios — Sin cambios
+## 2. Autenticación y Usuarios
+
+| ID | Regla |
+|----|-------|
+| BR-AUTH-01 | Un usuario **no puede iniciar sesión** hasta que `email_verificado = True` y `activo = True`. |
+| BR-AUTH-02 | El campo `email` es único a nivel global en la tabla `Usuario`. |
+| BR-AUTH-03 | El `access_token` JWT caduca en **15 minutos**. |
+| BR-AUTH-04 | El `refresh_token` caduca en **7 días** y debe existir en la allowlist de Redis. |
+| BR-AUTH-05 | Al hacer login exitoso se actualiza `ultimo_login` en la BD. |
+| BR-AUTH-06 | Credenciales inválidas → `401`. Cuenta no verificada → `403`. |
+| BR-AUTH-07 | El redirect post-login depende del campo `rol` devuelto en el payload JWT. |
+| BR-AUTH-08 | Los tokens JWT se almacenan en cookies `httpOnly` en el frontend. Nunca en `localStorage`. |
 
 ---
 
-## 3. Viajes — Sin cambios
+## 3. Viajes
+
+| ID | Regla |
+|----|-------|
+| BR-V-01 | `fecha_regreso` debe ser **estrictamente posterior** a `fecha_salida`. Constraint de BD. |
+| BR-V-02 | Un viaje recién creado nace con `estado = 'borrador'` y **no es visible** para las familias. |
+| BR-V-03 | Solo el agente cuya `agencia_id` coincide con el viaje puede modificarlo. |
+| BR-V-04 | Un viaje en `estado = 'activo'` es visible en el portal público y permite inscripciones. |
+| BR-V-05 | **Transiciones válidas de estado:** `borrador → activo → cerrado → archivado`. No hay retroceso. |
+| BR-V-06 | Al crear un viaje, el sistema crea automáticamente un `Itinerario` vacío vinculado. |
+| BR-V-07 | Cada viaje tiene exactamente **un** `PlanPago` (relación 1:1). |
+| BR-V-08 | Cada viaje tiene exactamente **un** `Itinerario` (relación 1:1). |
+| BR-V-09 | El sistema archiva viajes automáticamente X días después de `fecha_regreso` (configurable, task Celery). |
 
 ### Transiciones de Estado — Viaje
+
 ```
 borrador ──→ activo ──→ cerrado ──→ archivado
 ```
@@ -33,44 +56,148 @@ borrador ──→ activo ──→ cerrado ──→ archivado
 
 ## 4. Inscripciones
 
-| ID | Regla | Estado |
-|----|-------|--------|
-| BR-INS-01 | Combinación `(alumno_id, viaje_id)` UNIQUE | ✅ |
-| BR-INS-02 | Verificar cupo disponible antes de crear | ✅ |
-| BR-INS-03 | Nueva inscripción nace con `estado='pendiente'` | ✅ Implementado como `'pre_inscrito'` |
-| BR-INS-04 | `saldo_pendiente` como propiedad Python, nunca columna | ✅ |
-| BR-INS-05 | `on_delete=PROTECT` en relaciones críticas | ✅ |
-| BR-INS-06 | Alumno puede no tener cuenta propia (`usuario_id` nullable) | ✅ |
-| BR-INS-07 | `notas_internas` solo visibles para el agente | ✅ |
+| ID | Regla |
+|----|-------|
+| BR-INS-01 | La combinación `(alumno_id, viaje_id)` es **UNIQUE**. |
+| BR-INS-02 | Antes de crear una inscripción, verificar que `cupo_disponible > inscripciones_activas`. Sin cupo → `409`. |
+| BR-INS-03 | Nueva inscripción nace con `estado = 'pre_inscrito'` y `precio_final = viaje.precio_total`. |
+| BR-INS-04 | `saldo_pendiente = precio_final − Σ(pagos verificado)`. **Propiedad Python, nunca columna.** |
+| BR-INS-05 | `alumno → viaje` y `padre_tutor → inscripcion` usan `on_delete = PROTECT`. |
+| BR-INS-06 | Un alumno puede no tener cuenta propia (`usuario_id` nullable). |
+| BR-INS-07 | Las `notas_internas` son visibles **solo para el agente**. Nunca al padre/alumno. |
+
+### Transiciones de Estado — Inscripción
+
+```
+pendiente ──→ confirmado
+          ──→ cancelado
+          ──→ baja
+```
 
 ### Estados UX Comunicados al Padre
+
 | Estado UX | Color | Condición |
 |-----------|-------|-----------|
 | Lista de espera | 🟠 Naranja | `pendiente`, sin cupo |
-| Pre-inscrito | 🟡 Amarillo | `pendiente`, cupo disponible, incompleto |
+| Pre-inscrito | 🟡 Amarillo | `pendiente`, cupo disponible, pagos/docs incompletos |
 | Confirmado | 🟢 Verde | `confirmado` |
-| En camino | 🔵 Azul | `confirmado` + hoy entre fechas |
+| En camino | 🔵 Azul | `confirmado` + hoy entre `fecha_salida` y `fecha_regreso` |
 
 ---
 
-## 5. Pagos — Sin cambios
+## 5. Pagos
+
+| ID | Regla |
+|----|-------|
+| BR-PAG-01 | Todo pago registrado nace con `estado = 'pendiente'`. Solo el agente puede cambiarlo. |
+| BR-PAG-02 | **Solo pagos con `estado = 'verificado'`** se suman al `saldo_pendiente`. |
+| BR-PAG-03 | El `importe` de un pago debe ser **> 0**. Constraint de BD. |
+| BR-PAG-04 | Al verificar un pago: (a) `LogAuditoria`, (b) `Notificacion` al tutor, (c) email de confirmación. |
+| BR-PAG-05 | Al rechazar un pago: notifica al tutor con el motivo. |
+| BR-PAG-06 | El sistema marca cuotas como vencidas diariamente si `fecha_vencimiento < hoy` sin pago verificado. |
+| BR-PAG-07 | Un mecenas puede pagar en nombre de un alumno: `pagado_por = mecenas.usuario`. |
+| BR-PAG-08 | El número de cuota dentro de un plan es único: `unique_together = [['plan_pago', 'numero_cuota']]`. |
+| BR-PAG-09 | El `importe` de cada cuota debe ser **> 0**. Constraint de BD. |
 
 ### Transiciones de Estado — Pago
+
 ```
 pendiente ──→ verificado
-           ──→ rechazado
+          ──→ rechazado
 ```
 
 ---
 
-## 6. Documentación — Sin cambios
+## 6. Documentación
+
+| ID | Regla |
+|----|-------|
+| BR-DOC-01 | Tipos de documentos requeridos los define el agente por viaje. |
+| BR-DOC-02 | Un padre puede subir múltiples versiones del mismo documento. Solo un `estado = 'validado'` por `(inscripcion, documento_requerido)` a la vez. |
+| BR-DOC-03 | Tamaño máximo por archivo: **10 MB**. Validado en gateway y backend. |
+| BR-DOC-04 | Formatos permitidos por defecto: `pdf, jpg, png`. Configurable. |
+| BR-DOC-05 | Al validar: actualiza estado, registra `validado_por` + `fecha_validacion`, crea `Notificacion`. |
+| BR-DOC-06 | Al rechazar: actualiza estado, registra `motivo_rechazo`, crea `Notificacion` con motivo. |
+| BR-DOC-07 | El agente recibe alerta cuando % documentación incompleta supera umbral configurable. |
 
 ### Transiciones de Estado — Documento
+
 ```
 pendiente ──→ validado
-           ──→ rechazado (padre puede resubir)
+          ──→ rechazado (→ padre puede resubir)
 ```
 
 ---
 
-## 7–13 — Sin cambios estructurales. Ver original `BUSINESS_RULES.md` para detalle completo.
+## 7. Mecenas
+
+| ID | Regla |
+|----|-------|
+| BR-MEC-01 | Relación M:N vía `MecenasInscripcion`. |
+| BR-MEC-02 | `monto_comprometido` debe ser **> 0**. |
+| BR-MEC-03 | Solo el agente puede asignar un mecenas a una inscripción. |
+| BR-MEC-04 | El mecenas ve datos del alumno en **modo solo lectura**. |
+| BR-MEC-05 | `(mecenas_id, inscripcion_id)` es UNIQUE. |
+
+---
+
+## 8. Itinerario
+
+| ID | Regla |
+|----|-------|
+| BR-ITI-01 | `dia_numero` único por itinerario. |
+| BR-ITI-02 | Actividades ordenadas por `orden`, luego `hora`. |
+| BR-ITI-03 | Reordenamiento en **bloque** vía `PATCH /actividades/reordenar/`. |
+
+---
+
+## 9. Comunicados
+
+| ID | Regla |
+|----|-------|
+| BR-COM-01 | Solo el agente puede crear comunicados. |
+| BR-COM-02 | Un comunicado llega a **todas** las familias inscritas. |
+| BR-COM-03 | Envío masivo asíncrono (Celery). |
+| BR-COM-04 | `enviado_email = True` cuando Celery completa el envío. |
+
+---
+
+## 10. Grupos
+
+| ID | Regla |
+|----|-------|
+| BR-GRP-01 | Los grupos son opcionales. |
+| BR-GRP-02 | Nombre de grupo único por viaje. |
+| BR-GRP-03 | Un alumno pertenece a un solo grupo por viaje. |
+| BR-GRP-04 | Si tiene `capacidad`, no puede excederse. |
+
+---
+
+## 11. Auditoría
+
+| ID | Regla |
+|----|-------|
+| BR-AUD-01 | `LogAuditoria` es inmutable. **Nunca UPDATE ni DELETE.** |
+| BR-AUD-02 | Se registra vía signal `post_save` en acciones críticas. |
+| BR-AUD-03 | Acciones auditadas: `PAGO_REGISTRADO`, `PAGO_ACTUALIZADO`, `DOCUMENTO_VALIDADO`, `DOCUMENTO_RECHAZADO`, cambios de estado en `Inscripcion` y `Viaje`. |
+
+---
+
+## 12. Signals — Efectos Secundarios Obligatorios
+
+| Modelo | Evento | Efectos automáticos | Estado |
+|--------|--------|---------------------|--------|
+| `Pago` | CREATE | `LogAuditoria(PAGO_REGISTRADO)` + email al agente | ✅ |
+| `Pago` | estado → `verificado` | `LogAuditoria` + `Notificacion` + email | ✅ |
+| `Pago` | estado → `rechazado` | `LogAuditoria` + `Notificacion` + email | ✅ |
+| `DocumentoEntregado` | estado → `validado` | `Notificacion(doc_validado)` | ❌ signals.py no existe |
+| `DocumentoEntregado` | estado → `rechazado` | `Notificacion(doc_rechazado)` con motivo | ❌ signals.py no existe |
+| `Inscripcion` | CREATE | Email de bienvenida al tutor | ✅ |
+
+---
+
+## 13. Expansión Multi-Agencia (Fase 2)
+
+- El campo `agencia_id` ya existe en todos los modelos raíz
+- URLs públicas por agencia: `/agencias/{slug}/viajes/{viaje_slug}/`
+- El esquema actual soporta multi-agencia **sin migraciones disruptivas**

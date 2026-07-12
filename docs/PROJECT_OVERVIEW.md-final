@@ -1,10 +1,5 @@
 # PROJECT_OVERVIEW.md-final — Visión General del Proyecto (Estado Real)
 
-> **Última actualización:** 2026-07-09  
-> **Estado:** Refleja la implementación real vs plan original
-
----
-
 ## ¿Qué problema resuelve?
 
 Las agencias de viajes escolares gestionan hoy sus viajes grupales con WhatsApp, Excel y formularios en papel. El resultado es:
@@ -65,7 +60,7 @@ MECENAS patrocina desde su portal propio
 1. Agente crea viaje con itinerario, hoteles, plan de pagos y documentos requeridos
 2. Agente activa el viaje → se genera landing pública
 3. Agente envía link a familias por WhatsApp o email
-4. Padre llega a la landing, se registra e inscribe al alumno (wizard 3 pasos)
+4. Padre llega a la landing, se registra e inscribe al alumno
 5. Sistema genera plan de cuotas personalizado por inscripción
 6. Padre paga cuotas fraccionadas (manual + comprobante)
 7. Agente verifica o rechaza cada pago
@@ -89,7 +84,7 @@ MECENAS patrocina desde su portal propio
 ## Competidores de Referencia Analizados
 
 | Plataforma | Fortalezas observadas | Debilidades documentadas |
-|------------|----------------------|--------------------------|
+|---|---|---|
 | Colegia.es | Flujo de inscripción funcional | Dashboard sin estado del viaje, sin deep-links en alertas, formulario largo en un paso |
 | Tottem Hub (prototipo) | Badge de estado, alertas contextuales | Sin barra de progreso global, sin mensajería in-app |
 
@@ -100,7 +95,7 @@ MECENAS patrocina desde su portal propio
 ## Métricas de Éxito del Producto
 
 | Métrica | Descripción | Meta Fase 1 | Estado Actual |
-|---------|-------------|-------------|---------------|
+|---|---|---|---|
 | Tasa de completado de inscripción | % familias que completan pagos + docs | > 85% | ⏳ No medido |
 | Tiempo de validación de pago | Horas entre registro y verificación | < 24h | ⏳ No medido |
 | Morosidad en cuotas | % cuotas vencidas sin pago | < 15% | ⏳ No medido |
@@ -115,7 +110,7 @@ MECENAS patrocina desde su portal propio
 ### Fase 1 — MVP (EN DESARROLLO)
 
 | Módulo | Estado Real | Notas |
-|--------|-------------|-------|
+|---|---|---|
 | Infraestructura (Docker, CI) | ✅ Completo | 7 servicios, health checks OK |
 | Autenticación JWT + verificación email | ✅ Completo | Login, registro, refresh, logout, password reset |
 | API Gateway Node.js puro | ✅ Completo | CORS, rate limit, auth forward, proxy Django, multipart 10MB |
@@ -126,29 +121,27 @@ MECENAS patrocina desde su portal propio
 | Alumnos catálogo (agencia) | ✅ Completo | Sub-router `/api/v1/alumnos/` |
 | Inscripciones (wizard POST + GET) | ✅ Completo | Verifica cupo, unicidad, snapshot datos alumno |
 | Inscripciones: itinerario, plan-pago, documentos | ✅ Completo | Resúmenes con estados computados |
-| Pagos: upload comprobante + verificación | ⚠️ Parcial | Modelos y vistas creados, signals pendientes |
-| Documentos: upload + validación/rechazo | ⚠️ Parcial | Modelos y vistas creados, signals pendientes |
-| Dashboard padre (progreso + 3 sub-cards + alertas) | ✅ Frontend listo | Conectado a APIs reales |
-| Backoffice agente (listados, verificación) | ⚠️ Parcial | UI components listos, APIs backend listos |
-| Constructor itinerario drag & drop | ✅ Frontend listo | @dnd-kit, conectado a bulk reorder API |
-| Comunicados masivos + Celery | ⚠️ Parcial | Modelo y vista creados, task Celery pendiente |
-| Notificaciones in-app + email | ⚠️ Parcial | Modelo, vistas, preferencias creados |
-| Recordatorios automáticos (Celery) | ❌ No iniciado | Tasks pendientes |
-| Portal mecenas | ❌ No iniciado | Modelo no creado |
-| Chat in-app padre ↔ agente | ❌ No iniciado | Modelo no creado (D-01 crítico) |
-| Exportaciones CSV/XLSX/PDF | ❌ No iniciado | Generadores no creados |
-| Panel métricas agente | ✅ API lista | Frontend pendiente |
-| WhatsApp Nivel 1 (link wa.me) | ❌ No iniciado | Helper `lib/whatsapp.ts` existe |
+| Pagos: upload comprobante + verificación | ✅ Completo | Modelos, vistas, signals |
+| Documentos: upload + validación/rechazo | 🟡 Parcial | Endpoints listos, falta `documentos/signals.py` |
+| Dashboard padre (progreso + 3 sub-cards + alertas) | ✅ Completo | Conectado a APIs reales |
+| Backoffice agente (listados, verificación) | ✅ Completo | Todos los paneles implementados |
+| Constructor itinerario drag & drop | ✅ Completo | @dnd-kit, conectado a bulk reorder API |
+| Comunicados masivos + Celery | ✅ Completo | Modelo, vista, task Celery |
+| Notificaciones in-app + email | ✅ Completo | Modelo, vistas, preferencias |
+| Recordatorios automáticos (Celery) | ✅ Completo | Tasks: recordatorios, vencimientos, archivado, alerta docs |
+| Portal mecenas | ✅ Completo | Modelo, API, frontend |
+| Chat in-app padre ↔ agente | ✅ Completo | Conversacion por Inscripcion, polling 5s |
+| Exportaciones CSV/XLSX/PDF | ✅ Completo | Generadores + UI backoffice |
+| WhatsApp Nivel 1 (link wa.me) | ✅ Completo | Helper `lib/whatsapp.ts` |
+| Búsqueda de viaje | ⏳ No iniciado | No prioritaria para MVP |
 
 ### Fase 2 — Multi-agencia y Pagos Automáticos (FUTURA)
-
 - Múltiples agencias (campo `agencia_id` ya preparado en todos los modelos)
 - Pasarela de pago automática (Culqi / Stripe)
 - WhatsApp Business API con bot de primer nivel
 - Módulo de rooming con selección de compañero
 
 ### Fase 3 — Escala y Automatización Avanzada (FUTURA)
-
 - App móvil nativa (iOS / Android)
 - Push notifications nativas
 - IA para detección de documentos inválidos
@@ -159,11 +152,11 @@ MECENAS patrocina desde su portal propio
 ## Restricciones de Fase 1 (inamovibles)
 
 | Restricción | Motivo |
-|------------|--------|
-| Una sola agencia (Totem Travel) | Simplificar MVP, validar producto con cliente real |
-| Pagos 100% manuales | Sin integración de pasarela en esta fase |
+|---|---|
+| Una sola agencia | Simplificar MVP, validar producto con cliente real |
+| Pagos manuales | Sin integración de pasarela en esta fase |
 | Sin selección de compañero de habitación | Agente asigna manualmente por ahora |
-| WhatsApp = link wa.me (sin bot) | WhatsApp Business API va en Fase 2 |
+| WhatsApp sin bot | Nivel 1: mensaje pre-cargado enriquecido, sin WhatsApp Business API |
 | Sin app móvil nativa | Web responsive suficiente para Fase 1 |
 | Sin Web Push notifications | Notificaciones in-app son suficientes |
 | Gateway sin Express/Fastify/Koa | Solo `node:http` / `node:https` |
@@ -175,17 +168,18 @@ MECENAS patrocina desde su portal propio
 ## Estado General del Proyecto
 
 | Área | Estado | Notas |
-|------|--------|-------|
-| Documentación | ✅ Completa (11 docs) | Dudas críticas detectadas (ver `DEVELOPMENT_PLAN.md` §6) |
-| Plan de desarrollo | ✅ Generado | `DEVELOPMENT_PLAN.md` + `TASKS.md` |
+|---|---|---|
+| Documentación | ✅ Completa (docs -final) | Todos los documentos actualizados |
 | Código — Infra | ✅ Completo | Docker Compose 7 servicios funcionando |
-| Código — Backend | 🟡 ~70% | Auth, Agencias, Viajes, Inscripciones completos; Pagos, Docs, Notificaciones parciales; Chat, Mecenas, Exportaciones no iniciados |
+| Código — Backend | 🟢 ~95%+ | Todas las apps implementadas. Solo falta `documentos/signals.py` |
 | Código — Gateway | ✅ Completo | Todos los middlewares + proxy + multipart |
-| Código — Frontend | 🟡 ~50% | Auth, landing, wizard, dashboard, componentes UI; backoffice y chat pendientes |
+| Código — Frontend | 🟢 ~95%+ | Todos los portales implementados (auth, landing, wizard, dashboard, backoffice, alumno, mecenas, chat) |
 | Tests | 🟡 Parcial | Backend: tests auth, agencias, viajes; Gateway: 76 tests; Frontend: sin tests |
 | Deployment | ❌ No iniciado | Solo local Docker |
 
-**Bloqueadores actuales:**
-1. ~~Aprobación del plan de desarrollo~~ ✅ Hecho
-2. **Respuestas a dudas críticas:** D-01 (Chat), D-02 (Slug), D-03 (Colegios), D-04/D-05 (campos Alumno) — ver `DEVELOPMENT_PLAN.md` §6
-3. Consolidación de los dos modelos `Alumno` (apps `viajes` vs `inscripciones`)
+**Deuda técnica identificada:**
+1. `documentos/signals.py` — señal post_save para DocumentoEntregado no implementada
+2. Celery Beat — tasks existen, schedule entries no poblados en DB
+3. Unificar modelos Alumno (viajes vs inscripciones)
+4. Frontend tests — no implementados
+5. Deployment — no iniciado
