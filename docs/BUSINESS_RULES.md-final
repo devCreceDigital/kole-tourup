@@ -1,7 +1,7 @@
 # BUSINESS_RULES.md-final — Reglas de Negocio (Estado Real)
 
 > Estas reglas son invariantes del dominio. Ningún agente IA, desarrollador ni configuración puede violarlas. Están respaldadas por constraints de base de datos, signals de Django y validaciones de API.
-> Última actualización: 2026-07-12
+> Última actualización: 2026-07-12 — Actualizado con reglas de Complementos, Notificaciones, Chat, Exportaciones, y expansión de Pagos/Itinerario/Documentación según docs/
 
 ---
 
@@ -14,6 +14,9 @@
 | BR-G-03 | No hay pasarela de pago automática. Los pagos son manuales: el padre sube comprobante → el agente verifica. |
 | BR-G-04 | UUID v4 como PK en todas las tablas, sin excepción. |
 | BR-G-05 | Los nombres de campos en serializers/`get_or_create` deben coincidir exactamente con el modelo. (Histórico: `if (!res)` ya no se usa — ver TD-010) |
+| BR-G-06 | **Doble validación de archivos:** Gateway valida tamaño ≤ 10MB (primera línea); Backend valida MIME + extensión + tamaño (segunda línea). |
+| BR-G-07 | Gateway Node.js puro (`node:http`) — **sin Express, Fastify, Koa ni Hapi**. Sin lógica de negocio en el gateway. |
+| BR-G-08 | Toda tarea Celery debe ser **idempotente** — usar cache key en Redis para evitar duplicados. |
 
 ---
 
@@ -44,7 +47,10 @@
 | BR-V-06 | Al crear un viaje, el sistema crea automáticamente un `Itinerario` vacío vinculado. |
 | BR-V-07 | Cada viaje tiene exactamente **un** `PlanPago` (relación 1:1). |
 | BR-V-08 | Cada viaje tiene exactamente **un** `Itinerario` (relación 1:1). |
-| BR-V-09 | El sistema archiva viajes automáticamente X días después de `fecha_regreso` (configurable, task Celery). |
+| BR-V-09 | El sistema archiva viajes automáticamente X días después de `fecha_regreso` (configurable `DOCS_ARCHIVE_DAYS_AFTER_RETURN`, task Celery). |
+| BR-V-10 | Cada viaje puede tener múltiples complementos opcionales (`ComplementoViaje`) con precio individual. |
+| BR-V-11 | El plan de pagos (`PlanPago`) de un viaje **no puede modificarse** si `tiene_pagos_verificados = True`. |
+| BR-V-12 | `ComplementoContratado` actualiza `precio_final` de la inscripción sumando el precio del complemento × cantidad. |
 
 ### Transiciones de Estado — Viaje
 
@@ -62,16 +68,17 @@ borrador ──→ activo ──→ cerrado ──→ archivado
 | BR-INS-02 | Antes de crear una inscripción, verificar que `cupo_disponible > inscripciones_activas`. Sin cupo → `409`. |
 | BR-INS-03 | Nueva inscripción nace con `estado = 'pre_inscrito'` y `precio_final = viaje.precio_total`. |
 | BR-INS-04 | `saldo_pendiente = precio_final − Σ(pagos verificado)`. **Propiedad Python, nunca columna.** |
-| BR-INS-05 | `alumno → viaje` y `padre_tutor → inscripcion` usan `on_delete = PROTECT`. |
-| BR-INS-06 | Un alumno puede no tener cuenta propia (`usuario_id` nullable). |
-| BR-INS-07 | Las `notas_internas` son visibles **solo para el agente**. Nunca al padre/alumno. |
+| BR-INS-05 | `ComplementoContratado` se crea al inscribir si el padre selecciona complementos. `cantidad` debe ser **> 0**. |
+| BR-INS-06 | `alumno → viaje` y `padre_tutor → inscripcion` usan `on_delete = PROTECT`. |
+| BR-INS-07 | Un alumno puede no tener cuenta propia (`usuario_id` nullable). |
+| BR-INS-08 | Las `notas_internas` son visibles **solo para el agente**. Nunca al padre/alumno. |
 
 ### Transiciones de Estado — Inscripción
 
 ```
-pendiente ──→ confirmado
-          ──→ cancelado
-          ──→ baja
+pre_inscrito ──→ pendiente ──→ confirmado
+                          ──→ cancelado
+                          ──→ baja
 ```
 
 ### Estados UX Comunicados al Padre
@@ -98,6 +105,11 @@ pendiente ──→ confirmado
 | BR-PAG-07 | Un mecenas puede pagar en nombre de un alumno: `pagado_por = mecenas.usuario`. |
 | BR-PAG-08 | El número de cuota dentro de un plan es único: `unique_together = [['plan_pago', 'numero_cuota']]`. |
 | BR-PAG-09 | El `importe` de cada cuota debe ser **> 0**. Constraint de BD. |
+| BR-PAG-10 | **Recordatorios automáticos** con cadencia: 30 / 15 / 7 / 3 / 0 días antes del vencimiento. Task Celery diaria. |
+| BR-PAG-11 | **Anti-spam:** máximo 1 recordatorio por canal por día. Horario de envío: 9:00–20:00h. |
+| BR-PAG-12 | `PlanPago.tiene_pagos_verificados` bloquea modificaciones del plan de pagos en el serializer. |
+| BR-PAG-13 | Gateway valida tamaño de comprobante (≤ 10MB) **antes** de reenviar a Django. Backend revalida. |
+| BR-PAG-14 | `pago_post_save` signal debe incluir `usuario=instance.registrado_por` en LogAuditoria (hallazgo validación). |
 
 ### Transiciones de Estado — Pago
 
@@ -118,7 +130,9 @@ pendiente ──→ verificado
 | BR-DOC-04 | Formatos permitidos por defecto: `pdf, jpg, png`. Configurable. |
 | BR-DOC-05 | Al validar: actualiza estado, registra `validado_por` + `fecha_validacion`, crea `Notificacion`. |
 | BR-DOC-06 | Al rechazar: actualiza estado, registra `motivo_rechazo`, crea `Notificacion` con motivo. |
-| BR-DOC-07 | El agente recibe alerta cuando % documentación incompleta supera umbral configurable. |
+| BR-DOC-07 | El agente recibe alerta cuando % documentación incompleta supera umbral configurable (`DOC_INCOMPLETE_ALERT_THRESHOLD`, task Celery diaria). |
+| BR-DOC-08 | El padre puede subir múltiples versiones del mismo documento tras un rechazo. Historial de versiones preservado. |
+| BR-DOC-09 | Al validar/rechazar documento, debe dispararse signal `post_save` → `Notificacion` al tutor (**TD-016: no implementado actualmente**). |
 
 ### Transiciones de Estado — Documento
 
@@ -145,13 +159,30 @@ pendiente ──→ validado
 
 | ID | Regla |
 |----|-------|
-| BR-ITI-01 | `dia_numero` único por itinerario. |
+| BR-ITI-01 | `dia_numero` único por itinerario (`EtapaItinerario`). |
 | BR-ITI-02 | Actividades ordenadas por `orden`, luego `hora`. |
-| BR-ITI-03 | Reordenamiento en **bloque** vía `PATCH /actividades/reordenar/`. |
+| BR-ITI-03 | Reordenamiento en **bloque** vía `PATCH /actividades/reordenar/` — nunca PATCH individuales. |
+| BR-ITI-04 | Cada `EtapaItinerario` tiene `slug` y `codigo` autogenerados (signal `pre_save`). |
+| BR-ITI-05 | Tipos de actividad: `vuelo`, `bus`, `hotel`, `comida`, `excursion`, `libre`, `otro`. |
+| BR-ITI-06 | El itinerario se crea automáticamente vacío al crear un `Viaje`. Relación 1:1. |
 
 ---
 
-## 9. Comunicados
+## 9. Complementos
+
+| ID | Regla |
+|----|-------|
+| BR-COMP-01 | Tipos de complemento: `seguro`, `menu`, `actividad_opcional`, `extra`. Definidos en catálogo maestro (`Complemento`). |
+| BR-COMP-02 | El agente crea el catálogo de complementos globalmente (Admin > Viajes > Complementos). |
+| BR-COMP-03 | `ComplementoViaje` vincula un complemento del catálogo a un viaje específico **con precio**. Relación M:N via `ComplementoViaje`. |
+| BR-COMP-04 | `ComplementoContratado` registra qué complementos contrató cada inscripción, con `cantidad > 0`. |
+| BR-COMP-05 | La combinación `(inscripcion, complemento_viaje)` es UNIQUE en `ComplementoContratado`. |
+| BR-COMP-06 | El padre ve los complementos disponibles al inscribirse y los selecciona opcionalmente. |
+| BR-COMP-07 | Los complementos contratados se incluyen en reportes de exportación para proveedores. |
+
+---
+
+## 10. Comunicados
 
 | ID | Regla |
 |----|-------|
@@ -162,7 +193,45 @@ pendiente ──→ validado
 
 ---
 
-## 10. Grupos
+## 11. Notificaciones y Recordatorios Automáticos
+
+| ID | Regla |
+|----|-------|
+| BR-NOT-01 | Creación de `Notificacion` al validar/rechazar pago, documento, o al crear comunicado. |
+| BR-NOT-02 | Recordatorios de pago ejecutados por Celery Beat con cadencia: 30 / 15 / 7 / 3 / 0 días. |
+| BR-NOT-03 | **Anti-spam:** max 1 notificación por canal por día. Cache key Redis para idempotencia. |
+| BR-NOT-04 | Horario de envío restringido: 9:00–20:00h huso horario local (configurable en `PreferenciasNotificacion`). |
+| BR-NOT-05 | `PreferenciasNotificacion` (OneToOne con Usuario): canal preferido, horario, `max_por_dia`. |
+| BR-NOT-06 | Task Celery `marcar_cuotas_vencidas()`: diaria, marca cuotas con `fecha_vencimiento < hoy` sin pago verificado. |
+| BR-NOT-07 | Task Celery `alerta_docs_umbral()`: diaria, alerta al agente si % documentación incompleta > umbral. |
+| BR-NOT-08 | Task Celery `archivar_viajes_finalizados()`: diaria, archiva viajes X días post `fecha_regreso`. |
+
+---
+
+## 12. Chat / Mensajería In-App
+
+| ID | Regla |
+|----|-------|
+| BR-CHAT-01 | Cada conversación pertenece a un viaje y opcionalmente a una inscripción específica. |
+| BR-CHAT-02 | Los mensajes tienen estados: `enviado` / `leido`. Actualizado vía PATCH con `leido_en`. |
+| BR-CHAT-03 | Se pueden adjuntar archivos a los mensajes (`adjunto` FileField). |
+| BR-CHAT-04 | El historial de chat es persistente y accesible por padre y agente. |
+| BR-CHAT-05 | Quick replies disponibles: "¿Por qué fue rechazado mi documento?", "¿Cómo pago por transferencia?" |
+
+---
+
+## 13. Exportaciones
+
+| ID | Regla |
+|----|-------|
+| BR-EXP-01 | Exportaciones disponibles en CSV y XLSX para: inscritos, pagos, documentación. |
+| BR-EXP-02 | Exportación PDF disponible: informe de estado del viaje con métricas y listados. |
+| BR-EXP-03 | Solo el agente puede exportar datos. Filtrado por `agencia_id`. |
+| BR-EXP-04 | Los complementos contratados se incluyen en las exportaciones para proveedores. |
+
+---
+
+## 14. Grupos
 
 | ID | Regla |
 |----|-------|
@@ -173,30 +242,36 @@ pendiente ──→ validado
 
 ---
 
-## 11. Auditoría
+## 15. Auditoría
 
 | ID | Regla |
 |----|-------|
 | BR-AUD-01 | `LogAuditoria` es inmutable. **Nunca UPDATE ni DELETE.** |
 | BR-AUD-02 | Se registra vía signal `post_save` en acciones críticas. |
 | BR-AUD-03 | Acciones auditadas: `PAGO_REGISTRADO`, `PAGO_ACTUALIZADO`, `DOCUMENTO_VALIDADO`, `DOCUMENTO_RECHAZADO`, cambios de estado en `Inscripcion` y `Viaje`. |
+| BR-AUD-04 | `LogAuditoria` registra: `usuario` (quién), `accion`, `modelo`, `objeto_id`, `valor_anterior` (JSON), `valor_nuevo` (JSON), `ip`, `timestamp`. |
+| BR-AUD-05 | `save()` de `LogAuditoria` bloquea UPDATE; `delete()` lanza excepción. Inmutable por definición. |
+| BR-AUD-06 | Los logs de `PAGO_REGISTRADO` deben incluir `usuario = instance.registrado_por` (hallazgo: actualmente falta). |
 
 ---
 
-## 12. Signals — Efectos Secundarios Obligatorios
+## 16. Signals — Efectos Secundarios Obligatorios
 
 | Modelo | Evento | Efectos automáticos | Estado |
 |--------|--------|---------------------|--------|
-| `Pago` | CREATE | `LogAuditoria(PAGO_REGISTRADO)` + email al agente | ✅ |
+| `Pago` | CREATE | `LogAuditoria(PAGO_REGISTRADO)` + email al agente | ⚠️ Falta `usuario=instance.registrado_por` |
 | `Pago` | estado → `verificado` | `LogAuditoria` + `Notificacion` + email | ✅ |
 | `Pago` | estado → `rechazado` | `LogAuditoria` + `Notificacion` + email | ✅ |
 | `DocumentoEntregado` | estado → `validado` | `Notificacion(doc_validado)` | ❌ signals.py no existe |
 | `DocumentoEntregado` | estado → `rechazado` | `Notificacion(doc_rechazado)` con motivo | ❌ signals.py no existe |
 | `Inscripcion` | CREATE | Email de bienvenida al tutor | ✅ |
+| `ComplementoContratado` | CREATE | Actualiza `precio_final` de la inscripción | ❌ No implementado |
+| `Viaje` | CREATE | Crea `Itinerario` vacío + `PlanPago` vacío | ✅ |
+| `Viaje` | pre_save | Genera `slug` y `codigo` automáticos | ✅ |
 
 ---
 
-## 13. Expansión Multi-Agencia (Fase 2)
+## 17. Expansión Multi-Agencia (Fase 2)
 
 - El campo `agencia_id` ya existe en todos los modelos raíz
 - URLs públicas por agencia: `/agencias/{slug}/viajes/{viaje_slug}/`
