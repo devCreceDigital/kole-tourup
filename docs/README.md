@@ -1,4 +1,4 @@
-# Minka Group — Tottem Hub
+# KOLE Viajes — TOUR UP Hub
 
 > Portal digital que transforma los viajes grupales escolares en Perú.
 
@@ -6,7 +6,7 @@
 
 ## Propósito
 
-Conecta a la agencia **Totem Travel** con padres/tutores, alumnos y mecenas (patrocinadores). Digitaliza y automatiza el ciclo de vida completo de un viaje escolar grupal: publicación del viaje, inscripciones, cobro de cuotas fraccionadas, validación documental, asignación de alojamiento y comunicación omnicanal.
+Conecta a la agencia **Tourup travel** con padres/tutores, alumnos y mecenas (patrocinadores). Digitaliza y automatiza el ciclo de vida completo de un viaje escolar grupal: publicación del viaje, inscripciones, cobro de cuotas fraccionadas, validación documental, asignación de alojamiento y comunicación omnicanal.
 
 **Fase 1:** Una sola agencia operativa — Totem Travel. Arquitectura preparada para escalar a multi-agencia sin cambios de esquema.
 
