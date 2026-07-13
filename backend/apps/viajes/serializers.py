@@ -1,7 +1,7 @@
 from django.db import transaction, IntegrityError
 from rest_framework import serializers
 from .models import (
-    Viaje, Cuota, PlanPago, Alumno, Itinerario, EtapaItinerario, Actividad, Hotel, Grupo, DocumentoRequerido, EstadoViaje,
+    Viaje, Cuota, PlanPago, Alumno, ItinerarioViaje, EtapaItinerarioViaje, Actividad, Hotel, Grupo, DocumentoRequerido, EstadoViaje,
     ComplementoViaje, ComplementoContratado,
 )
 from apps.colegios.models import Colegio
@@ -274,7 +274,7 @@ class EtapaItinerarioSerializer(serializers.ModelSerializer):
     imagen_url = serializers.SerializerMethodField()
 
     class Meta:
-        model = EtapaItinerario
+        model = EtapaItinerarioViaje
         fields = ['id', 'dia_numero', 'titulo', 'descripcion', 'imagen', 'imagen_url']
         read_only_fields = ['id']
 
@@ -302,7 +302,7 @@ class EtapaConActividadesSerializer(serializers.ModelSerializer):
     imagen_url = serializers.SerializerMethodField()
 
     class Meta:
-        model = EtapaItinerario
+        model = EtapaItinerarioViaje
         fields = ['id', 'dia_numero', 'titulo', 'descripcion', 'imagen', 'imagen_url', 'actividades']
         read_only_fields = ['id']
 
@@ -316,7 +316,7 @@ class ItinerarioSerializer(serializers.ModelSerializer):
     etapas = EtapaConActividadesSerializer(many=True, read_only=True)
 
     class Meta:
-        model = Itinerario
+        model = ItinerarioViaje
         fields = ['id', 'viaje', 'etapas', 'created_at', 'updated_at']
         read_only_fields = ['id', 'viaje', 'created_at', 'updated_at']
 

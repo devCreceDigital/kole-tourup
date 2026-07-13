@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from .models import (
-    Viaje, Itinerario, EtapaItinerario, Actividad,
+    Viaje, ItinerarioViaje, ItinerarioPlantilla, EtapaItinerarioViaje, EtapaPlantilla, Actividad,
     PlanPago, Cuota, Hotel, Grupo, Alumno, DocumentoRequerido,
     Complemento, ComplementoViaje, ComplementoContratado,
 )
@@ -23,7 +23,7 @@ class ActividadInline(admin.TabularInline):
 
 
 class EtapaInline(admin.TabularInline):
-    model = EtapaItinerario
+    model = EtapaItinerarioViaje
     extra = 0
     fields = ['dia_numero', 'titulo', 'descripcion']
     ordering = ['dia_numero']
@@ -123,9 +123,9 @@ class ViajeAdmin(admin.ModelAdmin):
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 
-@admin.register(Itinerario)
-class ItinerarioAdmin(admin.ModelAdmin):
-    list_display = ['id', 'viaje', 'created_at', 'updated_at']
+@admin.register(ItinerarioViaje)
+class ItinerarioViajeAdmin(admin.ModelAdmin):
+    list_display = ['id', 'viaje', 'plantilla_origen', 'created_at', 'updated_at']
     readonly_fields = ['id', 'viaje', 'created_at', 'updated_at']
     inlines = [EtapaInline]
 
@@ -142,8 +142,15 @@ class ItinerarioAdmin(admin.ModelAdmin):
         return qs.filter(viaje__agencia=request.user.agencia)
 
 
-@admin.register(EtapaItinerario)
-class EtapaItinerarioAdmin(admin.ModelAdmin):
+@admin.register(ItinerarioPlantilla)
+class ItinerarioPlantillaAdmin(admin.ModelAdmin):
+    list_display = ['nombre', 'destinos', 'dias_totales', 'created_at']
+    search_fields = ['nombre', 'destinos']
+    readonly_fields = ['id', 'created_at', 'updated_at']
+
+
+@admin.register(EtapaItinerarioViaje)
+class EtapaItinerarioViajeAdmin(admin.ModelAdmin):
     list_display = ['titulo', 'dia_numero', 'viaje', 'itinerario']
     list_filter = ['itinerario__viaje']
     search_fields = ['titulo', 'itinerario__viaje__nombre']
@@ -168,6 +175,15 @@ class EtapaItinerarioAdmin(admin.ModelAdmin):
                 viaje__agencia=request.user.agencia
             )
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+
+@admin.register(EtapaPlantilla)
+class EtapaPlantillaAdmin(admin.ModelAdmin):
+    list_display = ['titulo', 'dia_numero', 'itinerario']
+    list_filter = ['itinerario']
+    search_fields = ['titulo', 'itinerario__nombre']
+    fields = ['itinerario', 'dia_numero', 'titulo', 'descripcion', 'imagen']
+    ordering = ['itinerario', 'dia_numero']
 
 
 @admin.register(Complemento)

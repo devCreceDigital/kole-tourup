@@ -2,18 +2,26 @@ from django.db.models import F
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from .models import Viaje, Itinerario, ComplementoContratado
+from .models import Viaje, ItinerarioViaje, ComplementoContratado
 
 
 @receiver(post_save, sender=Viaje)
 def create_itinerario_for_viaje(sender, instance, created, **kwargs):
     """
-    Crea un Itinerario automáticamente cuando se crea un nuevo Viaje.
-    Utiliza get_or_create para asegurar la idempotencia y evitar
-    violaciones de la restricción OneToOne.
+    Crea un ItinerarioViaje (instancia aplicada) automáticamente cuando se
+    crea un nuevo Viaje (DEC-012, TASK-207).
+
+    Compatibilidad con API/seed/tests actuales: el comportamiento de
+    auto-crear una instancia vacía al crear el viaje se mantiene. El wizard
+    de creación de viaje (TASK-204) introducirá el selector de plantilla
+    y llamará a aplicar_plantilla_a_viaje() (services.py) para poblar
+    o reemplazar las etapas de esta instancia.
+
+    Usa get_or_create para asegurar la idempotencia y evitar violaciones
+    de la restricción OneToOne.
     """
     if created:
-        Itinerario.objects.get_or_create(viaje=instance)
+        ItinerarioViaje.objects.get_or_create(viaje=instance)
 
 
 @receiver(post_save, sender=ComplementoContratado)

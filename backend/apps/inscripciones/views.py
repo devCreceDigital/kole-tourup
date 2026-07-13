@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import NotFound, PermissionDenied
 from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
-from apps.viajes.models import Itinerario
+from apps.viajes.models import ItinerarioViaje
 from apps.viajes.serializers import ItinerarioSerializer
 from apps.viajes.models import PlanPago
 from datetime import date
@@ -81,7 +81,7 @@ class InscripcionItinerarioView(generics.GenericAPIView):
         elif request.user.rol not in ['agente']:
             raise PermissionDenied()
         itinerario = get_object_or_404(
-            Itinerario.objects.prefetch_related('etapas', 'etapas__actividades'),
+            ItinerarioViaje.objects.prefetch_related('etapas', 'etapas__actividades'),
             viaje=inscripcion.viaje,
         )
         return Response(self.get_serializer(itinerario).data)

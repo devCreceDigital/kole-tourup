@@ -1,5 +1,5 @@
 from unittest.mock import patch, PropertyMock
-from apps.viajes.models import PlanPago, Cuota, Alumno, EtapaItinerario, Actividad, Hotel, Grupo
+from apps.viajes.models import PlanPago, Cuota, Alumno, EtapaItinerarioViaje, ItinerarioPlantilla, Actividad, Hotel, Grupo
 from datetime import timedelta
 from django.db import transaction
 from django.test import TestCase
@@ -10,7 +10,7 @@ from rest_framework.test import APITestCase
 
 from apps.agencias.models import Agencia
 from apps.autenticacion.models import RolUsuario, Usuario
-from apps.viajes.models import EstadoViaje, Itinerario, Viaje
+from apps.viajes.models import EstadoViaje, ItinerarioViaje, Viaje
 
 
 class ViajeSignalTests(TestCase):
@@ -38,11 +38,11 @@ class ViajeSignalTests(TestCase):
 
     def test_crear_viaje_crea_itinerario(self):
         viaje = self.create_viaje()
-        self.assertTrue(Itinerario.objects.filter(viaje=viaje).exists())
+        self.assertTrue(ItinerarioViaje.objects.filter(viaje=viaje).exists())
 
     def test_solo_un_itinerario_por_viaje(self):
         viaje = self.create_viaje()
-        count = Itinerario.objects.filter(viaje=viaje).count()
+        count = ItinerarioViaje.objects.filter(viaje=viaje).count()
         self.assertEqual(count, 1)
 
     def test_guardar_nuevamente_no_crea_duplicado(self):
@@ -50,20 +50,20 @@ class ViajeSignalTests(TestCase):
         itinerario_inicial_id = viaje.itinerario.id
         viaje.nombre = "Viaje Actualizado"
         viaje.save()
-        count = Itinerario.objects.filter(viaje=viaje).count()
+        count = ItinerarioViaje.objects.filter(viaje=viaje).count()
         self.assertEqual(count, 1)
         self.assertEqual(viaje.itinerario.id, itinerario_inicial_id)
 
     def test_crear_multiples_viajes(self):
         viajes = [self.create_viaje(str(i)) for i in range(5)]
         for viaje in viajes:
-            self.assertEqual(Itinerario.objects.filter(viaje=viaje).count(), 1)
-        self.assertEqual(Itinerario.objects.count(), 5)
+            self.assertEqual(ItinerarioViaje.objects.filter(viaje=viaje).count(), 1)
+        self.assertEqual(ItinerarioViaje.objects.count(), 5)
 
     def test_signal_dentro_de_transaccion(self):
         with transaction.atomic():
             viaje = self.create_viaje("transaccion")
-        self.assertTrue(Itinerario.objects.filter(viaje=viaje).exists())
+        self.assertTrue(ItinerarioViaje.objects.filter(viaje=viaje).exists())
 
     def test_no_consultas_innecesarias(self):
         viaje = self.create_viaje("q1")
@@ -156,7 +156,7 @@ class ViajeEndpointTests(APITestCase):
         viaje = Viaje.objects.get(id=response.data['id'])
         self.assertEqual(viaje.nombre, "Nuevo Viaje")
         self.assertEqual(viaje.agencia, self.agencia)
-        self.assertTrue(Itinerario.objects.filter(viaje=viaje).exists())
+        self.assertTrue(ItinerarioViaje.objects.filter(viaje=viaje).exists())
 
     def test_post_ignora_agencia_e_id_cliente(self):
         self.client.force_authenticate(user=self.agente)
@@ -357,9 +357,9 @@ class ViajeDetailEndpointTests(APITestCase):
 
     def test_patch_no_crea_nuevo_itinerario(self):
         self.client.force_authenticate(user=self.agente)
-        itinerarios_antes = Itinerario.objects.count()
+        itinerarios_antes = ItinerarioViaje.objects.count()
         self.client.patch(self.url_propio, {"nombre": "Trigger"})
-        self.assertEqual(Itinerario.objects.count(), itinerarios_antes)
+        self.assertEqual(ItinerarioViaje.objects.count(), itinerarios_antes)
 
 
 class PlanPagoEndpointTests(APITestCase):
@@ -690,7 +690,7 @@ class ItinerarioBaseTestCase(APITestCase):
         return f'/api/v1/viajes/{vid}/etapas/{etapa_id}/actividades/reordenar/'
 
     def crear_etapa(self, dia_numero=1, titulo="Día 1"):
-        return EtapaItinerario.objects.create(
+        return EtapaItinerarioViaje.objects.create(
             itinerario=self.itinerario, dia_numero=dia_numero, titulo=titulo
         )
 
@@ -739,8 +739,8 @@ class EtapaListCreateTests(ItinerarioBaseTestCase):
             self.url_etapas(), {"dia_numero": 1, "titulo": "Día 1"}, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(EtapaItinerario.objects.count(), 1)
-        self.assertEqual(EtapaItinerario.objects.first().itinerario, self.itinerario)
+        self.assertEqual(EtapaItinerarioViaje.objects.count(), 1)
+        self.assertEqual(EtapaItinerarioViaje.objects.first().itinerario, self.itinerario)
 
     def test_get_etapas_lista(self):
         self.crear_etapa(1, "Día 1")
@@ -774,7 +774,7 @@ class EtapaListCreateTests(ItinerarioBaseTestCase):
             format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertEqual(EtapaItinerario.objects.count(), 0)
+        self.assertEqual(EtapaItinerarioViaje.objects.count(), 0)
 
     def test_post_etapa_permisos(self):
         self.client.force_authenticate(user=self.padre)
@@ -811,11 +811,11 @@ class EtapaDetailTests(ItinerarioBaseTestCase):
         self.client.force_authenticate(user=self.agente1)
         response = self.client.delete(self.url_etapa(self.etapa.id))
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertFalse(EtapaItinerario.objects.filter(id=self.etapa.id).exists())
+        self.assertFalse(EtapaItinerarioViaje.objects.filter(id=self.etapa.id).exists())
         self.assertFalse(Actividad.objects.filter(id=act.id).exists())
 
     def test_operaciones_etapa_ajena_404(self):
-        etapa_ajena = EtapaItinerario.objects.create(
+        etapa_ajena = EtapaItinerarioViaje.objects.create(
             itinerario=self.viaje_ajeno.itinerario, dia_numero=1, titulo="Ajena"
         )
         self.client.force_authenticate(user=self.agente1)
@@ -856,7 +856,7 @@ class ActividadListCreateTests(ItinerarioBaseTestCase):
         self.assertEqual(len(response.data), 2)
 
     def test_post_actividad_etapa_ajena_404(self):
-        etapa_ajena = EtapaItinerario.objects.create(
+        etapa_ajena = EtapaItinerarioViaje.objects.create(
             itinerario=self.viaje_ajeno.itinerario, dia_numero=1, titulo="Ajena"
         )
         self.client.force_authenticate(user=self.agente1)
@@ -916,7 +916,7 @@ class ActividadDetailTests(ItinerarioBaseTestCase):
         self.assertFalse(Actividad.objects.filter(id=self.actividad.id).exists())
 
     def test_operaciones_actividad_ajena_404(self):
-        etapa_ajena = EtapaItinerario.objects.create(
+        etapa_ajena = EtapaItinerarioViaje.objects.create(
             itinerario=self.viaje_ajeno.itinerario, dia_numero=1, titulo="Ajena"
         )
         act_ajena = Actividad.objects.create(etapa=etapa_ajena, titulo="Acto ajeno")
@@ -996,7 +996,7 @@ class ActividadBulkReordenarTests(ItinerarioBaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_reordenar_viaje_ajeno_404(self):
-        etapa_ajena = EtapaItinerario.objects.create(
+        etapa_ajena = EtapaItinerarioViaje.objects.create(
             itinerario=self.viaje_ajeno.itinerario, dia_numero=1, titulo="Ajena"
         )
         act = Actividad.objects.create(etapa=etapa_ajena, titulo="X")
@@ -1637,3 +1637,95 @@ class ViajeEstadoTransicionTests(APITestCase):
         viaje = self._crear_viaje(EstadoViaje.BORRADOR)
         viaje.cambiar_estado(EstadoViaje.BORRADOR)
         self.assertEqual(viaje.estado, EstadoViaje.BORRADOR)
+
+
+# ─── TASK-207: aplicar_plantilla_a_viaje (copia-al-aplicar) ──────────────────
+
+class AplicarPlantillaTests(APITestCase):
+    """Suite dedicada a services.aplicar_plantilla_a_viaje (DEC-012)."""
+
+    def setUp(self):
+        from apps.viajes.services import aplicar_plantilla_a_viaje
+        self.aplicar = staticmethod(aplicar_plantilla_a_viaje)
+        self.agencia = Agencia.objects.create(
+            nombre="AgTest", slug="ag-test", email_contacto="t@t.com"
+        )
+        self.today = timezone.now().date()
+        self.viaje_1 = Viaje.objects.create(
+            agencia=self.agencia, nombre="V1", destino="D1",
+            fecha_salida=self.today, fecha_regreso=self.today + timedelta(days=3),
+            cupo_maximo=10, precio_total=100
+        )
+        self.viaje_2 = Viaje.objects.create(
+            agencia=self.agencia, nombre="V2", destino="D2",
+            fecha_salida=self.today, fecha_regreso=self.today + timedelta(days=3),
+            cupo_maximo=10, precio_total=100
+        )
+        self.plantilla = ItinerarioPlantilla.objects.create(
+            nombre="5D4N Cusco Clásico",
+            destinos="Cusco",
+            dias_totales=5,
+        )
+        EtapaItinerarioViaje._meta  # sanity: clase accesible
+        from apps.viajes.models import EtapaPlantilla
+        EtapaPlantilla.objects.create(
+            itinerario=self.plantilla, dia_numero=1,
+            titulo="Llegada a Cusco", descripcion="Recepción aeropuerto",
+        )
+        EtapaPlantilla.objects.create(
+            itinerario=self.plantilla, dia_numero=2,
+            titulo="Tour City", descripcion="City tour por Cusco",
+        )
+
+    def _aplicar(self, viaje, plantilla):
+        from apps.viajes.services import aplicar_plantilla_a_viaje
+        return aplicar_plantilla_a_viaje(viaje, plantilla)
+
+    def test_aplicar_copia_etapas_a_itinerario_viaje(self):
+        iti = self._aplicar(self.viaje_1, self.plantilla)
+        self.assertEqual(iti.plantilla_origen, self.plantilla)
+        self.assertEqual(iti.etapas.count(), 2)
+        dias = list(iti.etapas.values_list("dia_numero", flat=True))
+        self.assertEqual(dias, [1, 2])
+
+    def test_editar_instancia_aplicada_no_modifica_plantilla_ni_otro_viaje(self):
+        iti_1 = self._aplicar(self.viaje_1, self.plantilla)
+        iti_2 = self._aplicar(self.viaje_2, self.plantilla)
+        etapa_1_dia1 = iti_1.etapas.get(dia_numero=1)
+        etapa_1_dia1.titulo = "Recepción privada modificada"
+        etapa_1_dia1.save()
+        self.plantilla.refresh_from_db()
+        etapa_plantilla_dia1 = self.plantilla.etapas.get(dia_numero=1)
+        self.assertEqual(etapa_plantilla_dia1.titulo, "Llegada a Cusco")
+        etapa_2_dia1 = iti_2.etapas.get(dia_numero=1)
+        self.assertEqual(etapa_2_dia1.titulo, "Llegada a Cusco")
+
+    def test_slug_codigo_unicos_por_instancia(self):
+        iti_1 = self._aplicar(self.viaje_1, self.plantilla)
+        iti_2 = self._aplicar(self.viaje_2, self.plantilla)
+        slugs_viaje_1 = set(iti_1.etapas.values_list("slug", flat=True))
+        slugs_viaje_2 = set(iti_2.etapas.values_list("slug", flat=True))
+        codigos_1 = set(iti_1.etapas.values_list("codigo", flat=True))
+        codigos_2 = set(iti_2.etapas.values_list("codigo", flat=True))
+        self.assertEqual(len(slugs_viaje_1 & slugs_viaje_2), 0,
+                         "Dos viajes con la misma plantilla no deben compartir slugs")
+        self.assertEqual(len(codigos_1 & codigos_2), 0,
+                         "Dos viajes con la misma plantilla no deben compartir codigos")
+
+    def test_aplicar_es_idempotente_por_reemplazo(self):
+        self._aplicar(self.viaje_1, self.plantilla)
+        # Re-aplicar la misma plantilla: NO debe duplicar etapas
+        iti = self._aplicar(self.viaje_1, self.plantilla)
+        self.assertEqual(iti.etapas.count(), 2,
+                         "Re-aplicar misma plantilla debe reemplazar etapas, no duplicarlas")
+
+    def test_aplicar_reemplaza_etapas_previas_completamente(self):
+        iti_inicial = self._aplicar(self.viaje_1, self.plantilla)
+        # Editar instancia aplicada: añadir etapa custom (no está en plantilla)
+        from apps.viajes.models import EtapaItinerarioViaje as EV
+        EV.objects.create(itinerario=iti_inicial, dia_numero=3, titulo="Día extra")
+        self.assertEqual(iti_inicial.etapas.count(), 3)
+        # Re-aplicar plantilla: la etapa extra debe desaparecer (reemplazo total)
+        iti_final = self._aplicar(self.viaje_1, self.plantilla)
+        self.assertEqual(iti_final.etapas.count(), 2)
+        self.assertFalse(iti_final.etapas.filter(dia_numero=3).exists())

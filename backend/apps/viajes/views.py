@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.http import Http404
 from django.db.models import Prefetch, Count
-from .models import Viaje, PlanPago, Alumno, Itinerario, EtapaItinerario, Actividad, Hotel, Grupo, DocumentoRequerido
+from .models import Viaje, PlanPago, Alumno, ItinerarioViaje, EtapaItinerarioViaje, Actividad, Hotel, Grupo, DocumentoRequerido
 from .serializers import (
     ViajeSerializer, PlanPagoSerializer, AlumnoSerializer,
     EtapaItinerarioSerializer, ActividadSerializer,
@@ -28,8 +28,8 @@ def _get_viaje_o_404(viaje_id, agencia):
 
 def _get_etapa_o_404(etapa_id, viaje):
     try:
-        return EtapaItinerario.objects.get(id=etapa_id, itinerario__viaje=viaje)
-    except EtapaItinerario.DoesNotExist:
+        return EtapaItinerarioViaje.objects.get(id=etapa_id, itinerario__viaje=viaje)
+    except EtapaItinerarioViaje.DoesNotExist:
         raise Http404
 
 
@@ -181,7 +181,7 @@ class ItinerarioRetrieveView(generics.GenericAPIView):
     def get(self, request, viaje_id):
         viaje = _get_viaje_o_404(viaje_id, request.user.agencia)
         itinerario = get_object_or_404(
-            Itinerario.objects.prefetch_related('etapas', 'etapas__actividades'),
+            ItinerarioViaje.objects.prefetch_related('etapas', 'etapas__actividades'),
             viaje=viaje,
         )
         return Response(self.get_serializer(itinerario).data)
@@ -193,7 +193,7 @@ class EtapaListCreateView(generics.GenericAPIView):
 
     def _get_itinerario(self):
         viaje = _get_viaje_o_404(self.kwargs['viaje_id'], self.request.user.agencia)
-        return get_object_or_404(Itinerario, viaje=viaje)
+        return get_object_or_404(ItinerarioViaje, viaje=viaje)
 
     def get(self, request, viaje_id):
         etapas = self._get_itinerario().etapas.all()

@@ -27,7 +27,7 @@ from django.core.files import File
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from apps.viajes.models import Viaje, EtapaItinerario, Hotel
+from apps.viajes.models import Viaje, EtapaItinerarioViaje, Hotel
 
 
 # ─── Helpers de generación visual ────────────────────────────────────────────
@@ -303,7 +303,7 @@ class Command(BaseCommand):
         return n
 
     def _procesar_etapas(self, force, dry_run, stats):
-        qs = EtapaItinerario.objects.select_related("itinerario__viaje").all()
+        qs = EtapaItinerarioViaje.objects.select_related("itinerario__viaje").all()
         n = 0
         for e in qs:
             if e.imagen and not force:
