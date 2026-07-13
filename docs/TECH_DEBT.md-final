@@ -9,16 +9,21 @@
 
 ## Deuda Técnica Activa
 
-### TD-001 — Sin archivos de test automatizados para auth (TASK-008 a TASK-011)
+### TD-001 — Sin archivos de test automatizados para auth (TASK-008 a TASK-011) — RESUELTA
 
-**ID:** TD-001 | **Estado:** Activa | **Prioridad:** Alta
+**ID:** TD-001 | **Estado:** Resuelta | **Prioridad:** Alta
 **Detectado en:** TASK-012 (2026-06-28)
+**Resuelta en:** TASK-105 (2026-07-13)
 
-**Descripción:** Las tareas TASK-008 a TASK-011 documentan tests en sus notas ("7 tests — todos pasan", etc.), pero no existen archivos `.py` de tests en el repositorio para `apps.autenticacion`.
+**Descripción (histórica):** Las tareas TASK-008 a TASK-011 documentan tests en sus notas ("7 tests — todos pasan", etc.), pero no existen archivos `.py` de tests en el repositorio para `apps.autenticacion`.
 
-**Impacto:** Cobertura de CI nula en el flujo crítico de login/registro/JWT.
+**Impacto (histótico):** Cobertura de CI nula en el flujo crítico de login/registro/JWT.
 
-**Tarea sugerida:** Crear `backend/apps/autenticacion/tests/` con test_registro.py, test_verificacion.py, test_login.py, test_refresh_logout.py.
+**Resolución:** Creada `backend/apps/autenticacion/tests/` (paquete) con 4 archivos:
+`test_registro.py` (11), `test_verificacion.py` (7), `test_login.py` (12),
+`test_refresh_logout.py` (8). Resultado CI: `manage.py test apps.autenticacion`
+→ **37 OK**. Suite completa backend: **214 OK** (sin regresiones). La auditoría
+previa de discrepancias se documenta en `docs/Task.md` §9.
 
 ---
 
