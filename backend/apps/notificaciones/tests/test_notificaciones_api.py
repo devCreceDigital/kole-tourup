@@ -2,7 +2,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 from rest_framework import status
 from apps.autenticacion.models import Usuario
-from .models import Notificacion, PreferenciasNotificacion
+from apps.notificaciones.models import Notificacion, PreferenciasNotificacion
 
 
 class NotificacionAPITestCase(TestCase):

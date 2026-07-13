@@ -8,7 +8,7 @@ from apps.autenticacion.models import Usuario
 from apps.agencias.models import Agencia
 from apps.viajes.models import Viaje
 from apps.inscripciones.models import Alumno, Inscripcion
-from .models import Pago
+from apps.pagos.models import Pago
 
 TEMP_MEDIA = tempfile.mkdtemp()
 

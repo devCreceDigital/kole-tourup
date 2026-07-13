@@ -4,7 +4,7 @@ from rest_framework import status
 from apps.autenticacion.models import Usuario
 from apps.agencias.models import Agencia
 from apps.viajes.models import Viaje
-from .models import Comunicado
+from apps.comunicados.models import Comunicado
 
 
 class ComunicadoAPITestCase(TestCase):

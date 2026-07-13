@@ -42,7 +42,7 @@
 | M1 | `pagos/admin.py` | Sin `get_queryset` ni `formfield_for_foreignkey` en 4 FK | Agregado ambos |
 | M2 | `comunicados/admin.py` | Sin `get_queryset` ni filtro FK | Agregado ambos |
 | M3 | `documentos/admin.py` | Sin `get_queryset` ni filtro FK | Agregado ambos |
-| M4 | `notificaciones/admin.py` | Sin `get_queryset` | Agregado |
+| M4 | `notificaciones/admin.py` | `get_queryset` ya existía; **faltaba `formfield_for_foreignkey`** en FK `usuario` (dropdown exponía usuarios de otras agencias). Mismo gap en `PreferenciasNotificacionAdmin`. | **TASK-106 (2026-07-13):** agregado `formfield_for_foreignkey` en ambos admin (filtrando `usuario__agencia=request.user.agencia`). Test de regresión: `test_agente_no_ve_objetos_de_otra_agencia_en_dropdown` en `notificaciones/tests/test_admin_multitenancy.py`. NOTA: descripción original "Sin get_queryset" era parcialmente falsa — `get_queryset` existía previamente; el gap real era el dropdown. |
 | M5 | `inscripciones/admin.py:48` | FK `padre_tutor` sin filtrar | Agregado filtro `usuario__agencia` |
 | M6 | `inscripciones/admin.py:6-15` | Inlines: `hotel`, `alumno_solicitado` sin filtrar | Agregado `formfield_for_foreignkey` en inlines |
 | M7 | `mecenas/admin.py:12-22` | FK `inscripcion` sin filtrar | Agregado filtro |
