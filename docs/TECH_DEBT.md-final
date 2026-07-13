@@ -163,26 +163,32 @@
 
 ---
 
-### TD-021 — CheckConstraint `viaje_fecha_regreso_mayor_salida` sin captura en serializer/view
+### TD-021 — CheckConstraint `viaje_fecha_regreso_mayor_salida` sin captura en serializer/view — RESUELTA
 
-**ID:** TD-021 | **Estado:** Activa | **Prioridad:** Alta
+**ID:** TD-021 | **Estado:** Resuelta | **Prioridad:** Alta
 **Detectado en:** TASK-102 / test suite (2026-07-12)
+**Resuelta en:** TASK-104.5 (2026-07-13)
 
-**Descripción:** La restricción `fecha_regreso > fecha_salida` solo existe como
-`CheckConstraint` a nivel DB. El serializer de `Viaje` no valida esta regla, por lo
-que enviar fechas inválidas (`regreso <= salida`) produce un
-`IntegrityError` (psycopg2.CheckViolation) sin capturar que escapa como HTTP 500.
+**Descripción (histórica):** La restricción `fecha_regreso > fecha_salida` solo existía como
+`CheckConstraint` a nivel DB. El serializer de `Viaje` no validaba esta regla, por lo
+que enviar fechas inválidas (`regreso <= salida`) producía un
+`IntegrityError` (psycopg2.CheckViolation) sin capturar que escapaba como HTTP 500.
 
-**Ruta del error:**
+**Ruta del error (histórica):**
 - **POST:** `ViajeEndpoint.perform_create` → `serializer.save()` → DB insert → CheckViolation → 500
 - **PATCH:** `ViajeDetailEndpoint.perform_update` → `serializer.save()` → DB update → CheckViolation → 500
 
-**Impacto:** Violación de un invariante documentado. El endpoint retorna 500 en
-lugar de 400 con mensaje de validación. La respuesta no es procesable por el
+**Impacto (histórico):** Violación de un invariante documentado. El endpoint retornaba 500 en
+lugar de 400 con mensaje de validación. La respuesta no era procesable por el
 frontend ni informativa para el usuario.
 
-**Tarea sugerida:** Agregar validación en `ViajeSerializer` (`validate_fecha_regreso`)
-que compare con `fecha_salida` y levante `serializers.ValidationError`.
+**Resolución:** Agregados `validate_fecha_salida`, `validate_fecha_regreso` y
+`validate()` (cruce de campos) en `ViajeSerializer` que cubren POST completo y
+PATCH parcial (solo uno de los dos campos). El `CheckConstraint` de BD queda como
+red de seguridad. Tests cubren: POST fechas invertidas, POST fechas iguales,
+POST válido, PATCH solo `fecha_salida` inválida, PATCH solo `fecha_regreso` inválida,
+PATCH solo `fecha_salida` válida, PATCH ambos campos coherentes (5 tests nuevos,
+128/128 OK).
 
 ---
 

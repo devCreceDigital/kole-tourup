@@ -42,6 +42,81 @@ class ViajeSerializer(serializers.ModelSerializer):
     def get_inscripciones_count(self, obj):
         return obj.inscripciones.count()
 
+    def validate_fecha_regreso(self, value):
+        """
+        BR-V-01: fecha_regreso debe ser estrictamente posterior a fecha_salida.
+        Captura el invariante en el serializer para retornar 400 en lugar de
+        dejar escapar el CheckConstraint de BD como 500 (ver TD-021).
+        """
+        fecha_salida = self._get_fecha_salida()
+        if fecha_salida is not None and value <= fecha_salida:
+            raise serializers.ValidationError(
+                "La fecha de regreso debe ser posterior a la fecha de salida."
+            )
+        return value
+
+    def validate_fecha_salida(self, value):
+        """
+        Permite validar el invariante cuando solo se actualiza fecha_salida
+        (PATCH parcial) manteniendo coherencia con fecha_regreso existente.
+        """
+        self._pending_fecha_salida = value
+        fecha_regreso = self._get_fecha_regreso()
+        if fecha_regreso is not None and fecha_regreso <= value:
+            raise serializers.ValidationError(
+                "La fecha de salida debe ser anterior a la fecha de regreso."
+            )
+        return value
+
+    def validate(self, data):
+        """
+        Validación cruzada final: cubre el caso en que ambos campos vienen en
+        el mismo payload, o fecha_salida se valida antes de fecha_regreso sin
+        contexto del instance (POST).
+        """
+        fecha_salida = data.get('fecha_salida', self._get_fecha_salida())
+        fecha_regreso = data.get('fecha_regreso', self._get_fecha_regreso())
+
+        if fecha_salida is not None and fecha_regreso is not None \
+                and fecha_regreso <= fecha_salida:
+            raise serializers.ValidationError({
+                "fecha_regreso": "La fecha de regreso debe ser posterior a la fecha de salida."
+            })
+        return data
+
+    def _get_fecha_salida(self):
+        """
+        Resuelve fecha_salida considerando: payload (initial_data),
+        instance (PATCH) o None.
+        """
+        if hasattr(self, '_pending_fecha_salida'):
+            return self._pending_fecha_salida
+        if 'fecha_salida' in self.initial_data:
+            try:
+                return self.fields['fecha_salida'].run_validation(
+                    self.initial_data['fecha_salida']
+                )
+            except serializers.ValidationError:
+                return None
+        if self.instance is not None:
+            return self.instance.fecha_salida
+        return None
+
+    def _get_fecha_regreso(self):
+        """
+        Resuelve fecha_regreso considerando: payload, instance (PATCH) o None.
+        """
+        if 'fecha_regreso' in self.initial_data:
+            try:
+                return self.fields['fecha_regreso'].run_validation(
+                    self.initial_data['fecha_regreso']
+                )
+            except serializers.ValidationError:
+                return None
+        if self.instance is not None:
+            return self.instance.fecha_regreso
+        return None
+
 
 class CuotaSerializer(serializers.ModelSerializer):
     class Meta:

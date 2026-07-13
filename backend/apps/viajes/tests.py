@@ -191,6 +191,35 @@ class ViajeEndpointTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('fecha_regreso', response.data)
 
+    def test_post_fechas_iguales_da_400(self):
+        """TD-021: regreso == salida debe ser 400, no 500."""
+        self.client.force_authenticate(user=self.agente)
+        data = {
+            "nombre": "Fechas Iguales",
+            "destino": "Igual",
+            "fecha_salida": self.today.isoformat(),
+            "fecha_regreso": self.today.isoformat(),
+            "cupo_maximo": 10,
+            "precio_total": "100.00"
+        }
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('fecha_regreso', response.data)
+
+    def test_post_fechas_validas_201(self):
+        """TD-021: happy path no se rompe tras agregar validación."""
+        self.client.force_authenticate(user=self.agente)
+        data = {
+            "nombre": "Fechas OK",
+            "destino": "Futuro",
+            "fecha_salida": self.today.isoformat(),
+            "fecha_regreso": self.tomorrow.isoformat(),
+            "cupo_maximo": 10,
+            "precio_total": "100.00"
+        }
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
 
 class ViajeDetailEndpointTests(APITestCase):
     def setUp(self):
@@ -275,6 +304,33 @@ class ViajeDetailEndpointTests(APITestCase):
         data = {"fecha_salida": salida}
         response = self.client.patch(self.url_propio, data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_patch_solo_fecha_regreso_antes_da_400(self):
+        """TD-021: PATCH solo fecha_regreso (menor a salida existente) -> 400."""
+        self.client.force_authenticate(user=self.agente)
+        antes = (self.today - timedelta(days=1)).isoformat()
+        data = {"fecha_regreso": antes}
+        response = self.client.patch(self.url_propio, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('fecha_regreso', response.data)
+
+    def test_patch_solo_fecha_salida_valida_200(self):
+        """TD-021: PATCH solo fecha_salida (anterior a regreso) -> 200."""
+        self.client.force_authenticate(user=self.agente)
+        nueva_salida = (self.tomorrow - timedelta(days=1)).isoformat()
+        data = {"fecha_salida": nueva_salida}
+        response = self.client.patch(self.url_propio, data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_patch_ambas_fechas_validas_200(self):
+        """TD-021: PATCH ambos campos coherentes -> 200."""
+        self.client.force_authenticate(user=self.agente)
+        data = {
+            "fecha_salida": (self.today + timedelta(days=10)).isoformat(),
+            "fecha_regreso": (self.today + timedelta(days=15)).isoformat(),
+        }
+        response = self.client.patch(self.url_propio, data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_patch_ignora_agencia_e_id(self):
         self.client.force_authenticate(user=self.agente)

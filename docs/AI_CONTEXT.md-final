@@ -74,7 +74,7 @@
 8. Reutilizar refresh_token invalidado (no está en Redis allowlist)
 9. Reordenar actividades con PATCH individual — usar `/actividades/reordenar/`
 10. No registrar en `LogAuditoria` — usar signal, no el endpoint directamente
-11. No capturar `IntegrityError` de `CheckConstraint` en el serializer de `Viaje` → escapa como 500 en vez de 400 (ver TD-021, pendiente de fix)
+11. ~~No capturar `IntegrityError` de `CheckConstraint` en el serializer de `Viaje` → escapa como 500 en vez de 400 (ver TD-021, pendiente de fix)~~ **Resuelto en TASK-104.5**: `ViajeSerializer` ahora valida `fecha_regreso > fecha_salida` en POST y PATCH.
 
 ### Frontend (Next.js)
 11. Guardar JWT en `localStorage`
