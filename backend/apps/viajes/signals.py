@@ -1,7 +1,8 @@
+from django.db.models import F
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from .models import Viaje, Itinerario
+from .models import Viaje, Itinerario, ComplementoContratado
 
 
 @receiver(post_save, sender=Viaje)
@@ -13,3 +14,22 @@ def create_itinerario_for_viaje(sender, instance, created, **kwargs):
     """
     if created:
         Itinerario.objects.get_or_create(viaje=instance)
+
+
+@receiver(post_save, sender=ComplementoContratado)
+def complemento_contratado_post_save(sender, instance, created, **kwargs):
+    if not created:
+        return
+    from apps.inscripciones.models import Inscripcion
+    incremento = instance.complemento_viaje.precio * instance.cantidad
+    Inscripcion.objects.filter(pk=instance.inscripcion_id).update(
+        precio_final=F('precio_final') + incremento
+    )
+
+
+# ⚠️ Limitación conocida (TASK-102):
+# - Edición de ComplementoContratado (cambiar cantidad): no ajusta precio_final.
+#   Actualmente no hay endpoint que lo permita (solo CREATE vía serializers).
+# - Borrado de ComplementoContratado: no reduce precio_final.
+#   Si en el futuro se implementa DELETE, debe agregarse un signal pre_delete
+#   que reste el monto correspondiente.

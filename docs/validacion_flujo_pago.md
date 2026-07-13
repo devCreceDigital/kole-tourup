@@ -112,8 +112,8 @@ def _enviar_email_estado(self, pago):
 | Inscripcion.total_pagado | ✅ `400.00` | |
 | Inscripcion.saldo_pendiente | ✅ `800.00` | |
 | Inscripcion.porcentaje_pagado | ✅ `33.33%` | |
-| LogAuditoria PAGO_ACTUALIZADO | ❌ **No existe** | El cambio se hizo directo en BD/admin |
-| Signal pago_post_save usuario | ❌ **No incluye `usuario`** | Falta `usuario=instance.registrado_por` |
+| LogAuditoria PAGO_ACTUALIZADO | ❌ **No existe** (pre-fix) | El cambio se hizo directo en BD/admin. **TASK-100 corrigió:** `estado` ahora readonly en admin. |
+| Signal pago_post_save usuario | ✅ **Incluye `usuario`** | `usuario=instance.registrado_por` presente en código; docs actualizados en TASK-103 |
 
 ---
 
@@ -121,34 +121,42 @@ def _enviar_email_estado(self, pago):
 
 ### 6.1 Estado cambiado sin pasar por PATCH
 
+> **CORREGIDO por TASK-100 (2026-07-12):** `estado` se devolvió a `readonly_fields` en `PagoAdmin`. Todo cambio de estado debe pasar exclusivamente por `PagoVerificarRechazarView.patch()`.
+
 El pago `fe555f25-c5f9-4150-9459-377dccbefb77` cambió de `pendiente` a `verificado` ~26 minutos después de crearse, pero no hay registro `PAGO_ACTUALIZADO` en LogAuditoria. Esto indica que el cambio se hizo directamente por:
 
 - Admin de Django (`estado` es editable, no está en `readonly_fields`)
 - SQL directo
 - Shell de Django
 
-**Consecuencias:**
+**Consecuencias (pre-fix):**
 - No hay trazabilidad de quién cambió el estado
 - No se envió email al tutor notificando la verificación
 - `updated_at` se actualizó (por `auto_now=True`) pero sin registro de auditoría
 
+**Fix aplicado:**
+- `backend/apps/pagos/admin.py`: `estado` agregado a `readonly_fields` (TASK-100, Opción A)
+- Transiciones de estado ahora solo por PATCH API, que registra `LogAuditoria(PAGO_ACTUALIZADO)` con `usuario` + email al tutor
+- Ver `docs/auditoria_admin.md` M8 (nota post-fix)
+
 ### 6.2 Signal `pago_post_save` no registra usuario
 
-`apps/pagos/signals.py:14-18`:
+> **CORREGIDO (pre-TASK-103):** El código ya incluye `usuario=instance.registrado_por`. Los docs (BUSINESS_RULES.md-final BR-AUD-06, tabla de signals) se actualizaron en TASK-103 para reflejar el estado real.
+
+`apps/pagos/signals.py:14-19` (estado actual):
 
 ```python
 LogAuditoria.objects.create(
+    usuario=instance.registrado_por,  # ✅ presente
     accion='PAGO_REGISTRADO',
     modelo='Pago',
     objeto_id=instance.id,
     valor_nuevo={'estado': instance.estado, 'importe': str(instance.importe)},
-    # ❌ Falta: usuario=instance.registrado_por
 )
 ```
 
-- `usuario` se omite, queda `None` en la BD.
-- En `PagoVerificarRechazarView.patch()` sí se pasa `request.user` correctamente.
-- El `PAGO_REGISTRADO` también debería registrar quién registró el pago.
+- `usuario=instance.registrado_por` está incluido desde que el archivo se escribió.
+- La documentación previa (BR-AUD-06, tabla de signals) indicaba que faltaba por un error de auditoría; se corrigió en TASK-103.
 
 ### 6.3 No se encontraron bugs en el código del endpoint
 

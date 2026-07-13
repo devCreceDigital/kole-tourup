@@ -163,6 +163,29 @@
 
 ---
 
+### TD-021 — CheckConstraint `viaje_fecha_regreso_mayor_salida` sin captura en serializer/view
+
+**ID:** TD-021 | **Estado:** Activa | **Prioridad:** Alta
+**Detectado en:** TASK-102 / test suite (2026-07-12)
+
+**Descripción:** La restricción `fecha_regreso > fecha_salida` solo existe como
+`CheckConstraint` a nivel DB. El serializer de `Viaje` no valida esta regla, por lo
+que enviar fechas inválidas (`regreso <= salida`) produce un
+`IntegrityError` (psycopg2.CheckViolation) sin capturar que escapa como HTTP 500.
+
+**Ruta del error:**
+- **POST:** `ViajeEndpoint.perform_create` → `serializer.save()` → DB insert → CheckViolation → 500
+- **PATCH:** `ViajeDetailEndpoint.perform_update` → `serializer.save()` → DB update → CheckViolation → 500
+
+**Impacto:** Violación de un invariante documentado. El endpoint retorna 500 en
+lugar de 400 con mensaje de validación. La respuesta no es procesable por el
+frontend ni informativa para el usuario.
+
+**Tarea sugerida:** Agregar validación en `ViajeSerializer` (`validate_fecha_regreso`)
+que compare con `fecha_salida` y levante `serializers.ValidationError`.
+
+---
+
 ## Deuda Técnica Resuelta
 
 | ID | Descripción | Resolución |
@@ -172,3 +195,4 @@
 | TD-011 | `console.log` de depuración en producción (`PagarSection`) | Eliminados los tres `console.log`. |
 | TD-013 | `NavBackoffice` perdió elementos de navegación | Restaurados los 8 ítems de navegación. |
 | TD-014 | IP hardcodeada en `docker-compose.yml` | Reemplazada por variables de entorno con defaults localhost. |
+| TD-PAG14-FP | BR-PAG-14: `pago_post_save` debe incluir `usuario = instance.registrado_por` | **Falso positivo.** `usuario=instance.registrado_por` ya existía en `pagos/signals.py` antes de TASK-103. El hallazgo de `validacion_flujo_pago.md §6.2` quedó desactualizado tras una corrección previa no documentada. Confirmado en TASK-103. |

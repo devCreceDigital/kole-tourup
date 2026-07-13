@@ -46,7 +46,7 @@
 | M5 | `inscripciones/admin.py:48` | FK `padre_tutor` sin filtrar | Agregado filtro `usuario__agencia` |
 | M6 | `inscripciones/admin.py:6-15` | Inlines: `hotel`, `alumno_solicitado` sin filtrar | Agregado `formfield_for_foreignkey` en inlines |
 | M7 | `mecenas/admin.py:12-22` | FK `inscripcion` sin filtrar | Agregado filtro |
-| M8 | `pagos/admin.py:10` | `estado` en readonly | Removido de readonly |
+| M8 | `pagos/admin.py:10` | `estado` en readonly | Removido de readonly en fix inicial. **TASK-100 (2026-07-12):** restaurado a readonly tras cruce con `validacion_flujo_pago.md` §6.1 — el campo editable reabría bypass de auditoría documentado. |
 
 ### 🟢 Modelos registrados
 

@@ -53,6 +53,11 @@
 | 12 | JWT en cookies `httpOnly` en el frontend — **nunca en localStorage** | ✅ Implementado |
 | 13 | Toda consulta del agente **debe filtrar por `agencia_id`** | ✅ Implementado |
 | 14 | Las tareas Celery deben ser **idempotentes** | ✅ Implementado (cache key Redis) |
+| 15 | `PAGO_REGISTRADO` en `LogAuditoria` incluye `usuario = instance.registrado_por` | ✅ Verificado (BR-AUD-06) |
+| 16 | Al validar/rechazar documento, signal `post_save` → `Notificacion` al tutor | ✅ Implementado (TASK-101, BR-DOC-09) |
+| 17 | `ComplementoContratado` CREATE actualiza `precio_final` de la inscripción vía signal | ✅ Implementado (TASK-102, BR-V-12) |
+| 18 | Tasks Celery Beat: `marcar_cuotas_vencidas`, `alerta_docs_umbral`, `archivar_viajes_finalizados`, `verificar_cuotas_por_vencer` | ✅ Seed TASK-104 (BR-NOT-06/07/08) |
+| 19 | Transiciones de estado Viaje: `borrador → activo → cerrado → archivado`. Sin retroceso. | ✅ Implementado (BR-V-05, hallazgo adicional no relacionado a TASK-100→104) |
 
 ---
 
@@ -69,6 +74,7 @@
 8. Reutilizar refresh_token invalidado (no está en Redis allowlist)
 9. Reordenar actividades con PATCH individual — usar `/actividades/reordenar/`
 10. No registrar en `LogAuditoria` — usar signal, no el endpoint directamente
+11. No capturar `IntegrityError` de `CheckConstraint` en el serializer de `Viaje` → escapa como 500 en vez de 400 (ver TD-021, pendiente de fix)
 
 ### Frontend (Next.js)
 11. Guardar JWT en `localStorage`

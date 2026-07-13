@@ -176,3 +176,15 @@ class PagoAPITestCase(TestCase):
     def test_no_autenticado(self):
         response = self.client.get(self.list_url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class PagoAdminTest(TestCase):
+    def test_estado_en_readonly_fields(self):
+        from django.contrib.admin.sites import AdminSite
+        from apps.pagos.admin import PagoAdmin
+        from apps.pagos.models import Pago
+        model_admin = PagoAdmin(Pago, AdminSite())
+        self.assertIn(
+            'estado', model_admin.readonly_fields,
+            'estado debe estar en readonly_fields para forzar cambios solo por PATCH API'
+        )

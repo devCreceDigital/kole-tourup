@@ -132,7 +132,7 @@ pendiente ──→ verificado
 | BR-DOC-06 | Al rechazar: actualiza estado, registra `motivo_rechazo`, crea `Notificacion` con motivo. |
 | BR-DOC-07 | El agente recibe alerta cuando % documentación incompleta supera umbral configurable (`DOC_INCOMPLETE_ALERT_THRESHOLD`, task Celery diaria). |
 | BR-DOC-08 | El padre puede subir múltiples versiones del mismo documento tras un rechazo. Historial de versiones preservado. |
-| BR-DOC-09 | Al validar/rechazar documento, debe dispararse signal `post_save` → `Notificacion` al tutor (**TD-016: no implementado actualmente**). |
+| BR-DOC-09 | Al validar/rechazar documento, debe dispararse signal `post_save` → `Notificacion` al tutor. | ✅ Implementado (TASK-101) |
 
 ### Transiciones de Estado — Documento
 
@@ -251,7 +251,7 @@ pendiente ──→ validado
 | BR-AUD-03 | Acciones auditadas: `PAGO_REGISTRADO`, `PAGO_ACTUALIZADO`, `DOCUMENTO_VALIDADO`, `DOCUMENTO_RECHAZADO`, cambios de estado en `Inscripcion` y `Viaje`. |
 | BR-AUD-04 | `LogAuditoria` registra: `usuario` (quién), `accion`, `modelo`, `objeto_id`, `valor_anterior` (JSON), `valor_nuevo` (JSON), `ip`, `timestamp`. |
 | BR-AUD-05 | `save()` de `LogAuditoria` bloquea UPDATE; `delete()` lanza excepción. Inmutable por definición. |
-| BR-AUD-06 | Los logs de `PAGO_REGISTRADO` deben incluir `usuario = instance.registrado_por` (hallazgo: actualmente falta). |
+| BR-AUD-06 | Los logs de `PAGO_REGISTRADO` deben incluir `usuario = instance.registrado_por`. | ✅ Verificado — presente en `pagos/signals.py:15` |
 
 ---
 
@@ -259,13 +259,13 @@ pendiente ──→ validado
 
 | Modelo | Evento | Efectos automáticos | Estado |
 |--------|--------|---------------------|--------|
-| `Pago` | CREATE | `LogAuditoria(PAGO_REGISTRADO)` + email al agente | ⚠️ Falta `usuario=instance.registrado_por` |
+| `Pago` | CREATE | `LogAuditoria(PAGO_REGISTRADO)` + email al agente | ✅ `usuario=instance.registrado_por` presente |
 | `Pago` | estado → `verificado` | `LogAuditoria` + `Notificacion` + email | ✅ |
 | `Pago` | estado → `rechazado` | `LogAuditoria` + `Notificacion` + email | ✅ |
-| `DocumentoEntregado` | estado → `validado` | `Notificacion(doc_validado)` | ❌ signals.py no existe |
-| `DocumentoEntregado` | estado → `rechazado` | `Notificacion(doc_rechazado)` con motivo | ❌ signals.py no existe |
+| `DocumentoEntregado` | estado → `validado` | `Notificacion(doc_validado)` | ✅ Implementado (TASK-101) |
+| `DocumentoEntregado` | estado → `rechazado` | `Notificacion(doc_rechazado)` con motivo | ✅ Implementado (TASK-101) |
 | `Inscripcion` | CREATE | Email de bienvenida al tutor | ✅ |
-| `ComplementoContratado` | CREATE | Actualiza `precio_final` de la inscripción | ❌ No implementado |
+| `ComplementoContratado` | CREATE | Actualiza `precio_final` de la inscripción | ✅ Implementado (TASK-102) / Edición y borrado: no manejados — ver limitación documentada |
 | `Viaje` | CREATE | Crea `Itinerario` vacío + `PlanPago` vacío | ✅ |
 | `Viaje` | pre_save | Genera `slug` y `codigo` automáticos | ✅ |
 

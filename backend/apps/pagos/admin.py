@@ -7,7 +7,7 @@ class PagoAdmin(admin.ModelAdmin):
     list_display = ['id', 'inscripcion', 'cuota', 'importe', 'estado', 'fecha_pago', 'metodo_pago']
     list_filter = ['estado', 'metodo_pago', 'inscripcion__viaje__agencia']
     search_fields = ['inscripcion__alumno__nombre', 'inscripcion__alumno__apellidos']
-    readonly_fields = ['id', 'created_at', 'updated_at']
+    readonly_fields = ['id', 'estado', 'created_at', 'updated_at']
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
