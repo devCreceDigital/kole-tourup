@@ -1,7 +1,7 @@
 # BUSINESS_RULES.md-final — Reglas de Negocio (Estado Real)
 
 > Estas reglas son invariantes del dominio. Ningún agente IA, desarrollador ni configuración puede violarlas. Están respaldadas por constraints de base de datos, signals de Django y validaciones de API.
-> Última actualización: 2026-07-12 — Actualizado con reglas de Complementos, Notificaciones, Chat, Exportaciones, y expansión de Pagos/Itinerario/Documentación según docs/
+> Última actualización: 2026-07-13 — BR-V-01 actualizada tras resolver TD-021 (validación de serializer + constraint de BD).
 
 ---
 
@@ -39,7 +39,7 @@
 
 | ID | Regla |
 |----|-------|
-| BR-V-01 | `fecha_regreso` debe ser **estrictamente posterior** a `fecha_salida`. Constraint de BD. |
+| BR-V-01 | `fecha_regreso` debe ser **estrictamente posterior** a `fecha_salida`. Validación de serializer (`ViajeSerializer.validate_fecha_regreso` / `validate_fecha_salida` / `validate()`) como primera línea para POST y PATCH (parcial o total); `CheckConstraint` de BD como red de seguridad. (Resuelve TD-021.) |
 | BR-V-02 | Un viaje recién creado nace con `estado = 'borrador'` y **no es visible** para las familias. |
 | BR-V-03 | Solo el agente cuya `agencia_id` coincide con el viaje puede modificarlo. |
 | BR-V-04 | Un viaje en `estado = 'activo'` es visible en el portal público y permite inscripciones. |
