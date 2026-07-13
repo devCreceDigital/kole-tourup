@@ -92,6 +92,7 @@ Priorizado por impacto en el MVP. Cada ítem es autocontenido y ejecutable en un
 | 10 | **TASK-FINAL-010**: Deployment a producción | Setup de servidor, variables de entorno, SSL, S3, CI/CD. | PROJECT_OVERVIEW.md |
 | 11 | **TASK-FINAL-011**: Actualizar UI_UX.md-final y AI_CONTEXT.md-final | Reflejar el estado real del proyecto (este documento es la fuente de verdad). | — |
 | 12 | **TASK-FINAL-012**: Responsive 375px mínimo | Auditar y corregir todas las pantallas para el breakpoint mínimo. | UI_UX.md §Principios |
+| 13 | **TASK-FINAL-013**: Imágenes placeholder para viajes, etapas e hoteles ✅ | Management command `generar_imagenes_seed` (Pillow) que genera PNGs determinísticos por slug y los asigna a `Viaje.imagen`, `EtapaItinerario.imagen`, `Hotel.imagen`. Serializers expone `imagen_url` relativa. Gateway proxy `/media/`. Frontend `ItinerarioResumen`, `hoteles/page.tsx` (padre + agente) renderizan las imágenes. `seed_data.py` invoca el comando al final. | UI_UX.md P1, P10 |
 
 ---
 
@@ -301,3 +302,16 @@ Verificados todos contra el código actual:
   - **Imports rotos (regresión de rename tests/):** 4 archivos (`comunicados`, `documentos`, `notificaciones`, `pagos`) usaban `from .models import X` incompatible con el move a `tests/` subdirectorio. Corregido a imports absolutos.
   - **Doc desactualizada:** corregida descripción M4 en `auditoria_admin.md:45`.
 - **DoD:** suite completa `manage.py test` → **235 tests OK** (antes 202 + 4 ImportErrors → 235 OK, 0 errors). 21 tests de regresión multi-tenancy (5+3+4+3+4+2) cubren los 6 hallazgos. Aplicado `docs/PROTOCOLO_VALIDACION_TAREAS.md` (checklist completo de 10 puntos).
+
+---
+
+## 10. TASK-FINAL-013 — Imágenes placeholder para viajes, etapas e hoteles ✅
+
+- **Problema:** Todos los `Viaje`, `EtapaItinerario` y `Hotel` tenían el campo `imagen` vacío. La UI mostraba placeholders grises/emoji en landing pública, dashboard padre y backoffice agente.
+- **Solución:**
+  1. **Management command** `apps/viajes/management/commands/generar_imagenes_seed.py` que genera PNGs con Pillow (degradados determinísticos por hash del nombre, título centrado con sombra). Respeta `upload_to` de cada modelo: `viajes/portadas/`, `itinerarios/etapas/`, `hoteles/`. Idempotente (salta los que ya tienen imagen) + flag `--force` (regenera) + `--dry-run`.
+  2. **Serializers:** añadido `imagen_url = SerializerMethodField()` a `ViajeSerializer`, `EtapaItinerarioSerializer`, `EtapaConActividadesSerializer`, `HotelSerializer`. Devuelve URL **relativa** (`/media/...`) para que el frontend la resuelva contra el host del gateway (producción) o Django (desarrollo), evitando fugas del hostname interno `backend:8000`. `ViajeResumenSerializer` (inscripciones) refactorizado igual.
+  3. **Servir media:** `config/urls.py` monta `/media/` y `/static/` en `DEBUG=True`. `gateway/server.js` hace proxy de `/media/` y `/static/` al backend.
+  4. **Frontend:** `ItinerarioResumen.tsx` (landing pública) renderiza thumbnail en `<summary>` + imagen grande en el body. `app/(padre)/app/inscripciones/[id]/page.tsx` muestra imagen de cada etapa. `app/(padre)/app/inscripciones/[id]/hoteles/page.tsx` usa `imagen_url` en carrusel + vista detalle. `app/(agente)/backoffice/viajes/[id]/hoteles/page.tsx` muestra thumbnail en cada fila.
+  5. **Seed data:** `seed_data.py` invoca `generar_imagenes_seed` al final para que nuevos entornos queden con imágenes automáticamente.
+- **DoD:** `manage.py test` → **235 tests OK**. `tsc --noEmit` → sin errores. `generar_imagenes_seed` generado 9 viajes + 10 etapas + 7 hoteles (26 PNGs, ~30-50 KB c/u). Verificado que `imagen_url` aparece en la API y en el HTML del frontend renderizado.

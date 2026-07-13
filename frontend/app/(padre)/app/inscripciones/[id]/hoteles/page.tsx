@@ -14,6 +14,7 @@ interface Hotel {
   web_url: string
   maps_url: string
   imagen: string | null
+  imagen_url?: string | null
   telefono?: string
   latitud?: string | number | null
   longitud?: string | number | null
@@ -230,10 +231,18 @@ export default function HotelesPage() {
                   style={{ transform: `translateX(-${(fotoIdxPorHotel[h.hotel.id] ?? 0) * 100}%)` }}
                 >
                   {[0, 1, 2].map(i => (
-                    <div key={i} className="w-full h-full flex-shrink-0 bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
-                      <svg className="w-8 h-8 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M4 4h16a1 1 0 011 1v14a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1z" />
-                      </svg>
+                    <div key={i} className="w-full h-full flex-shrink-0 bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center overflow-hidden">
+                      {h.hotel.imagen_url ? (
+                        <img
+                          src={h.hotel.imagen_url}
+                          alt={h.hotel.nombre}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <svg className="w-8 h-8 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M4 4h16a1 1 0 011 1v14a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1z" />
+                        </svg>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -283,6 +292,13 @@ export default function HotelesPage() {
       {hotelData && (
         <div key={hotelData.hotel.id} className="space-y-5 animate-[fadeSlideIn_0.25s_ease-out]">
           <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
+            {hotelData.hotel.imagen_url && (
+              <img
+                src={hotelData.hotel.imagen_url}
+                alt={hotelData.hotel.nombre}
+                className="w-full h-40 object-cover rounded-lg mb-4"
+              />
+            )}
             <h3 className="font-bold text-gray-900 text-sm mb-3">{hotelData.hotel.nombre}</h3>
             <p className="text-sm text-gray-500 mb-4">{hotelData.hotel.descripcion}</p>
 

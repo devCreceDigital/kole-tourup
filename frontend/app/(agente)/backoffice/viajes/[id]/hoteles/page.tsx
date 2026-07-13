@@ -2,7 +2,7 @@
 import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
 
-interface Hotel { id: string; nombre: string; estrellas: number; web_url?: string; maps_url?: string }
+interface Hotel { id: string; nombre: string; estrellas: number; web_url?: string; maps_url?: string; imagen_url?: string | null }
 
 export default function HotelesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: viajeId } = use(params)
@@ -57,11 +57,18 @@ export default function HotelesPage({ params }: { params: Promise<{ id: string }
       <div className="space-y-3">
         {hoteles.map(hotel => (
           <div key={hotel.id} className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between">
-            <div>
-              <p className="font-semibold text-gray-900">{hotel.nombre} <span className="text-yellow-500">{'★'.repeat(hotel.estrellas)}</span></p>
-              <div className="flex gap-3 mt-1">
-                {hotel.web_url && <a href={hotel.web_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Web</a>}
-                {hotel.maps_url && <a href={hotel.maps_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Maps</a>}
+            <div className="flex items-center gap-3">
+              {hotel.imagen_url ? (
+                <img src={hotel.imagen_url} alt={hotel.nombre} className="w-12 h-12 rounded-md object-cover shrink-0" />
+              ) : (
+                <span className="w-12 h-12 rounded-md bg-gray-100 flex items-center justify-center text-xl shrink-0">🏨</span>
+              )}
+              <div>
+                <p className="font-semibold text-gray-900">{hotel.nombre} <span className="text-yellow-500">{'★'.repeat(hotel.estrellas)}</span></p>
+                <div className="flex gap-3 mt-1">
+                  {hotel.web_url && <a href={hotel.web_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Web</a>}
+                  {hotel.maps_url && <a href={hotel.maps_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Maps</a>}
+                </div>
               </div>
             </div>
             <button onClick={() => eliminarHotel(hotel.id)} className="text-red-400 hover:text-red-600 text-xs">Eliminar</button>

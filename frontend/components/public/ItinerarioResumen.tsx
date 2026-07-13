@@ -2,6 +2,7 @@
   dia_numero: number
   titulo: string
   descripcion: string
+  imagen_url?: string | null
 }
 
 interface ItinerarioResumenProps {
@@ -16,10 +17,28 @@ export function ItinerarioResumen({ etapas }: ItinerarioResumenProps) {
       <div className="space-y-3">
         {etapasVisibles.map((etapa) => (
           <details key={etapa.dia_numero} className="border border-gray-200 rounded-lg overflow-hidden">
-            <summary className="bg-blue-800 text-white px-4 py-3 cursor-pointer font-semibold list-none hover:bg-blue-700">
-              Dia {etapa.dia_numero}: {etapa.titulo}
+            <summary className="bg-blue-800 text-white px-4 py-3 cursor-pointer font-semibold list-none hover:bg-blue-700 flex items-center gap-3">
+              {etapa.imagen_url ? (
+                <img
+                  src={etapa.imagen_url}
+                  alt={`Día ${etapa.dia_numero}: ${etapa.titulo}`}
+                  className="w-12 h-12 rounded-md object-cover shrink-0"
+                />
+              ) : (
+                <span className="w-12 h-12 rounded-md bg-blue-700 flex items-center justify-center text-xl shrink-0">📅</span>
+              )}
+              <span>Dia {etapa.dia_numero}: {etapa.titulo}</span>
             </summary>
-            <div className="px-4 py-3 text-gray-600 text-sm">{etapa.descripcion}</div>
+            <div className="px-4 py-3 text-gray-600 text-sm">
+              {etapa.imagen_url && (
+                <img
+                  src={etapa.imagen_url}
+                  alt={`Día ${etapa.dia_numero}: ${etapa.titulo}`}
+                  className="w-full h-40 object-cover rounded-md mb-3"
+                />
+              )}
+              {etapa.descripcion}
+            </div>
           </details>
         ))}
       </div>

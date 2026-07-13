@@ -26,13 +26,14 @@ class ViajeSerializer(serializers.ModelSerializer):
     inscripciones_count = serializers.SerializerMethodField()
     colegio_ref = ColegioRefSerializer(read_only=True)
     grupos = GrupoPublicoSerializer(many=True, read_only=True)
+    imagen_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Viaje
         fields = [
             'id', 'agencia', 'nombre', 'destino', 'fecha_salida',
             'fecha_regreso', 'descripcion', 'cupo_maximo',
-            'precio_total', 'estado', 'imagen', 'duracion_dias',
+            'precio_total', 'estado', 'imagen', 'imagen_url', 'duracion_dias',
             'slug', 'codigo', 'colegio', 'colegio_ref', 'nivel_educativo', 'grado',
             'inscripciones_count', 'grupos',
             'created_at', 'updated_at'
@@ -41,6 +42,16 @@ class ViajeSerializer(serializers.ModelSerializer):
 
     def get_inscripciones_count(self, obj):
         return obj.inscripciones.count()
+
+    def get_imagen_url(self, obj):
+        """
+        URL relativa de la imagen de portada. Se devuelve relativa para que
+        el frontend la resuelva contra el host del gateway (producción) o
+        Django (desarrollo), evitando fugas del hostname interno del backend.
+        """
+        if obj.imagen:
+            return obj.imagen.url
+        return None
 
     def validate_fecha_regreso(self, value):
         """
@@ -260,10 +271,17 @@ class AlumnoSerializer(serializers.ModelSerializer):
 
 
 class EtapaItinerarioSerializer(serializers.ModelSerializer):
+    imagen_url = serializers.SerializerMethodField()
+
     class Meta:
         model = EtapaItinerario
-        fields = ['id', 'dia_numero', 'titulo', 'descripcion', 'imagen']
+        fields = ['id', 'dia_numero', 'titulo', 'descripcion', 'imagen', 'imagen_url']
         read_only_fields = ['id']
+
+    def get_imagen_url(self, obj):
+        if obj.imagen:
+            return obj.imagen.url
+        return None
 
     def validate_dia_numero(self, value):
         if value < 1:
@@ -281,11 +299,17 @@ class ActividadSerializer(serializers.ModelSerializer):
 
 class EtapaConActividadesSerializer(serializers.ModelSerializer):
     actividades = ActividadSerializer(many=True, read_only=True)
+    imagen_url = serializers.SerializerMethodField()
 
     class Meta:
         model = EtapaItinerario
-        fields = ['id', 'dia_numero', 'titulo', 'descripcion', 'imagen', 'actividades']
+        fields = ['id', 'dia_numero', 'titulo', 'descripcion', 'imagen', 'imagen_url', 'actividades']
         read_only_fields = ['id']
+
+    def get_imagen_url(self, obj):
+        if obj.imagen:
+            return obj.imagen.url
+        return None
 
 
 class ItinerarioSerializer(serializers.ModelSerializer):
@@ -313,11 +337,18 @@ class ReordenamientoActividadSerializer(serializers.Serializer):
 
 
 class HotelSerializer(serializers.ModelSerializer):
+    imagen_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Hotel
         fields = ['id', 'nombre', 'descripcion', 'tasa_turistica', 'fianza',
-                  'web_url', 'maps_url', 'imagen', 'telefono', 'latitud', 'longitud']
+                  'web_url', 'maps_url', 'imagen', 'imagen_url', 'telefono', 'latitud', 'longitud']
         read_only_fields = ['id']
+
+    def get_imagen_url(self, obj):
+        if obj.imagen:
+            return obj.imagen.url
+        return None
 
 
 class GrupoSerializer(serializers.ModelSerializer):
