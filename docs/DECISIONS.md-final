@@ -2,7 +2,7 @@
 
 > Documenta decisiones donde la especificación era ambigua o contradictoria.
 > Cada entrada incluye el problema, las alternativas evaluadas y la decisión adoptada.
-> Última actualización: 2026-07-12
+> Última actualización: 2026-07-13
 
 ---
 
@@ -91,3 +91,57 @@
 **Resolución:** Falso positivo. El serializer importa desde `apps.inscripciones.models` (donde el campo es `nombre`), no desde `apps.viajes.models` (donde es `nombres`). El código es correcto. Los dos modelos `Alumno` coexisten funcionalmente, uno como catálogo de agencia y otro como perfil de inscripción.
 
 **Deuda:** La existencia de dos modelos con nombres similares pero campos diferentes es fuente de confusión. Consolidar en Fase 2 (ver TD-018).
+
+---
+
+## DEC-009 — Complementos = Servicios/Tarifas del PRD (mismo concepto)
+
+**ID:** DEC-009 | **Estado:** Aprobado | **Fecha:** 2026-07-13
+**Afecta:** UI tab "Servicios y Tarifas" en detalle de viaje (TASK-205); no afecta backend.
+
+**Problema:** El PRD (RF-10) describe "Servicios y Tarifas" como un módulo de UI para listar servicios asociables al viaje. El backend ya tiene `Complemento` (catálogo maestro) + `ComplementoViaje` (puente con precio) + `ComplementoContratado` (por inscripción). El PRD no aclaraba si ese concepto era el mismo que Complementos o requería modelado nuevo.
+
+**Decisión:** "Servicios y Tarifas" del PRD = mismo concepto que Complemento/ComplementoViaje/ComplementoContratado ya existente (BR-COMP-01 a 07). El precio de un viaje es fijo (no varía por categoría adulto/niño). No se crea ningún modelo nuevo.
+
+**Impacto:** TASK-200 (decisión bloqueante) queda cerrada sin código de backend. El único trabajo es de naming en la UI — la pestaña "Servicios y Tarifas" del detalle de viaje (wireframe #3) debe listar los `ComplementoViaje` existentes bajo esa etiqueta. Ver TASK-205.
+
+---
+
+## DEC-010 — Alojamiento: relación 1:N con Viaje (multi-destino)
+
+**ID:** DEC-010 | **Estado:** Aprobado | **Fecha:** 2026-07-13
+**Afecta:** `apps/viajes/models.py` (o app nueva `alojamientos/`) — TASK-201.
+
+**Problema:** El PRD (RF-06, HU-04, wireframe #4) describe entidad de alojamiento con ocupación/categoría/destino. El modelo actual `Hotel` es solo un FK dentro de `EtapaItinerario` (texto libre), no una entidad asignable con datos propios. Quedaba abierto si la relación Viaje↔Alojamiento era 1:1 (un viaje, un alojamiento) o 1:N (multi-destino: varias ciudades/hoteles por viaje).
+
+**Decisión:** Relación 1:N — un viaje típico de Totem Travel puede tocar varias ciudades/hoteles (multi-destino). `AlojamientoViaje` debe ser FK hacia `Viaje`, no OneToOne. Un viaje puede tener 0, 1 o varios alojamientos, cada uno vinculado a un tramo/destino del itinerario.
+
+**Impacto:** Reabre una pregunta de diseño nueva: ¿cómo se vincula cada `AlojamientoViaje` a un tramo específico del itinerario (ej. "Hotel X" para días 1-3 en Cusco, "Hotel Y" para días 4-5 en Lima)? Resolución pendiente antes de migrar (ver TASK-201). Ver SECTION (TASK-201 actualizada).
+
+---
+
+## DEC-011 — Responsable de viaje: obligatorio siempre
+
+**ID:** DEC-011 | **Estado:** Aprobado | **Fecha:** 2026-07-13
+**Afecta:** `apps/viajes/models.py` — campo FK `responsable` en `Viaje` (TASK-202); wizard de creación (TASK-204 paso 3).
+
+**Problema:** El PRD (RF-08) pedía un agente responsable asignado al viaje, pero con la ambigüedad "obligatorio u opcional según configuración". No estaba claro si el campo debía ser `null=True` (opcional por defecto) o `null=False` (siempre obligatorio).
+
+**Decisión:** Todo viaje debe tener un agente responsable asignado desde su creación, sin excepción, incluso en estado `borrador`. Campo FK `responsable` en `Viaje` con `null=False` (no nullable).
+
+**Impacto:** El wizard de creación (TASK-204, paso 3) no puede completarse sin seleccionar responsable — es un campo obligatorio del formulario, no un paso que se pueda saltar. TASK-202 debe validar primero (grep) si el campo ya existe antes de crear migración duplicada.
+
+---
+
+## DEC-012 — Itinerario: reutilizable entre viajes (rompe BR-V-06/BR-V-08 actuales)
+
+**ID:** DEC-012 | **Estado:** Aprobado | **Fecha:** 2026-07-13
+**Afecta:** `apps/viajes/models.py` (relación `Viaje`↔`Itinerario`); invariantes BR-V-06 y BR-V-08; wizard paso 2 (TASK-204).
+
+**Problema:** BR-V-06 y BR-V-08 dicen que el sistema crea automáticamente un `Itinerario` vacío 1:1 al crear `Viaje` (relación exclusiva). El PRD (RF-05, wireframe paso 2) dice que el usuario elige un itinerario existente para reutilizarlo. Son dos modelos de datos incompatibles: o el itinerario es propiedad exclusiva de un viaje (actual), o es un activo reutilizable entre viajes (PRD).
+
+**Decisión:** Un itinerario debe poder aplicarse a varios viajes distintos (ej. vender "5D4N Cusco" tres veces al año reutilizando la misma estructura de días/eventos), no ser exclusivo de un solo viaje como hoy. Es un cambio de modelo de datos con migración de datos existente.
+
+**Impacto:** El más grande de las 4 decisiones. Requiere su propia tarea dedicada — ver TASK-207 (nueva, antes que nada de TASK-204).
+
+**Acción inmediata:** Actualizar `BUSINESS_RULES.md-final` (BR-V-06, BR-V-08) y `AI_CONTEXT.md-final` en cuanto TASK-207 quede diseñada — no antes, para no documentar un modelo que aún no existe.
