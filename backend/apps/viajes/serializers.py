@@ -1,7 +1,9 @@
 from django.db import transaction, IntegrityError
 from rest_framework import serializers
 from .models import (
-    Viaje, Cuota, PlanPago, Alumno, ItinerarioViaje, EtapaItinerarioViaje, Actividad, Hotel, Grupo, DocumentoRequerido, EstadoViaje,
+    Viaje, Cuota, PlanPago, Alumno, ItinerarioViaje, EtapaItinerarioViaje,
+    Actividad, Hotel, Grupo, DocumentoRequerido, EstadoViaje,
+    ItinerarioPlantilla,
     ComplementoViaje, ComplementoContratado,
 )
 from apps.colegios.models import Colegio
@@ -400,3 +402,51 @@ class DocumentoRequeridoSerializer(serializers.ModelSerializer):
         fields = ['id', 'nombre', 'descripcion', 'obligatorio',
                   'formatos_permitidos', 'formatos_lista']
         read_only_fields = ['id']
+
+
+# ─── TASK-204: plantillas reutilizables ──────────────────────────────────────
+
+class ItinerarioPlantillaSerializer(serializers.ModelSerializer):
+    """
+    Resumen de ItinerarioPlantilla para el selector backoffice (BR-ITI-10).
+    `cant_etapas` se inyecta vía annotate(Count('etapas')) en la vista.
+    Sin etapas anidadas (preview fuera de TASK-204).
+    """
+    cant_etapas = serializers.IntegerField(read_only=True, default=0)
+
+    class Meta:
+        model = ItinerarioPlantilla
+        fields = [
+            'id', 'nombre', 'destinos', 'dias_totales',
+            'cant_etapas', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class AplicarPlantillaSerializer(serializers.Serializer):
+    """
+    Valida el payload `{"plantilla_id": "<uuid>"}` para aplicar una
+    plantilla al ItinerarioViaje de un viaje. Verifica multi-tenancy
+    (BR-ITI-10: plantilla debe pertenecer a la agencia del agente).
+    """
+    plantilla_id = serializers.UUIDField()
+
+    def validate_plantilla_id(self, value):
+        request = self.context.get('request')
+        if request is None or not hasattr(request.user, 'agencia'):
+            raise serializers.ValidationError(
+                "Se requiere autenticación de agente para aplicar plantillas."
+            )
+        agencia = request.user.agencia
+        try:
+            plantilla = ItinerarioPlantilla.objects.get(id=value, agencia=agencia)
+        except ItinerarioPlantilla.DoesNotExist:
+            raise serializers.ValidationError(
+                "La plantilla no existe o no pertenece a tu agencia."
+            )
+        self._plantilla = plantilla
+        return value
+
+    @property
+    def plantilla(self):
+        return self._plantilla

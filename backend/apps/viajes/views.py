@@ -6,15 +6,21 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.http import Http404
 from django.db.models import Prefetch, Count
-from .models import Viaje, PlanPago, Alumno, ItinerarioViaje, EtapaItinerarioViaje, Actividad, Hotel, Grupo, DocumentoRequerido
+from .models import (
+    Viaje, PlanPago, Alumno, ItinerarioViaje, EtapaItinerarioViaje,
+    Actividad, Hotel, Grupo, DocumentoRequerido, EstadoViaje,
+    ItinerarioPlantilla,
+)
 from .serializers import (
     ViajeSerializer, PlanPagoSerializer, AlumnoSerializer,
     EtapaItinerarioSerializer, ActividadSerializer,
     ItinerarioSerializer, ReordenamientoActividadSerializer,
     HotelSerializer, GrupoSerializer, AsignarAlumnosSerializer, DocumentoRequeridoSerializer,
     ViajeCambioEstadoSerializer,
+    ItinerarioPlantillaSerializer, AplicarPlantillaSerializer,
 )
 from .permissions import EsAgente
+from .services import aplicar_plantilla_a_viaje
 
 
 # ─── Helpers multi-tenant para itinerario ─────────────────────────────────────
@@ -550,3 +556,74 @@ class ViajePublicoDetailView(generics.RetrieveAPIView):
             return get_object_or_404(queryset, id=lookup_value)
         except ValueError:
             return get_object_or_404(queryset, slug=lookup_value)
+
+
+# ─── TASK-204: plantillas reutilizables (selector + copia-al-aplicar) ───────
+
+class ItinerarioPlantillaListView(generics.ListAPIView):
+    """
+    Lista las ItinerarioPlantilla accesibles por el agente (BR-ITI-10).
+    Filtra estrictamente por agencia y anota `cant_etapas` para el selector.
+    """
+    serializer_class = ItinerarioPlantillaSerializer
+    permission_classes = [IsAuthenticated, EsAgente]
+
+    def get_queryset(self):
+        return (
+            ItinerarioPlantilla.objects
+            .filter(agencia=self.request.user.agencia)
+            .annotate(cant_etapas=Count('etapas'))
+            .order_by('nombre')
+        )
+
+
+class ViajeAplicarPlantillaView(generics.GenericAPIView):
+    """
+    Aplica (copia) una ItinerarioPlantilla al ItinerarioViaje del viaje.
+    Re-aplicación = sobrescritura idempotente (BR-ITI-11) vía
+    aplicar_plantilla_a_viaje() (transaccional).
+
+    Estados bloqueados: cerrado, archivado (BR-ITI-12).
+    Warning no bloqueante si hay inscripciones activas (BR-ITI-13).
+    """
+    serializer_class = AplicarPlantillaSerializer
+    permission_classes = [IsAuthenticated, EsAgente]
+
+    def post(self, request, viaje_id):
+        viaje = _get_viaje_o_404(viaje_id, request.user.agencia)
+
+        if viaje.estado in (EstadoViaje.CERRADO, EstadoViaje.ARCHIVADO):
+            return Response(
+                {"detail": f"No se puede aplicar una plantilla a un viaje {viaje.estado}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        plantilla = serializer.plantilla
+
+        # Métricas pre-aplicación para warning estable (BR-ITI-13)
+        etapas_previas = viaje.itinerario.etapas.count()
+        inscripciones_activas = viaje.inscripciones.exclude(
+            estado='cancelado'
+        ).count()
+
+        iti = aplicar_plantilla_a_viaje(viaje, plantilla)
+
+        warning = None
+        if etapas_previas > 0 and inscripciones_activas > 0:
+            warning = {
+                "etapas_reemplazadas": etapas_previas,
+                "inscripciones_activas": inscripciones_activas,
+                "mensaje": (
+                    f"Se reemplazaron {etapas_previas} etapas. Las "
+                    f"{inscripciones_activas} inscripciones activas verán el "
+                    "nuevo itinerario al refrescar el portal."
+                ),
+            }
+
+        iti_data = ItinerarioSerializer(iti, context={'request': request}).data
+        return Response(
+            {"itinerario": iti_data, "warning": warning},
+            status=status.HTTP_200_OK,
+        )

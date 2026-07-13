@@ -144,9 +144,16 @@ class ItinerarioViajeAdmin(admin.ModelAdmin):
 
 @admin.register(ItinerarioPlantilla)
 class ItinerarioPlantillaAdmin(admin.ModelAdmin):
-    list_display = ['nombre', 'destinos', 'dias_totales', 'created_at']
+    list_display = ['nombre', 'destinos', 'dias_totales', 'agencia', 'created_at']
+    list_filter = ['agencia']
     search_fields = ['nombre', 'destinos']
     readonly_fields = ['id', 'created_at', 'updated_at']
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        return qs.filter(agencia=request.user.agencia)
 
 
 @admin.register(EtapaItinerarioViaje)

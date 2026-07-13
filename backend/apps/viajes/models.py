@@ -178,12 +178,19 @@ class ItinerarioPlantilla(models.Model):
     ItinerarioViaje del viaje (copia-al-aplicar, no referencia viva),
     permitiendo edición independiente por viaje.
 
-    Multi-tenancy (BR-G-02): sin `agencia` en TASK-207 — el filtrado por
-    agencia al listar plantillas se resuelve en TASK-203/204 cuando se
-    expongan endpoints de listado. La unicidad operativa por agencia se
-    garantiza vía ItinerarioViaje.viaje.agencia (BR-G-02 ya vigente).
+    Multi-tenancy (BR-ITI-10, TASK-204): `agencia` es dato de primer nivel
+    desde la migración `0012_task_204_plantilla_agencia` (NOT NULL tras
+    backfill que asigna cada plantilla existente a la agencia del viaje que
+    la originó en TASK-207). Un agente sólo ve y aplica plantillas de su
+    propia agencia.
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    agencia = models.ForeignKey(
+        "agencias.Agencia",
+        on_delete=models.CASCADE,
+        related_name="itinerarios_plantilla",
+        verbose_name="Agencia",
+    )
     nombre = models.CharField(max_length=300)
     destinos = models.CharField(max_length=300, blank=True, default="")
     dias_totales = models.PositiveIntegerField(null=True, blank=True)
