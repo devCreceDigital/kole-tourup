@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>grupista-wireframes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --font-body:'Inter',system-ui,sans-serif; --font-display:'Inter',system-ui,sans-serif;
+      --text-xs:clamp(.75rem,.7rem + .25vw,.875rem); --text-sm:clamp(.875rem,.8rem + .35vw,1rem); --text-base:clamp(1rem,.95rem + .25vw,1.125rem); --text-lg:clamp(1.125rem,1rem + .75vw,1.5rem); --text-xl:clamp(1.5rem,1.2rem + 1.25vw,2.25rem);
+      --space-1:.25rem; --space-2:.5rem; --space-3:.75rem; --space-4:1rem; --space-5:1.25rem; --space-6:1.5rem; --space-8:2rem; --space-10:2.5rem; --space-12:3rem;
+      --color-bg:#f5f7fb; --color-surface:#ffffff; --color-surface-2:#f8f9fc; --color-surface-offset:#eef2f9; --color-border:#d8dceb; --color-divider:#e7ebf4; --color-text:#221b3a; --color-text-muted:#6f7192; --color-text-faint:#9da3ba; --color-primary:#6c4cff; --color-primary-hover:#5438d8; --color-primary-highlight:#ede8ff; --color-success:#4caf50; --color-warning:#ffcf5a; --color-error:#e85b7a; --shadow-sm:0 2px 8px rgba(41,36,82,.06); --shadow-md:0 10px 30px rgba(41,36,82,.08); --radius-md:12px; --radius-lg:18px; --radius-xl:24px;
+    }
+    *{box-sizing:border-box} body{margin:0;font-family:var(--font-body);background:var(--color-bg);color:var(--color-text)}
+    .app{display:grid;grid-template-columns:92px 260px 1fr;min-height:100vh}
+    .rail{background:#22154c;color:#fff;padding:24px 16px;display:flex;flex-direction:column;gap:18px;align-items:center}
+    .logo-mini{width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,#7f5cff,#5cd6c0);display:grid;place-items:center;font-weight:800}
+    .rail .item{width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 8px;border-radius:16px;color:#ddd8f7;font-size:12px}
+    .rail .item.active{background:rgba(255,255,255,.08);color:#fff}
+    .sidebar{background:#fff;border-right:1px solid var(--color-divider);padding:28px 18px 24px}
+    .brand{font-size:40px;font-weight:800;letter-spacing:-.03em;color:#5c2bd9}.brand span{color:#55d9c5}
+    .group{margin-top:24px}.group h4{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--color-text-faint);margin:0 0 12px}
+    .nav a{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-radius:14px;color:var(--color-text);text-decoration:none;font-size:15px;margin-bottom:6px}.nav a.active,.nav a:hover{background:var(--color-primary-highlight);color:var(--color-primary)}
+    .content{padding:24px 28px 40px;overflow:auto}
+    .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}.topbar h1{font-size:var(--text-xl);margin:0}.top-actions{display:flex;gap:12px;align-items:center}
+    .icon-btn,.btn{border:1px solid var(--color-border);background:#fff;border-radius:14px;padding:10px 14px;font-weight:600;box-shadow:var(--shadow-sm)} .btn.primary{background:var(--color-primary);color:#fff;border-color:transparent}.btn.ghost{background:#fff}
+    .hero{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;margin-bottom:20px}.panel{background:var(--color-surface);border:1px solid var(--color-divider);border-radius:22px;box-shadow:var(--shadow-sm)}
+    .panel-head{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;border-bottom:1px solid var(--color-divider)} .panel-head h3{margin:0;font-size:20px}
+    .panel-body{padding:20px}.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.kpi{background:var(--color-surface-2);border:1px solid var(--color-divider);border-radius:18px;padding:16px}.kpi .v{font-size:28px;font-weight:800}.muted{color:var(--color-text-muted)}
+    .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.step{padding:14px;border-radius:18px;background:var(--color-surface-2);border:1px solid var(--color-divider)} .step.active{background:var(--color-primary-highlight);border-color:#cfc6ff}
+    .grid-2{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;margin-top:18px}.table{width:100%;border-collapse:separate;border-spacing:0}.table th,.table td{padding:14px 12px;border-bottom:1px solid var(--color-divider);font-size:14px;text-align:left;vertical-align:top}.badge{display:inline-block;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:700}.badge.purple{background:#efe9ff;color:#6746ff}.badge.green{background:#e6fbf0;color:#2f9a69}.badge.yellow{background:#fff3cf;color:#9a7900}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}.card-list{display:grid;gap:14px}.it-card{padding:16px;border:1px solid var(--color-divider);border-radius:18px;background:linear-gradient(180deg,#fff,#fbfbfe)}
+    .timeline{position:relative;padding-left:28px}.timeline:before{content:'';position:absolute;left:10px;top:6px;bottom:8px;width:2px;background:#dddff0}.event{position:relative;margin-bottom:18px;padding:14px 16px;background:#fff;border:1px solid var(--color-divider);border-radius:18px}.event:before{content:'';position:absolute;left:-24px;top:18px;width:14px;height:14px;border-radius:50%;background:var(--color-primary);box-shadow:0 0 0 4px #efe9ff}
+    .form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.field label{display:block;font-size:13px;color:var(--color-text-muted);margin-bottom:8px}.input, .select, .textarea{width:100%;padding:14px 14px;border-radius:14px;border:1px solid var(--color-border);background:#fff;font:inherit}.textarea{min-height:110px}
+    .modal{margin-top:18px;border:1px dashed #cbbfff;background:#faf8ff;border-radius:22px;padding:18px}.toast{position:fixed;right:24px;top:22px;background:#5cc26f;color:#fff;padding:14px 18px;border-radius:14px;box-shadow:var(--shadow-md);font-weight:700}
+    .deliverable{margin-top:18px;padding:18px 20px;background:#fff;border:1px solid var(--color-divider);border-radius:20px}
+    .tabs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}.tab{padding:10px 14px;border-radius:12px;background:#fff;border:1px solid var(--color-border);font-weight:700;cursor:pointer}.tab.active{background:var(--color-primary);border-color:transparent;color:#fff}
+    .screen{display:none}.screen.active{display:block}
+    @media (max-width: 1100px){.app{grid-template-columns:76px 1fr}.sidebar{display:none}.hero,.grid-2{grid-template-columns:1fr}.kpis,.steps,.form-grid{grid-template-columns:1fr 1fr}.content{padding:18px}}
+    @media (max-width: 720px){.app{grid-template-columns:1fr}.rail{display:none}.kpis,.steps,.form-grid{grid-template-columns:1fr}.topbar{flex-direction:column;align-items:flex-start;gap:12px}.panel-head{flex-direction:column;align-items:flex-start;gap:10px}}
+  </style>
+</head>
+<body>
+<div class="toast">✓ Referencia incorporada</div>
+<div class="app">
+  <aside class="rail">
+    <div class="logo-mini">G</div>
+    <div class="item active">Viajes</div>
+    <div class="item">Pagos</div>
+    <div class="item">Data</div>
+    <div class="item">Usuarios</div>
+    <div class="item">Tienda</div>
+  </aside>
+  <aside class="sidebar">
+    <div class="brand">grupista<span>oo</span></div>
+    <div class="group"><h4>Programas</h4><nav class="nav"><a class="active" href="#">Datos maestros <span>›</span></a><a href="#">Itinerarios <span>›</span></a><a href="#">Complementos <span>›</span></a></nav></div>
+    <div class="group"><h4>Viajes</h4><nav class="nav"><a href="#">Ver <span>›</span></a><a href="#">Añadir viaje <span>+</span></a></nav></div>
+    <div class="group"><h4>Precio / Tienda</h4><nav class="nav"><a href="#">Proveedores <span>›</span></a><a href="#">Productos <span>›</span></a><a href="#">Informe ventas <span>›</span></a></nav></div>
+    <div class="group"><h4>Sistema</h4><nav class="nav"><a href="#">Emails <span>›</span></a><a href="#">Listas precargadas <span>›</span></a></nav></div>
+  </aside>
+  <main class="content">
+    <div class="topbar">
+      <h1>Wireframes hi-fi · Backoffice Grupista</h1>
+      <div class="top-actions"><button class="icon-btn">Tema</button><button class="btn ghost">Guía UX</button><button class="btn primary">Exportar propuesta</button></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-screen="dashboard">Vista general</button>
+      <button class="tab" data-screen="alojamientos">Alojamientos</button>
+      <button class="tab" data-screen="itinerarios">Itinerarios</button>
+      <button class="tab" data-screen="nuevo-viaje">Nuevo viaje</button>
+    </div>
+
+    <section class="screen active" id="dashboard">
+      <div class="hero">
+        <div class="panel">
+          <div class="panel-head"><h3>Resumen de operación</h3><button class="btn primary">+ Añadir viaje</button></div>
+          <div class="panel-body">
+            <div class="kpis">
+              <div class="kpi"><div class="muted">Viajes confirmados</div><div class="v">128</div><div class="muted">+14% este mes</div></div>
+              <div class="kpi"><div class="muted">Itinerarios activos</div><div class="v">42</div><div class="muted">6 pendientes de revisión</div></div>
+              <div class="kpi"><div class="muted">Alojamientos</div><div class="v">214</div><div class="muted">18 con cambios recientes</div></div>
+            </div>
+            <div class="deliverable">
+              <strong>Principios usados desde las capturas:</strong>
+              <div class="muted" style="margin-top:8px">Sidebar doble, tarjetas claras, tablas operativas, modales guiados, badges de estado, timeline por día y foco en flujos administrativos con bajo esfuerzo cognitivo.</div>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Flujos priorizados</h3><span class="badge purple">Alta fidelidad</span></div>
+          <div class="panel-body">
+            <div class="steps">
+              <div class="step active"><strong>1.</strong><div class="muted">Alta de datos maestros</div></div>
+              <div class="step active"><strong>2.</strong><div class="muted">Construcción de itinerario</div></div>
+              <div class="step active"><strong>3.</strong><div class="muted">Creación de viaje</div></div>
+              <div class="step"><strong>4.</strong><div class="muted">Operación y rooming</div></div>
+            </div>
+            <div class="modal">
+              <strong>Entregables incluidos</strong>
+              <ul>
+                <li>Wireframes hi-fi de listado, detalle, modal y wizard.</li>
+                <li>Sistema visual coherente con la referencia actual.</li>
+                <li>Mejoras UX: jerarquía, spacing, filtros, acciones y estados.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-head"><h3>Viajes confirmados</h3><div class="toolbar"><button class="btn">CSV</button><button class="btn">Excel</button><button class="btn">PDF</button></div></div>
+          <div class="panel-body">
+            <table class="table">
+              <thead><tr><th>ID</th><th>Nombre sistema / Código</th><th>Status</th><th>Itinerario</th><th>Responsable</th><th>Operaciones</th></tr></thead>
+              <tbody>
+                <tr><td>39</td><td><strong>SICILIA · SALIDA 23/10</strong><br><span class="muted">6S1CD7P09F...</span></td><td><span class="badge purple">PVE</span></td><td>Nápoles 4 días<br><span class="muted">4 días · [Nápoles] [Pompeya] [Positano]</span></td><td>Conectá, Gestor</td><td>✏️ 🗑️</td></tr>
+                <tr><td>27</td><td><strong>Fest 2</strong><br><span class="muted">7692698BA...</span></td><td><span class="badge green">PVE</span></td><td>Nápoles y la costa italiana<br><span class="muted">4 días · [Nápoles] [Pompeya] [Positano]</span></td><td>Conectá, Gestor</td><td>✏️ 🗑️</td></tr>
+                <tr><td>35</td><td><strong>Viaje al Mar Rojo</strong><br><span class="muted">3F53JF83...</span></td><td><span class="badge yellow">PRE</span></td><td>Livcoboard Brino<br><span class="muted">3 días · [Sharm]</span></td><td>Serrano, Estefanía</td><td>✏️ 🗑️</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Notas de rediseño</h3><span class="badge green">UX upgrade</span></div>
+          <div class="panel-body card-list">
+            <div class="it-card"><strong>1. Jerarquía</strong><div class="muted">Se amplía separación entre navegación, encabezado y contenido para mejorar lectura y escaneo.</div></div>
+            <div class="it-card"><strong>2. Consistencia</strong><div class="muted">Se unifican botones primarios, badges de estado y layout de tablas/modales observados en las capturas.</div></div>
+            <div class="it-card"><strong>3. Operabilidad</strong><div class="muted">Cada vista deja visibles acciones críticas: crear, editar, duplicar, filtrar y exportar.</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="alojamientos">
+      <div class="panel">
+        <div class="panel-head"><h3>Alojamientos · listado y alta rápida</h3><button class="btn primary">+ Nuevo alojamiento</button></div>
+        <div class="panel-body">
+          <div class="grid-2">
+            <div>
+              <div class="toolbar"><button class="btn">Filtros</button><button class="btn">Gestionar ocupaciones</button><button class="btn">Importar</button></div>
+              <table class="table">
+                <thead><tr><th>Nombre</th><th>Tipo / Cat</th><th>Ciudad</th><th>País</th><th>Operación</th></tr></thead>
+                <tbody>
+                  <tr><td>Catalonia Sagrada Familia</td><td>Hotel / 3★</td><td>Barcelona</td><td>España</td><td><button class="btn">Ver / Editar</button></td></tr>
+                  <tr><td>Apartamentze Frontera Blanca</td><td>Apart / uncat</td><td>Pas de la Casa</td><td>Andorra</td><td><button class="btn">Ver / Editar</button></td></tr>
+                  <tr><td>Exe Córdoba</td><td>Hotel / 4★</td><td>Córdoba</td><td>España</td><td><button class="btn">Ver / Editar</button></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div>
+              <div class="modal">
+                <div class="panel-head" style="padding:0 0 14px;border:none"><h3 style="font-size:24px">Añadir alojamiento</h3><span class="muted">Modal de alta mínima</span></div>
+                <div class="form-grid">
+                  <div class="field"><label>Nombre *</label><input class="input" value="Hotel Santa Caterina"/></div>
+                  <div class="field"><label>Destino *</label><select class="select"><option>Nápoles</option></select></div>
+                  <div class="field"><label>Categoría *</label><select class="select"><option>Hotel</option></select></div>
+                  <div class="field"><label>Subcategoría</label><select class="select"><option>4 estrellas</option></select></div>
+                </div>
+                <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px"><button class="btn">Cancelar</button><button class="btn primary">Crear alojamiento</button></div>
+              </div>
+              <div class="deliverable">
+                <strong>Mejoras propuestas</strong>
+                <ul>
+                  <li>Modal más limpio, con copy claro y campos agrupados.</li>
+                  <li>Acción primaria persistente y errores inline.</li>
+                  <li>Compatibilidad con siguiente paso: ocupaciones e imágenes.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="itinerarios">
+      <div class="panel">
+        <div class="panel-head"><h3>Itinerarios · editor de jornadas</h3><div class="toolbar"><button class="btn">Duplicar</button><button class="btn">Eliminar</button><button class="btn primary">+ Nuevo día</button></div></div>
+        <div class="panel-body">
+          <div class="grid-2">
+            <div>
+              <div class="deliverable" style="margin-top:0">
+                <div class="badge purple">Día 1</div>
+                <h3 style="margin:10px 0 8px">Información</h3>
+                <table class="table">
+                  <tr><td style="width:160px"><strong>Título día</strong></td><td>Llegada</td><td style="text-align:right">✏️</td></tr>
+                  <tr><td><strong>Alojamiento</strong></td><td>Nápoles · Ibis Styles Napoli Garibaldi</td><td style="text-align:right">✏️</td></tr>
+                </table>
+              </div>
+              <div class="deliverable">
+                <div style="display:flex;justify-content:space-between;align-items:center"><strong>Listado eventos</strong><button class="btn primary">+ Nuevo evento</button></div>
+                <div class="timeline" style="margin-top:16px">
+                  <div class="event"><span class="badge purple">08:00h</span><h4>Llegada al hotel</h4><div class="muted">Texto libre con instrucción operativa y contexto para el grupo.</div></div>
+                  <div class="event"><span class="badge green">10:00h · Actividad</span><h4>Nos recoge el bus para la primera excursión</h4><div class="muted">Evento enlazado a actividad del catálogo y con destino visible.</div></div>
+                  <div class="event"><span class="badge yellow">20:00h · Cena</span><h4>Cena de bienvenida</h4><div class="muted">Complementa el día con hitos legibles en orden cronológico.</div></div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="modal">
+                <div class="panel-head" style="padding:0 0 14px;border:none"><h3 style="font-size:24px">Nuevo evento</h3><span class="muted">Texto libre / Actividad</span></div>
+                <div class="form-grid">
+                  <div class="field"><label>Hora inicio</label><input class="input" value="09:00"/></div>
+                  <div class="field"><label>Tipo de evento</label><select class="select"><option>Texto libre</option></select></div>
+                  <div class="field" style="grid-column:1/-1"><label>Título *</label><input class="input" value="Llegada al hotel"/></div>
+                  <div class="field" style="grid-column:1/-1"><label>Descripción / Información</label><textarea class="textarea">Llegamos al hotel, dejamos las mochilas y nos preparamos para la primera visita por la ciudad.</textarea></div>
+                </div>
+                <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px"><button class="btn">Cancelar</button><button class="btn primary">Actualizar evento</button></div>
+              </div>
+              <div class="deliverable">
+                <strong>Patrones extraídos de referencia</strong>
+                <ul>
+                  <li>Pestañas: Eventos, Ajustes, Más.</li>
+                  <li>Creación incremental: primero día, luego configuración y eventos.</li>
+                  <li>Vista editorial del itinerario como salida final.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="nuevo-viaje">
+      <div class="panel">
+        <div class="panel-head"><h3>Wizard · Crear nuevo viaje</h3><span class="badge purple">3 pasos</span></div>
+        <div class="panel-body">
+          <div class="steps" style="margin-bottom:18px">
+            <div class="step active"><strong>1º paso</strong><div class="muted">Nombre y vigencia</div></div>
+            <div class="step active"><strong>2º paso</strong><div class="muted">Elegir itinerario</div></div>
+            <div class="step active"><strong>3º paso</strong><div class="muted">Responsable</div></div>
+            <div class="step"><strong>4º paso</strong><div class="muted">Confirmación</div></div>
+          </div>
+          <div class="grid-2">
+            <div>
+              <div class="deliverable" style="margin-top:0">
+                <h3>1º paso · Datos base</h3>
+                <div class="form-grid">
+                  <div class="field" style="grid-column:1/-1"><label>Nombre en sistema</label><input class="input" value="SICILIA · SALIDA 23/10"/></div>
+                  <div class="field"><label>Fecha de validez</label><input class="input" value="23/10/2026"/></div>
+                  <div class="field"><label>Código interno</label><input class="input" value="6S1CD7P09F"/></div>
+                </div>
+              </div>
+              <div class="deliverable">
+                <h3>2º paso · Elegir itinerario</h3>
+                <table class="table">
+                  <thead><tr><th>Nombre</th><th>Nº días</th><th>Categorías</th><th>Destinos</th><th>Elegir</th></tr></thead>
+                  <tbody>
+                    <tr><td>Nápoles 4 días</td><td>4</td><td>[Actividad] [Bus] [Visita]</td><td>[Nápoles] [Pompeya] [Positano]</td><td><span class="badge purple">Seleccionado</span></td></tr>
+                    <tr><td>Andalucía al completo</td><td>1</td><td>[Panorámica] [Museo]</td><td>[Almería] [Granada] [Málaga]</td><td><button class="btn">Elegir</button></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div>
+              <div class="deliverable" style="margin-top:0">
+                <h3>3º paso · Responsable de viaje</h3>
+                <div class="card-list">
+                  <div class="it-card"><input type="checkbox" checked> <strong>22222222C</strong> · Responsable: Conectá, Gestor</div>
+                  <div class="it-card"><input type="checkbox"> <strong>24557288N</strong> · Responsable: Serrano, Estefanía</div>
+                </div>
+                <div style="display:flex;justify-content:flex-end;margin-top:18px"><button class="btn primary">✓ Crear viaje</button></div>
+              </div>
+              <div class="deliverable">
+                <strong>Optimización del wizard</strong>
+                <ul>
+                  <li>Se hace visible el progreso real.</li>
+                  <li>La selección del itinerario usa tabla comparativa legible.</li>
+                  <li>El CTA final solo aparece cuando hay campos mínimos completos.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<script>
+  document.querySelectorAll('.tab').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.screen).classList.add('active');
+    })
+  })
+</script>
+</body>
+</html>
