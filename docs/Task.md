@@ -288,3 +288,16 @@ Verificados todos contra el código actual:
 | 12 | JWT en cookies httpOnly — nunca localStorage | ✅ |
 | 13 | Toda consulta agente filtra por `agencia_id` | ✅ |
 | 14 | Tasks Celery idempotentes | ✅ |
+
+---
+
+## 9. TASK-106 — Cierre multi-tenancy admin (M1–M8) ✅
+
+- **Ref:** `docs/auditoria_admin.md` §Matriz de hallazgos M1–M8.
+- **Acción:** verificar que cada uno de los 6 hallazgos multi-tenancy tenga su test de regresión de dropdown y/o lista, ni uno repetido ni uno olvidado. Orden de revisión: comunicados → documentos → inscripciones → mecenas → notificaciones (previo: pagos ya cubierto en TASK-100→104).
+- **Hallazgos durante TASK-106:**
+  - **Bug real (M4):** `notificaciones/admin.py` tenía `get_queryset` pero **faltaba `formfield_for_foreignkey`** en FK `usuario` → dropdown exponía usuarios de otras agencias. Descripción original de auditoría ("Sin get_queryset") era parcialmente falsa. Fix aplicado en `NotificacionAdmin` y `PreferenciasNotificacionAdmin`. Test nuevo: `test_agente_no_ve_objetos_de_otra_agencia_en_dropdown`.
+  - **Gap menor (M3):** `documentos/tests/test_admin_multitenancy.py` no tenía test de lista (`get_queryset`). Agregado `test_M3_agente_no_ve_documentos_de_otra_agencia_en_lista`.
+  - **Imports rotos (regresión de rename tests/):** 4 archivos (`comunicados`, `documentos`, `notificaciones`, `pagos`) usaban `from .models import X` incompatible con el move a `tests/` subdirectorio. Corregido a imports absolutos.
+  - **Doc desactualizada:** corregida descripción M4 en `auditoria_admin.md:45`.
+- **DoD:** suite completa `manage.py test` → **235 tests OK** (antes 202 + 4 ImportErrors → 235 OK, 0 errors). 21 tests de regresión multi-tenancy (5+3+4+3+4+2) cubren los 6 hallazgos. Aplicado `docs/PROTOCOLO_VALIDACION_TAREAS.md` (checklist completo de 10 puntos).
