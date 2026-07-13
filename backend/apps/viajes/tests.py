@@ -1,5 +1,8 @@
 from unittest.mock import patch, PropertyMock
-from apps.viajes.models import PlanPago, Cuota, Alumno, EtapaItinerarioViaje, ItinerarioPlantilla, Actividad, Hotel, Grupo
+from apps.viajes.models import (
+    PlanPago, Cuota, Alumno, EtapaItinerarioViaje, ItinerarioPlantilla,
+    Actividad, Hotel, Grupo, EtapaPlantilla as EtapaPlantillaModel,
+)
 from datetime import timedelta
 from django.db import transaction
 from django.test import TestCase
@@ -1662,6 +1665,7 @@ class AplicarPlantillaTests(APITestCase):
             cupo_maximo=10, precio_total=100
         )
         self.plantilla = ItinerarioPlantilla.objects.create(
+            agencia=self.agencia,
             nombre="5D4N Cusco Clásico",
             destinos="Cusco",
             dias_totales=5,
@@ -1729,3 +1733,301 @@ class AplicarPlantillaTests(APITestCase):
         iti_final = self._aplicar(self.viaje_1, self.plantilla)
         self.assertEqual(iti_final.etapas.count(), 2)
         self.assertFalse(iti_final.etapas.filter(dia_numero=3).exists())
+
+
+# ─── TASK-204: endpoints plantillas + aplicar (selector backoffice) ──────────
+
+class ItinerarioPlantillaEndpointTests(APITestCase):
+    """
+    Suite TASK-204: GET /viajes/plantillas/ y POST /viajes/<id>/aplicar-plantilla/.
+    Cubre BR-ITI-10 a BR-ITI-13.
+    """
+
+    def setUp(self):
+        self.agencia = Agencia.objects.create(
+            nombre="Ag204", slug="ag204", email_contacto="ag@204.com"
+        )
+        self.agencia_otra = Agencia.objects.create(
+            nombre="Ag204B", slug="ag204b", email_contacto="ag@204b.com"
+        )
+        self.agente = Usuario.objects.create_user(
+            email="agente@204.com", password="pwd", rol=RolUsuario.AGENTE,
+            agencia=self.agencia, email_verificado=True
+        )
+        self.agente_otro = Usuario.objects.create_user(
+            email="agente@204b.com", password="pwd", rol=RolUsuario.AGENTE,
+            agencia=self.agencia_otra, email_verificado=True
+        )
+        self.padre = Usuario.objects.create_user(
+            email="padre@204.com", password="pwd", rol=RolUsuario.PADRE,
+            email_verificado=True
+        )
+        self.today = timezone.now().date()
+        self.tomorrow = self.today + timedelta(days=1)
+        # Plantillas propias
+        self.plantilla_a = ItinerarioPlantilla.objects.create(
+            agencia=self.agencia, nombre="Plantilla A", destinos="Cusco",
+            dias_totales=2,
+        )
+        EtapaPlantillaModel.objects.create(
+            itinerario=self.plantilla_a, dia_numero=1, titulo="Día A1",
+        )
+        EtapaPlantillaModel.objects.create(
+            itinerario=self.plantilla_a, dia_numero=2, titulo="Día A2",
+        )
+        self.plantilla_b = ItinerarioPlantilla.objects.create(
+            agencia=self.agencia, nombre="Plantilla B", destinos="Arequipa",
+            dias_totales=3,
+        )
+        EtapaPlantillaModel.objects.create(
+            itinerario=self.plantilla_b, dia_numero=1, titulo="Día B1",
+        )
+        EtapaPlantillaModel.objects.create(
+            itinerario=self.plantilla_b, dia_numero=2, titulo="Día B2",
+        )
+        EtapaPlantillaModel.objects.create(
+            itinerario=self.plantilla_b, dia_numero=3, titulo="Día B3",
+        )
+        # Plantilla ajena
+        self.plantilla_ajena = ItinerarioPlantilla.objects.create(
+            agencia=self.agencia_otra, nombre="Ajena", destinos="X",
+        )
+        EtapaPlantillaModel.objects.create(
+            itinerario=self.plantilla_ajena, dia_numero=1, titulo="X1",
+        )
+
+    # ─── Migración + listado (tests 1-3) ────────────────────────────────
+
+    def _crear_viaje(self, agencia=None, nombre="V204", estado=EstadoViaje.BORRADOR):
+        return Viaje.objects.create(
+            agencia=agencia or self.agencia,
+            nombre=nombre, destino="D",
+            fecha_salida=self.today, fecha_regreso=self.tomorrow,
+            cupo_maximo=10, precio_total=100, estado=estado,
+        )
+
+    def test_itinerario_plantilla_tiene_agencia_post_migracion(self):
+        """Test 1 (defensivo): toda ItinerarioPlantilla creada sin agencia falla."""
+        with self.assertRaises(Exception):
+            ItinerarioPlantilla.objects.create(
+                nombre="Sin agencia", destinos="X", dias_totales=1
+            )
+
+    def test_itinerario_plantilla_list_deniega_padre(self):
+        """Test 2: agente rol no-permitido → 403."""
+        self.client.force_authenticate(user=self.padre)
+        response = self.client.get(reverse('itinerario-plantilla-list'))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_itinerario_plantilla_list_sin_login_401(self):
+        """Test 2b: sin auth → 401."""
+        response = self.client.get(reverse('itinerario-plantilla-list'))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_itinerario_plantilla_list_filtra_por_agencia(self):
+        """Test 3: agente A ve sólo sus plantillas; B no aparece."""
+        self.client.force_authenticate(user=self.agente)
+        response = self.client.get(reverse('itinerario-plantilla-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.data.get('results', response.data)
+        ids = {item['id'] for item in results}
+        self.assertIn(str(self.plantilla_a.id), ids)
+        self.assertIn(str(self.plantilla_b.id), ids)
+        self.assertNotIn(str(self.plantilla_ajena.id), ids)
+        # cant_etapas correcto
+        pa = next(item for item in results if item['id'] == str(self.plantilla_a.id))
+        self.assertEqual(pa['cant_etapas'], 2)
+        pb = next(item for item in results if item['id'] == str(self.plantilla_b.id))
+        self.assertEqual(pb['cant_etapas'], 3)
+
+    # ─── Aplicación exitosa (tests 4-7) ─────────────────────────────────
+
+    def _aplicar(self, viaje, plantilla):
+        self.client.force_authenticate(user=self.agente)
+        url = reverse('viaje-aplicar-plantilla', args=[viaje.id])
+        return self.client.post(url, {'plantilla_id': str(plantilla.id)}, format='json')
+
+    def test_aplicar_plantilla_viaje_borrador_ok(self):
+        """Test 4: POST con plantilla válida → 200, etapas copiadas."""
+        viaje = self._crear_viaje()
+        response = self._aplicar(viaje, self.plantilla_a)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        iti_data = response.data['itinerario']
+        self.assertEqual(len(iti_data['etapas']), 2)
+        viaje.refresh_from_db()
+        self.assertEqual(viaje.itinerario.plantilla_origen, self.plantilla_a)
+
+    def test_aplicar_plantilla_a_viaje_sin_etapas_previas(self):
+        """Test 5: ItinerarioViaje vacío (auto-create) → 200, slug/codigo únicos."""
+        viaje = self._crear_viaje()
+        response = self._aplicar(viaje, self.plantilla_b)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        etapas = response.data['itinerario']['etapas']
+        slugs = [e.get('slug') for e in etapas]  # noqa: F841 (info)
+        # slugs únicos por instancia (BR-ITI-04)
+        from apps.viajes.models import EtapaItinerarioViaje as EV
+        viaj_etapas = EV.objects.filter(itinerario__viaje=viaje)
+        self.assertEqual(viaj_etapas.count(), 3)
+        codigos = list(viaj_etapas.values_list('codigo', flat=True))
+        self.assertEqual(len(codigos), len(set(codigos)))
+
+    def test_aplicar_plantilla_idempotente_reemplazo(self):
+        """Test 6: aplicar dos veces misma plantilla → conteo estable."""
+        viaje = self._crear_viaje()
+        self._aplicar(viaje, self.plantilla_a)
+        response = self._aplicar(viaje, self.plantilla_a)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['itinerario']['etapas']), 2)
+        from apps.viajes.models import EtapaItinerarioViaje as EV
+        self.assertEqual(EV.objects.filter(itinerario__viaje=viaje).count(), 2)
+
+    def test_re_aplicar_plantilla_distinta_reemplaza_etapas(self):
+        """Test 7: viaje con plantilla A (2 etapas) → aplicar B (3 etapas)."""
+        from apps.viajes.models import EtapaItinerarioViaje as EV
+        viaje = self._crear_viaje()
+        self._aplicar(viaje, self.plantilla_a)
+        # Añadir actividad custom a una etapa de A
+        iti = viaje.itinerario
+        ev = iti.etapas.get(dia_numero=1)
+        Actividad.objects.create(etapa=ev, titulo="Act custom", orden=0)
+        self.assertEqual(Actividad.objects.filter(etapa__itinerario=iti).count(), 1)
+        # Re-aplicar plantilla B
+        self.client.force_authenticate(user=self.agente)
+        url = reverse('viaje-aplicar-plantilla', args=[viaje.id])
+        response = self.client.post(url, {'plantilla_id': str(self.plantilla_b.id)}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['itinerario']['etapas']), 3)
+        viaje.refresh_from_db()
+        self.assertEqual(viaje.itinerario.plantilla_origen, self.plantilla_b)
+        # Actividad vieja fue eliminada en cascada
+        self.assertEqual(Actividad.objects.filter(etapa__itinerario__viaje=viaje).count(), 0)
+
+    # ─── Validación de tenant (tests 8-9) ───────────────────────────────
+
+    def test_aplicar_plantilla_de_otra_agencia_400(self):
+        """Test 8: agente A aplica plantilla de agencia B → 400 en plantilla_id."""
+        viaje = self._crear_viaje()
+        self.client.force_authenticate(user=self.agente)
+        url = reverse('viaje-aplicar-plantilla', args=[viaje.id])
+        response = self.client.post(
+            url, {'plantilla_id': str(self.plantilla_ajena.id)}, format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('plantilla_id', response.data)
+        # Viaje no fue modificado
+        viaje.refresh_from_db()
+        self.assertIsNone(viaje.itinerario.plantilla_origen)
+        self.assertEqual(viaje.itinerario.etapas.count(), 0)
+
+    def test_aplicar_plantilla_viaje_otra_agencia_404(self):
+        """Test 9: agente B aplica a viaje de agente A → 404."""
+        viaje_otra_agencia = self._crear_viaje(agencia=self.agencia_otra)
+        self.client.force_authenticate(user=self.agente)
+        url = reverse('viaje-aplicar-plantilla', args=[viaje_otra_agencia.id])
+        response = self.client.post(
+            url, {'plantilla_id': str(self.plantilla_a.id)}, format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    # ─── Validación de estado (tests 10-12) ─────────────────────────────
+
+    def test_aplicar_plantilla_viaje_cerrado_400(self):
+        """Test 10: viaje cerrado → 400 con detail."""
+        viaje = self._crear_viaje(estado=EstadoViaje.CERRADO)
+        self.client.force_authenticate(user=self.agente)
+        url = reverse('viaje-aplicar-plantilla', args=[viaje.id])
+        response = self.client.post(
+            url, {'plantilla_id': str(self.plantilla_a.id)}, format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('detail', response.data)
+
+    def test_aplicar_plantilla_viaje_archivado_400(self):
+        """Test 11: viaje archivado → 400 con detail."""
+        viaje = self._crear_viaje(estado=EstadoViaje.ARCHIVADO)
+        self.client.force_authenticate(user=self.agente)
+        url = reverse('viaje-aplicar-plantilla', args=[viaje.id])
+        response = self.client.post(
+            url, {'plantilla_id': str(self.plantilla_a.id)}, format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('detail', response.data)
+
+    def test_aplicar_plantilla_viaje_activo_con_inscripciones_retorna_warning(self):
+        """Test 12: viaje activo con inscripciones + etapas previas → warning no nulo."""
+        from apps.inscripciones.models import Inscripcion, Alumno
+        from apps.autenticacion.models import PadreTutor
+        from apps.autenticacion.models import Usuario
+        from apps.autenticacion.models import RolUsuario
+        viaje = self._crear_viaje(estado=EstadoViaje.ACTIVO, nombre="V204act")
+        # Aplicar plantilla A (queda con etapas)
+        self._aplicar(viaje, self.plantilla_a)
+        # Forzar ItinerarioViaje con etapas
+        self.assertGreater(viaje.itinerario.etapas.count(), 0)
+        padre = Usuario.objects.create_user(
+            email="padre@insc.com", password="pwd", rol=RolUsuario.PADRE,
+            email_verificado=True
+        )
+        alumno = Alumno.objects.create(
+            nombre="A", apellidos="B", dni="12345678",
+            fecha_nacimiento=self.today - timedelta(days=365 * 15),
+        )
+        padre_tutor = PadreTutor.objects.create(usuario=padre)
+        Inscripcion.objects.create(
+            alumno=alumno, viaje=viaje, padre_tutor=padre_tutor,
+            precio_final=100,
+        )
+        # Re-aplicar plantilla B (debe dejar warning)
+        self.client.force_authenticate(user=self.agente)
+        url = reverse('viaje-aplicar-plantilla', args=[viaje.id])
+        response = self.client.post(
+            url, {'plantilla_id': str(self.plantilla_b.id)}, format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(response.data['warning'])
+        self.assertGreater(response.data['warning']['etapas_reemplazadas'], 0)
+        self.assertGreaterEqual(response.data['warning']['inscripciones_activas'], 1)
+        self.assertTrue(response.data['warning']['mensaje'])
+
+    # ─── Errores de payload (tests 13-14) ───────────────────────────────
+
+    def test_aplicar_plantilla_uuid_invalido_400(self):
+        """Test 13: UUID mal formado → 400 estándar DRF."""
+        viaje = self._crear_viaje()
+        self.client.force_authenticate(user=self.agente)
+        url = reverse('viaje-aplicar-plantilla', args=[viaje.id])
+        response = self.client.post(
+            url, {'plantilla_id': 'no-es-uuid'}, format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('plantilla_id', response.data)
+
+    def test_aplicar_plantilla_sin_body_400(self):
+        """Test 14: body vacío → 400 con plantilla_id requerido."""
+        viaje = self._crear_viaje()
+        self.client.force_authenticate(user=self.agente)
+        url = reverse('viaje-aplicar-plantilla', args=[viaje.id])
+        response = self.client.post(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('plantilla_id', response.data)
+
+    # ─── Doble submit / reintento (test 15) ──────────────────────────────
+
+    def test_aplicar_plantilla_no_duplica_si_response_se_reintenta(self):
+        """Test 15: dos POST consecutivos no duplican etapas (idempotencia real)."""
+        viaje = self._crear_viaje()
+        self._aplicar(viaje, self.plantilla_a)
+        response = self._aplicar(viaje, self.plantilla_a)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        from apps.viajes.models import EtapaItinerarioViaje as EV
+        self.assertEqual(EV.objects.filter(itinerario__viaje=viaje).count(), 2)
+        # slug/codigo siguen únicos tras doble apply
+        slugs = list(EV.objects.filter(itinerario__viaje=viaje).values_list('slug', flat=True))
+        self.assertEqual(len(slugs), len(set(slugs)))
+
+
+def padre_tutor_for_padre(padre_user):
+    """Helper: obtiene/crea PadreTutor asociado al Usuario padre."""
+    from apps.autenticacion.models import PadreTutor
+    pt, _ = PadreTutor.objects.get_or_create(usuario=padre_user)
+    return pt
