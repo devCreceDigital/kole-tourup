@@ -1,7 +1,9 @@
 from django.db import transaction, IntegrityError
 from rest_framework import serializers
 from .models import (
-    Viaje, Cuota, PlanPago, Alumno, Itinerario, EtapaItinerario, Actividad, Hotel, Grupo, DocumentoRequerido, EstadoViaje,
+    Viaje, Cuota, PlanPago, Alumno, ItinerarioViaje, EtapaItinerarioViaje,
+    Actividad, Hotel, Grupo, DocumentoRequerido, EstadoViaje,
+    ItinerarioPlantilla,
     ComplementoViaje, ComplementoContratado,
 )
 from apps.colegios.models import Colegio
@@ -26,13 +28,14 @@ class ViajeSerializer(serializers.ModelSerializer):
     inscripciones_count = serializers.SerializerMethodField()
     colegio_ref = ColegioRefSerializer(read_only=True)
     grupos = GrupoPublicoSerializer(many=True, read_only=True)
+    imagen_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Viaje
         fields = [
             'id', 'agencia', 'nombre', 'destino', 'fecha_salida',
             'fecha_regreso', 'descripcion', 'cupo_maximo',
-            'precio_total', 'estado', 'imagen', 'duracion_dias',
+            'precio_total', 'estado', 'imagen', 'imagen_url', 'duracion_dias',
             'slug', 'codigo', 'colegio', 'colegio_ref', 'nivel_educativo', 'grado',
             'inscripciones_count', 'grupos',
             'created_at', 'updated_at'
@@ -41,6 +44,16 @@ class ViajeSerializer(serializers.ModelSerializer):
 
     def get_inscripciones_count(self, obj):
         return obj.inscripciones.count()
+
+    def get_imagen_url(self, obj):
+        """
+        URL relativa de la imagen de portada. Se devuelve relativa para que
+        el frontend la resuelva contra el host del gateway (producción) o
+        Django (desarrollo), evitando fugas del hostname interno del backend.
+        """
+        if obj.imagen:
+            return obj.imagen.url
+        return None
 
     def validate_fecha_regreso(self, value):
         """
@@ -260,10 +273,17 @@ class AlumnoSerializer(serializers.ModelSerializer):
 
 
 class EtapaItinerarioSerializer(serializers.ModelSerializer):
+    imagen_url = serializers.SerializerMethodField()
+
     class Meta:
-        model = EtapaItinerario
-        fields = ['id', 'dia_numero', 'titulo', 'descripcion', 'imagen']
+        model = EtapaItinerarioViaje
+        fields = ['id', 'dia_numero', 'titulo', 'descripcion', 'imagen', 'imagen_url']
         read_only_fields = ['id']
+
+    def get_imagen_url(self, obj):
+        if obj.imagen:
+            return obj.imagen.url
+        return None
 
     def validate_dia_numero(self, value):
         if value < 1:
@@ -281,18 +301,24 @@ class ActividadSerializer(serializers.ModelSerializer):
 
 class EtapaConActividadesSerializer(serializers.ModelSerializer):
     actividades = ActividadSerializer(many=True, read_only=True)
+    imagen_url = serializers.SerializerMethodField()
 
     class Meta:
-        model = EtapaItinerario
-        fields = ['id', 'dia_numero', 'titulo', 'descripcion', 'imagen', 'actividades']
+        model = EtapaItinerarioViaje
+        fields = ['id', 'dia_numero', 'titulo', 'descripcion', 'imagen', 'imagen_url', 'actividades']
         read_only_fields = ['id']
+
+    def get_imagen_url(self, obj):
+        if obj.imagen:
+            return obj.imagen.url
+        return None
 
 
 class ItinerarioSerializer(serializers.ModelSerializer):
     etapas = EtapaConActividadesSerializer(many=True, read_only=True)
 
     class Meta:
-        model = Itinerario
+        model = ItinerarioViaje
         fields = ['id', 'viaje', 'etapas', 'created_at', 'updated_at']
         read_only_fields = ['id', 'viaje', 'created_at', 'updated_at']
 
@@ -313,11 +339,18 @@ class ReordenamientoActividadSerializer(serializers.Serializer):
 
 
 class HotelSerializer(serializers.ModelSerializer):
+    imagen_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Hotel
         fields = ['id', 'nombre', 'descripcion', 'tasa_turistica', 'fianza',
-                  'web_url', 'maps_url', 'imagen', 'telefono', 'latitud', 'longitud']
+                  'web_url', 'maps_url', 'imagen', 'imagen_url', 'telefono', 'latitud', 'longitud']
         read_only_fields = ['id']
+
+    def get_imagen_url(self, obj):
+        if obj.imagen:
+            return obj.imagen.url
+        return None
 
 
 class GrupoSerializer(serializers.ModelSerializer):
@@ -369,3 +402,51 @@ class DocumentoRequeridoSerializer(serializers.ModelSerializer):
         fields = ['id', 'nombre', 'descripcion', 'obligatorio',
                   'formatos_permitidos', 'formatos_lista']
         read_only_fields = ['id']
+
+
+# ─── TASK-204: plantillas reutilizables ──────────────────────────────────────
+
+class ItinerarioPlantillaSerializer(serializers.ModelSerializer):
+    """
+    Resumen de ItinerarioPlantilla para el selector backoffice (BR-ITI-10).
+    `cant_etapas` se inyecta vía annotate(Count('etapas')) en la vista.
+    Sin etapas anidadas (preview fuera de TASK-204).
+    """
+    cant_etapas = serializers.IntegerField(read_only=True, default=0)
+
+    class Meta:
+        model = ItinerarioPlantilla
+        fields = [
+            'id', 'nombre', 'destinos', 'dias_totales',
+            'cant_etapas', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class AplicarPlantillaSerializer(serializers.Serializer):
+    """
+    Valida el payload `{"plantilla_id": "<uuid>"}` para aplicar una
+    plantilla al ItinerarioViaje de un viaje. Verifica multi-tenancy
+    (BR-ITI-10: plantilla debe pertenecer a la agencia del agente).
+    """
+    plantilla_id = serializers.UUIDField()
+
+    def validate_plantilla_id(self, value):
+        request = self.context.get('request')
+        if request is None or not hasattr(request.user, 'agencia'):
+            raise serializers.ValidationError(
+                "Se requiere autenticación de agente para aplicar plantillas."
+            )
+        agencia = request.user.agencia
+        try:
+            plantilla = ItinerarioPlantilla.objects.get(id=value, agencia=agencia)
+        except ItinerarioPlantilla.DoesNotExist:
+            raise serializers.ValidationError(
+                "La plantilla no existe o no pertenece a tu agencia."
+            )
+        self._plantilla = plantilla
+        return value
+
+    @property
+    def plantilla(self):
+        return self._plantilla

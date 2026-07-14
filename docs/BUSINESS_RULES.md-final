@@ -1,7 +1,7 @@
 # BUSINESS_RULES.md-final — Reglas de Negocio (Estado Real)
 
 > Estas reglas son invariantes del dominio. Ningún agente IA, desarrollador ni configuración puede violarlas. Están respaldadas por constraints de base de datos, signals de Django y validaciones de API.
-> Última actualización: 2026-07-13 — BR-V-01 actualizada tras resolver TD-021 (validación de serializer + constraint de BD).
+> Última actualización: 2026-07-13 — BR-V-06/BR-V-08/BR-ITI-01/04/06 reescritas tras TASK-207 (migración de `Itinerario` exclusivo-por-viaje a `ItinerarioPlantilla` reutilizable + `ItinerarioViaje` copia-al-aplicar, DEC-012). Filas reescritas en su mismo ID (sin duplicar vieja+nueva, lección BR-V-01).
 
 ---
 
@@ -44,9 +44,9 @@
 | BR-V-03 | Solo el agente cuya `agencia_id` coincide con el viaje puede modificarlo. |
 | BR-V-04 | Un viaje en `estado = 'activo'` es visible en el portal público y permite inscripciones. |
 | BR-V-05 | **Transiciones válidas de estado:** `borrador → activo → cerrado → archivado`. No hay retroceso. |
-| BR-V-06 | Al crear un viaje, el sistema crea automáticamente un `Itinerario` vacío vinculado. |
+| BR-V-06 | Al crear un viaje, el sistema crea automáticamente una `ItinerarioViaje` vacía (instancia aplicada) vinculada. Una `ItinerarioPlantilla` reutilizable puede aplicarse al viaje mediante `aplicar_plantilla_a_viaje()` (services.py), copiando sus etapas a la instancia aplicada con `slug`/`codigo` regenerados por instancia. (TASK-207, DEC-012.) |
 | BR-V-07 | Cada viaje tiene exactamente **un** `PlanPago` (relación 1:1). |
-| BR-V-08 | Cada viaje tiene exactamente **un** `Itinerario` (relación 1:1). |
+| BR-V-08 | Cada viaje tiene exactamente **una** `ItinerarioViaje` (instancia aplicada, relación 1:1 vía `related_name="itinerario"`). Varias `ItinerarioViaje` pueden compartir la misma `ItinerarioPlantilla` de origen (`plantilla_origen`, nullable — solo trazabilidad histórica, no fuente de datos en vivo). (TASK-207, DEC-012.) |
 | BR-V-09 | El sistema archiva viajes automáticamente X días después de `fecha_regreso` (configurable `DOCS_ARCHIVE_DAYS_AFTER_RETURN`, task Celery). |
 | BR-V-10 | Cada viaje puede tener múltiples complementos opcionales (`ComplementoViaje`) con precio individual. |
 | BR-V-11 | El plan de pagos (`PlanPago`) de un viaje **no puede modificarse** si `tiene_pagos_verificados = True`. |
@@ -159,12 +159,12 @@ pendiente ──→ validado
 
 | ID | Regla |
 |----|-------|
-| BR-ITI-01 | `dia_numero` único por itinerario (`EtapaItinerario`). |
+| BR-ITI-01 | `dia_numero` único por itinerario — aplica tanto a `EtapaPlantilla` (constraint `unique_etapa_por_plantilla`) como a `EtapaItinerarioViaje` (constraint `unique_etapa_por_itinerario_viaje`). (TASK-207.) |
 | BR-ITI-02 | Actividades ordenadas por `orden`, luego `hora`. |
 | BR-ITI-03 | Reordenamiento en **bloque** vía `PATCH /actividades/reordenar/` — nunca PATCH individuales. |
-| BR-ITI-04 | Cada `EtapaItinerario` tiene `slug` y `codigo` autogenerados (signal `pre_save`). |
+| BR-ITI-04 | Cada etapa (`EtapaPlantilla` y `EtapaItinerarioViaje`) tiene `slug` y `codigo` autogenerados por signal `pre_save` (helper `_generar_slug_codigo_etapa_universally`). La copia-al-aplicar regenera los suyos propios — no reutiliza los de la plantilla. |
 | BR-ITI-05 | Tipos de actividad: `vuelo`, `bus`, `hotel`, `comida`, `excursion`, `libre`, `otro`. |
-| BR-ITI-06 | El itinerario se crea automáticamente vacío al crear un `Viaje`. Relación 1:1. |
+| BR-ITI-06 | El sistema crea automáticamente una `ItinerarioViaje` vacía (instancia aplicada) al crear un `Viaje` (signal `post_save`). Relación 1:1 con `Viaje` preservada. La selección de plantilla (TASK-204) la poblará vía `aplicar_plantilla_a_viaje()`. |
 
 ---
 
@@ -266,7 +266,7 @@ pendiente ──→ validado
 | `DocumentoEntregado` | estado → `rechazado` | `Notificacion(doc_rechazado)` con motivo | ✅ Implementado (TASK-101) |
 | `Inscripcion` | CREATE | Email de bienvenida al tutor | ✅ |
 | `ComplementoContratado` | CREATE | Actualiza `precio_final` de la inscripción | ✅ Implementado (TASK-102) / Edición y borrado: no manejados — ver limitación documentada |
-| `Viaje` | CREATE | Crea `Itinerario` vacío + `PlanPago` vacío | ✅ |
+| `Viaje` | CREATE | Crea `ItinerarioViaje` vacío (instancia aplicada) + `PlanPago` vacío | ✅ |
 | `Viaje` | pre_save | Genera `slug` y `codigo` automáticos | ✅ |
 
 ---

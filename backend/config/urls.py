@@ -2,6 +2,7 @@
 from django.urls import include
 from django.http import JsonResponse
 from django.urls import include, path
+from django.conf import settings
 
 def health_check(request):
     return JsonResponse({"status": "ok", "service": "tottemhub-backend"})
@@ -23,6 +24,13 @@ urlpatterns = [
     path("api/v1/colegios/", include("apps.colegios.urls")),
     path("api/v1/chat/", include("apps.chat.urls")),
 ]
+
+# Servir archivos media y static en desarrollo (DEBUG=True).
+# En producción, Nginx/s3 sirven estos archivos directamente.
+if settings.DEBUG:
+    from django.conf.urls.static import static
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 
 

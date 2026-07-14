@@ -6,7 +6,7 @@ from django.db import transaction
 
 from apps.agencias.models import Agencia
 from apps.autenticacion.models import Usuario, RolUsuario, PadreTutor
-from apps.viajes.models import Viaje, Itinerario, EtapaItinerario, Actividad, EstadoViaje, TipoActividad
+from apps.viajes.models import Viaje, ItinerarioViaje, EtapaItinerarioViaje, Actividad, EstadoViaje, TipoActividad
 from apps.inscripciones.models import Alumno, Inscripcion
 
 class Command(BaseCommand):
@@ -116,9 +116,9 @@ class Command(BaseCommand):
 
             self.stdout.write('Creando Itinerario del Viaje...')
             itinerario = viaje.itinerario
-            
+
             # Día 1
-            etapa1 = EtapaItinerario.objects.create(
+            etapa1 = EtapaItinerarioViaje.objects.create(
                 itinerario=itinerario,
                 dia_numero=1,
                 titulo='Llegada a Bariloche y Bienvenida',
@@ -131,7 +131,7 @@ class Command(BaseCommand):
             Actividad.objects.create(etapa=etapa1, titulo='Cena de Bienvenida', tipo=TipoActividad.COMIDA, orden=3)
 
             # Día 2
-            etapa2 = EtapaItinerario.objects.create(
+            etapa2 = EtapaItinerarioViaje.objects.create(
                 itinerario=itinerario,
                 dia_numero=2,
                 titulo='Aventura en la Nieve',

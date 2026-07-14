@@ -152,9 +152,10 @@ class ViajeResumenSerializer(serializers.ModelSerializer):
         fields = ['id', 'nombre', 'destino', 'fecha_salida', 'fecha_regreso', 'imagen_url']
 
     def get_imagen_url(self, obj):
-        request = self.context.get('request')
-        if obj.imagen and request:
-            return request.build_absolute_uri(obj.imagen.url)
+        # URL relativa para que el frontend la resuelva contra el host
+        # del gateway (producción) o Django (desarrollo).
+        if obj.imagen:
+            return obj.imagen.url
         return None
 
 

@@ -169,12 +169,67 @@ class Cuota(models.Model):
         return f"Cuota {self.numero_cuota} - {self.plan_pago.viaje.nombre}"
 
 
-class Itinerario(models.Model):
+class ItinerarioPlantilla(models.Model):
+    """
+    Maestro reutilizable de itinerario (DEC-012, TASK-207).
+
+    Una plantilla define la estructura de días/etapas reutilizable entre
+    varios viajes. Al aplicarse a un viaje, las etapas se COPIAN a la
+    ItinerarioViaje del viaje (copia-al-aplicar, no referencia viva),
+    permitiendo edición independiente por viaje.
+
+    Multi-tenancy (BR-ITI-10, TASK-204): `agencia` es dato de primer nivel
+    desde la migración `0012_task_204_plantilla_agencia` (NOT NULL tras
+    backfill que asigna cada plantilla existente a la agencia del viaje que
+    la originó en TASK-207). Un agente sólo ve y aplica plantillas de su
+    propia agencia.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    agencia = models.ForeignKey(
+        "agencias.Agencia",
+        on_delete=models.CASCADE,
+        related_name="itinerarios_plantilla",
+        verbose_name="Agencia",
+    )
+    nombre = models.CharField(max_length=300)
+    destinos = models.CharField(max_length=300, blank=True, default="")
+    dias_totales = models.PositiveIntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["nombre"]
+        verbose_name = "Itinerario plantilla"
+        verbose_name_plural = "Itinerarios plantilla"
+
+    def __str__(self):
+        return self.nombre
+
+
+class ItinerarioViaje(models.Model):
+    """
+    Instancia aplicada de itinerario por viaje (DEC-012, TASK-207).
+
+    Cardinalidad OneToOne con Viaje preservada (related_name="itinerario")
+    — cada viaje sigue teniendo exactamente UN itinerario aplicado.
+    Lo reutilizable es ItinerarioPlantilla, no la relación viaje↔instancia.
+
+    El signal post_save de Viaje crea automáticamente una instancia vacía
+    al crear el viaje (compatibilidad con API/seed/tests actuales).
+    aplicar_plantilla_a_viaje() (services.py) puebla/reemplaza sus etapas
+    cuando se selecciona una plantilla.
+    """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     viaje = models.OneToOneField(
         Viaje,
         on_delete=models.CASCADE,
         related_name="itinerario"
+    )
+    plantilla_origen = models.ForeignKey(
+        ItinerarioPlantilla,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="instancias_aplicadas"
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -183,10 +238,16 @@ class Itinerario(models.Model):
         return f"Itinerario - {self.viaje.nombre}"
 
 
-class EtapaItinerario(models.Model):
+class EtapaPlantilla(models.Model):
+    """
+    Etapa maestra de una ItinerarioPlantilla (TASK-207).
+
+    Editar etapas maestras NO modifica las instancias aplicadas
+    (EtapaItinerarioViaje) ni los viajes que ya usaron la plantilla.
+    """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     itinerario = models.ForeignKey(
-        Itinerario,
+        ItinerarioPlantilla,
         on_delete=models.CASCADE,
         related_name="etapas"
     )
@@ -196,14 +257,51 @@ class EtapaItinerario(models.Model):
     slug = models.SlugField(max_length=100, unique=True, blank=True)
     codigo = models.CharField(max_length=20, unique=True, blank=True)
     imagen = models.ImageField(
-        upload_to="itinerarios/etapas/", null=True, blank=True
+        upload_to="itinerarios/plantillas/etapas/", null=True, blank=True
     )
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
                 fields=["itinerario", "dia_numero"],
-                name="unique_etapa_por_itinerario"
+                name="unique_etapa_por_plantilla"
+            )
+        ]
+        ordering = ["dia_numero"]
+
+    def __str__(self):
+        return f"Día {self.dia_numero} - {self.titulo}"
+
+
+class EtapaItinerarioViaje(models.Model):
+    """
+    Etapa aplicada/copiada por viaje (TASK-207).
+
+    Cada EtapaItinerarioViaje es una copia independiente de la
+    EtapaPlantilla de origen. Editarla no afecta la plantilla maestra
+    ni otros viajes que la usaron. slug/codigo se regeneran por instancia
+    (BR-ITI-04) — no se reutilizan los de la plantilla.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    itinerario = models.ForeignKey(
+        ItinerarioViaje,
+        on_delete=models.CASCADE,
+        related_name="etapas"
+    )
+    dia_numero = models.PositiveIntegerField()
+    titulo = models.CharField(max_length=200)
+    descripcion = models.TextField(blank=True, default="")
+    slug = models.SlugField(max_length=100, unique=True, blank=True)
+    codigo = models.CharField(max_length=20, unique=True, blank=True)
+    imagen = models.ImageField(
+        upload_to="itinerarios/viajes/etapas/", null=True, blank=True
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["itinerario", "dia_numero"],
+                name="unique_etapa_por_itinerario_viaje"
             )
         ]
         ordering = ["dia_numero"]
@@ -215,7 +313,7 @@ class EtapaItinerario(models.Model):
 class Actividad(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     etapa = models.ForeignKey(
-        EtapaItinerario,
+        EtapaItinerarioViaje,
         on_delete=models.CASCADE,
         related_name="actividades"
     )
@@ -479,15 +577,31 @@ def generar_slug_codigo_hotel(sender, instance, **kwargs):
         instance.codigo = str(instance.id)[:8].upper()
 
 
-@receiver(pre_save, sender=EtapaItinerario)
-def generar_slug_codigo_etapa(sender, instance, **kwargs):
+def _generar_slug_codigo_etapa_universally(instance, model_cls, **kwargs):
+    """
+    Helper común para EtapaPlantilla y EtapaItinerarioViaje (TASK-207).
+
+    Garantiza slug/codigo únicos por instancia, regenerándolos con
+    dedup incremental si el base ya existe en otra fila de la misma tabla.
+    BR-ITI-04 sigue aplicando: slug/codigo autogenerados por signal pre_save.
+    """
     if not instance.slug:
         base = slugify(instance.titulo)[:80]
         slug = base
         n = 1
-        while EtapaItinerario.objects.filter(slug=slug).exclude(pk=instance.pk).exists():
+        while model_cls.objects.filter(slug=slug).exclude(pk=instance.pk).exists():
             slug = f"{base}-{n}"
             n += 1
         instance.slug = slug
     if not instance.codigo:
         instance.codigo = str(instance.id)[:8].upper()
+
+
+@receiver(pre_save, sender=EtapaPlantilla)
+def generar_slug_codigo_etapa_plantilla(sender, instance, **kwargs):
+    _generar_slug_codigo_etapa_universally(instance, EtapaPlantilla)
+
+
+@receiver(pre_save, sender=EtapaItinerarioViaje)
+def generar_slug_codigo_etapa_viaje(sender, instance, **kwargs):
+    _generar_slug_codigo_etapa_universally(instance, EtapaItinerarioViaje)

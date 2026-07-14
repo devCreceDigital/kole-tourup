@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { DndContext, closestCenter, DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 import { EtapaDia } from './EtapaDia'
+import { SelectorPlantilla } from './SelectorPlantilla'
 
 interface Actividad {
   id: string
@@ -19,12 +20,27 @@ interface Etapa {
   actividades: Actividad[]
 }
 
+interface PlantillaResumen {
+  id: string
+  nombre: string
+  destinos: string
+  dias_totales: number | null
+  cant_etapas: number
+}
+
 interface ConstructorItinerarioProps {
   etapasIniciales: Etapa[]
   viajeId: string
+  plantillasIniciales: PlantillaResumen[]
+  tieneInscripciones: boolean
 }
 
-export function ConstructorItinerario({ etapasIniciales, viajeId }: ConstructorItinerarioProps) {
+export function ConstructorItinerario({ 
+  etapasIniciales, 
+  viajeId, 
+  plantillasIniciales, 
+  tieneInscripciones 
+}: ConstructorItinerarioProps) {
   const [etapas, setEtapas] = useState(etapasIniciales)
   const [etapaSeleccionada, setEtapaSeleccionada] = useState<string | null>(etapasIniciales[0]?.id ?? null)
   const [guardando, setGuardando] = useState(false)
@@ -90,8 +106,20 @@ export function ConstructorItinerario({ etapasIniciales, viajeId }: ConstructorI
     }
   }
 
+  function handleAplicada(nuevasEtapas: Etapa[]) {
+    setEtapas(nuevasEtapas)
+    setEtapaSeleccionada(nuevasEtapas[0]?.id ?? null)
+  }
+
   return (
     <div>
+      <SelectorPlantilla
+        viajeId={viajeId}
+        plantillas={plantillasIniciales}
+        itinerarioTieneEtapas={etapas.length > 0}
+        tieneInscripciones={tieneInscripciones}
+        onAplicada={handleAplicada}
+      />
       {guardando && <p className="text-xs text-blue-600 mb-2 text-right">Guardando orden...</p>}
       <DndContext id='itinerario-dnd' sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <div className="space-y-2">

@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 
+from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
@@ -212,9 +213,14 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS('\n✅ Seed data creado exitosamente!'))
         self.stdout.write('\nCredenciales:')
-        self.stdout.write('  Agente:  agente@tottemtravel.com / Agente1234!')
+        self.stdout.write('  Agente:  agente@totemtravel.com / Agente1234!')
         self.stdout.write('  Padre:   padre@test.com / Padre1234!')
         self.stdout.write('  Admin:   admin@tottem.com / (la que creaste)')
         self.stdout.write(f'\nViajes publicados:')
         self.stdout.write(f'  /viajes/{viaje.slug}')
         self.stdout.write(f'  /viajes/{viaje2.slug}')
+
+        # Genera imágenes placeholder para todos los viajes/etapas/hoteles
+        # sin imagen (incluye los recién creados). Idempotente.
+        self.stdout.write('\nGenerando imágenes placeholder...')
+        call_command('generar_imagenes_seed')

@@ -62,6 +62,13 @@ const server = http.createServer((req, res) => {
             return;
           }
 
+          // ── Proxy hacia Django para /media/* y /static/* ──────────────
+          // Servidos por Django en desarrollo (DEBUG=True).
+          if (req.url.startsWith('/media/') || req.url.startsWith('/static/')) {
+            proxyToDjango(req, res);
+            return;
+          }
+
           // ── 404 para cualquier otra ruta ────────────────────────────────
           res.writeHead(404, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Not Found' }));

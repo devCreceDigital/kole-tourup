@@ -49,7 +49,7 @@
 | 8 | Login bloqueado si `email_verificado=False` | ✅ Implementado |
 | 9 | `notas_internas` de `Inscripcion` **nunca** en serializers del padre/alumno | ✅ Implementado |
 | 10 | `importe` de Pago y Cuota debe ser **> 0** — constraint de BD | ✅ Implementado |
-| 11 | Al crear un Viaje → se crea automáticamente un Itinerario vacío | ✅ Implementado |
+| 11 | Al crear un Viaje → se crea automáticamente una `ItinerarioViaje` vacía (instancia aplicada). El accessor `viaje.itinerario` sigue devolviendo un objeto único (OneToOne preservado, `related_name="itinerario"`). (TASK-207, DEC-012.) | ✅ Implementado |
 | 12 | JWT en cookies `httpOnly` en el frontend — **nunca en localStorage** | ✅ Implementado |
 | 13 | Toda consulta del agente **debe filtrar por `agencia_id`** | ✅ Implementado |
 | 14 | Las tareas Celery deben ser **idempotentes** | ✅ Implementado (cache key Redis) |
@@ -58,6 +58,7 @@
 | 17 | `ComplementoContratado` CREATE actualiza `precio_final` de la inscripción vía signal | ✅ Implementado (TASK-102, BR-V-12) |
 | 18 | Tasks Celery Beat: `marcar_cuotas_vencidas`, `alerta_docs_umbral`, `archivar_viajes_finalizados`, `verificar_cuotas_por_vencer` | ✅ Seed TASK-104 (BR-NOT-06/07/08) |
 | 19 | Transiciones de estado Viaje: `borrador → activo → cerrado → archivado`. Sin retroceso. | ✅ Implementado (BR-V-05, hallazgo adicional no relacionado a TASK-100→104) |
+| 20 | `ItinerarioViaje.viaje` mantiene OneToOne con `Viaje` (vía `related_name="itinerario"`). `ItinerarioPlantilla` es reutilizable 1:N — copia-al-aplicar vía `aplicar_plantilla_a_viaje()` en `services.py`. Editar `EtapaItinerarioViaje` no afecta a `EtapaPlantilla` ni a otros viajes. `ItinerarioPlantilla` sin `agencia` en TASK-207 (multi-tenancy de plantillas se resuelve en TASK-203/204). | ✅ Implementado (TASK-207, DEC-012) |
 
 ---
 
@@ -70,7 +71,7 @@
 4. Contar pagos `pendiente` o `rechazado` al calcular saldo
 5. Olvidar filtrar por `agencia_id` en endpoints del agente
 6. Validar tamaño de archivo solo en Django — debe validarse también en el gateway
-7. No crear itinerario vacío al crear un viaje
+7. No crear `ItinerarioViaje` vacío al crear un viaje (`ItinerarioPlantilla` se aplica con `aplicar_plantilla_a_viaje()` en `services.py`; el wizard TASK-204 introducirá el selector de plantilla)
 8. Reutilizar refresh_token invalidado (no está en Redis allowlist)
 9. Reordenar actividades con PATCH individual — usar `/actividades/reordenar/`
 10. No registrar en `LogAuditoria` — usar signal, no el endpoint directamente

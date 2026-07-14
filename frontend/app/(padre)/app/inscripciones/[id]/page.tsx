@@ -129,6 +129,14 @@ export default async function ItinerarioPage({ params }: { params: Promise<{ id:
                 </div>
               </div>
 
+              {etapa.imagen_url && (
+                <img
+                  src={etapa.imagen_url}
+                  alt={`Día ${etapa.dia_numero}: ${etapa.titulo}`}
+                  className="w-full h-32 object-cover rounded-md mb-3"
+                />
+              )}
+
               {etapa.actividades?.length > 0 && (
                 <ul className="space-y-2 pl-1">
                   {etapa.actividades

@@ -19,6 +19,8 @@ from .views import (
     GrupoListCreateView,
     GrupoRetrieveUpdateDestroyView,
     GrupoAsignarAlumnosView,
+    ItinerarioPlantillaListView,
+    ViajeAplicarPlantillaView,
 )
 
 
@@ -27,6 +29,10 @@ urlpatterns = [
     path('<uuid:pk>/', ViajeRetrieveUpdateView.as_view(), name='viaje-detail'),
     path('<uuid:pk>/cambiar-estado/', ViajeCambiarEstadoView.as_view(), name='viaje-cambiar-estado'),
     path('<uuid:viaje_id>/plan-pago/', PlanPagoRetrieveUpdateCreateView.as_view(), name='viaje-plan-pago'),  # noqa: E501
+
+    # TASK-204: plantillas reutilizables (selector + copia-al-aplicar)
+    path('plantillas/', ItinerarioPlantillaListView.as_view(), name='itinerario-plantilla-list'),
+    path('<uuid:viaje_id>/aplicar-plantilla/', ViajeAplicarPlantillaView.as_view(), name='viaje-aplicar-plantilla'),  # noqa: E501
 
     # Itinerario (TASK-028)
     path('<uuid:viaje_id>/itinerario/', ItinerarioRetrieveView.as_view(), name='viaje-itinerario'),  # noqa: E501
