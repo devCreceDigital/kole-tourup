@@ -19,7 +19,7 @@
 | **F** | Características Avanzadas (mecenas, chat, exportaciones, WhatsApp, preferencias) | ✅ 100% |
 | **G** | Bug Fixes Post-Code-Review | ✅ 100% |
 
-**Total:** 47 tareas completadas + 1 cancelada (falso positivo) = 48 resueltas.
+**Total:** 48 tareas completadas + 1 cancelada (falso positivo) = 49 resueltas.
 
 **Estado general del proyecto:**
 - Backend: ~95% (solo falta señal `documentos/signals.py`)
@@ -210,6 +210,7 @@ Priorizado por impacto en el MVP. Cada ítem es autocontenido y ejecutable en un
 | TASK-056 | Constructor itinerario drag & drop (@dnd-kit) + PATCH bulk | ✅ |
 | TASK-057 | Gestión grupos, hoteles, docs requeridos | ✅ |
 | TASK-058 | Comunicados masivos (formulario + estado envío) | ✅ |
+| TASK-204 | Selector plantilla itinerario reutilizable + copia-al-aplicar | ✅ |
 
 ### FASE E — Automatización Celery (✅ Completada)
 
@@ -266,6 +267,27 @@ PagosPage convertido a Client Component, PagarSection con ErrorBoundary, type="b
 
 ### ✅ TASK-PAGOS-003 — Validar flujo cambio de estado PATCH /api/v1/pagos/{id}/
 Análisis completo. Fixes: signal con `usuario`, admin con `estado` readonly.
+
+---
+
+### ✅ TASK-204 — Selector de plantilla de itinerario (copia-al-aplicar desde UI)
+
+**Objetivo:** Permitir al agente seleccionar una `ItinerarioPlantilla` existente y aplicarla al `ItinerarioViaje` de un viaje, viendo inmediatamente las etapas resultantes.
+
+**Alcance implementado:**
+- Migración `0012_task_204_plantilla_agencia`: FK `agencia` NOT NULL en `ItinerarioPlantilla` con backfill trazable (Opción A).
+- Endpoints: `GET /api/v1/itinerarios-plantilla/` (lista scoped por agencia) + `POST /api/v1/viajes/{id}/aplicar-plantilla/` (aplicación idempotente, transaccional).
+- Validaciones: multi-tenancy (BR-ITI-10), estados bloqueados `cerrado`/`archivado` (BR-ITI-12), warning no bloqueante por inscripciones activas (BR-ITI-13).
+- Frontend: `SelectorPlantilla.tsx` (dropdown nativo + modal confirmación + `fetchApi`), integrado en `/backoffice/viajes/[id]/itinerario` y `ConstructorItinerario`.
+- Tests: 15 tests backend (total suite 256 OK). Build frontend limpio.
+- Docs: `docs/TASK-204-diseno-funcional-pto-aprobacion.md` (diseño aprobado), `docs/TASK-204.md` (spec congelada).
+
+**Archivos clave:**
+- `backend/apps/viajes/migrations/0012_task_204_plantilla_agencia.py`
+- `backend/apps/viajes/{models,serializers,views,urls,tests,admin}.py`
+- `frontend/components/agente/SelectorPlantilla.tsx` (nuevo)
+- `frontend/app/(agente)/backoffice/viajes/[id]/itinerario/page.tsx`
+- `frontend/components/agente/ConstructorItinerario.tsx`
 
 ---
 
